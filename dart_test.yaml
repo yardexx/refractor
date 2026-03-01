@@ -1,4 +1,0 @@
-tags:
-  e2e:
-    # E2E tests mutate Directory.current (process-global state).
-    # Run them sequentially to avoid cross-test interference.
