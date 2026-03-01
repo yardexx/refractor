@@ -1,76 +1,71 @@
 # Refractor
 
-Refractor is a Dart kernel (`.dill`) obfuscation tool.
+A Dart kernel (`.dill`) obfuscation tool. Compiles a Dart entrypoint to kernel bytecode, applies configurable obfuscation passes, and outputs an executable, AOT snapshot, JIT snapshot, or kernel file.
 
-It compiles your Dart entrypoint to kernel, applies configurable obfuscation passes, and compiles the obfuscated kernel to your target output.
+## Features
 
-## What It Does
-
-- Renames identifiers (classes, methods, fields) to harder-to-read names
-- Encodes string literals via an injected runtime decoder
-- Optionally inserts unreachable dead-code branches
-- Writes a symbol map file for debugging/release workflows
-
-## Current CLI Commands
-
-- `refractor build` — compile -> obfuscate -> build
-- `refractor inspect` — inspect a compiled `.dill` file
-- `refractor init` — generate a `refractor.yaml` template
+- **Rename** — rewrites class, method, and field identifiers to short meaningless names
+- **String encryption** — replaces string literals with XOR-encoded byte arrays and an injected runtime decoder
+- **Dead code injection** — inserts unreachable branches to hinder static analysis and decompilers
+- **Symbol map** — writes a JSON mapping of obfuscated names back to originals for debugging
 
 ## Installation
 
-Activate globally from Git:
-
 ```bash
-dart pub global activate \
-  --source git https://github.com/yardexx/refractor.git
+dart pub global activate --source git https://github.com/yardexx/refractor.git
 ```
 
 ## Quick Start
 
-1. Create config:
-
 ```bash
+# 1. Generate a config file
 refractor init
+
+# 2. Build with obfuscation
+refractor build
 ```
 
-2. Build with obfuscation (default entrypoint: `lib/main.dart`):
+This compiles `lib/main.dart`, applies the passes defined in `refractor.yaml`, and writes the output to `build/`.
 
-```bash
-refractor build --target exe --output build
-```
+## Commands
 
-This writes the output executable to `build/out`.
+### `refractor build`
 
-## Build Targets
+Compile, obfuscate, and build.
 
-Supported targets:
-
-- `exe`
-- `aot`
-- `jit`
-- `kernel`
-
-Example (`kernel` target):
+| Flag           | Description                                  | Default         |
+|----------------|----------------------------------------------|-----------------|
+| `-i, --input`  | Dart entrypoint file                         | `lib/main.dart` |
+| `-o, --output` | Output directory                             | `build`         |
+| `-t, --target` | Output format: `exe`, `aot`, `jit`, `kernel` | `exe`           |
 
 ```bash
 refractor build --target kernel --output build
 ```
 
-This writes `build/out.dill`.
+### `refractor inspect <path.dill>`
 
-## Configuration (`refractor.yaml`)
+Print a tree representation of a compiled `.dill` file.
 
-`refractor.yaml` is required. Refractor fails fast if the file is missing,
-empty, or invalid.
+```bash
+refractor inspect build/out.dill
+refractor inspect --sdk build/out.dill   # include dart:* libraries
+```
 
-There are no implicit configuration fallbacks.
+### `refractor init`
 
-Scope is fixed to the current project only:
-- package libraries matching the current `pubspec.yaml` `name`
-- file libraries under the current working directory
+Generate a starter `refractor.yaml`.
 
-Example:
+```bash
+refractor init
+refractor init --output config/refractor.yaml
+```
+
+## Configuration
+
+Create a `refractor.yaml` in your project root. The file is required — Refractor fails fast if it is missing, empty, or malformed.
+
+Obfuscation scope is always the current project: libraries matching the `name` in `pubspec.yaml` and files under the working directory.
 
 ```yaml
 refractor:
@@ -90,76 +85,19 @@ passes:
       - "^https://"
 
   dead_code:
-    enabled: false
     max_insertions_per_procedure: 2
 ```
 
-Pass values can be:
-
-- `true` (enabled with defaults)
-- `false` (disabled)
-- map/object with pass-specific options
-
-Rename note:
-- `rename` supports only `preserve_main` in config.
-
-## Command Reference
-
-### `refractor build`
-
-Options:
-
-- `-i, --input` input Dart file or directory (default: `lib/main.dart`)
-- `-o, --output` output directory (default: `build`)
-- `-t, --target` output target: `exe|aot|jit|kernel`
-- default target is `exe`
-
-Example:
-
-```bash
-refractor build \
-  --input lib/main.dart \
-  --target exe \
-  --output build
-```
-
-### `refractor inspect <path.dill>`
-
-Prints a tree representation of a kernel file.
-
-```bash
-refractor inspect build/out.dill
-```
-
-Include SDK libraries:
-
-```bash
-refractor inspect --sdk build/out.dill
-```
-
-### `refractor init`
-
-Creates a starter config file.
-
-```bash
-refractor init
-```
-
-Custom output path:
-
-```bash
-refractor init --output config/refractor.yaml
-```
+Each pass value can be `true` (enabled with defaults), `false` (disabled), or a map with pass-specific options.
 
 ## Development
 
-Run analysis and tests:
-
 ```bash
+dart pub get
 dart analyze
 dart test
 ```
 
 ## License
 
-MIT. See `NOTICE`.
+MIT. See [LICENSE](LICENSE).

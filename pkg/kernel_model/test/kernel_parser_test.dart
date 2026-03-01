@@ -12,8 +12,8 @@ void main() {
     setUpAll(() {
       // Compile a fixture to .dill.
       final tmpDir = Directory.systemTemp.createTempSync('kernel_model_test_');
-      final sourceFile = File('${tmpDir.path}/main.dart');
-      sourceFile.writeAsStringSync('''
+      final sourceFile = File('${tmpDir.path}/main.dart')
+        ..writeAsStringSync('''
 void main() {
   print('hello');
 }
@@ -122,13 +122,9 @@ class UserService {
       final ids = <String>[];
       void collectIds(KernelNode node) {
         ids.add(node.id);
-        for (final child in node.children) {
-          collectIds(child);
-        }
+        node.children.forEach(collectIds);
       }
-      for (final lib in tree.libraries) {
-        collectIds(lib);
-      }
+      tree.libraries.forEach(collectIds);
       expect(ids.toSet().length, equals(ids.length));
     });
   });
@@ -142,14 +138,14 @@ class UserService {
             id: '0',
             importUri: Uri.parse('package:app/main.dart'),
             children: [
-              ProcedureNode(
+              const ProcedureNode(
                 id: '1',
                 name: 'main',
                 returnType: 'void',
                 signature: 'void main()',
                 isStatic: false,
               ),
-              ClassNode(
+              const ClassNode(
                 id: '2',
                 name: 'Foo',
                 isAbstract: false,

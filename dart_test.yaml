@@ -1,0 +1,3 @@
+# Run tests sequentially because PassContext reads Directory.current,
+# which can be affected by concurrent test suites.
+concurrency: 1

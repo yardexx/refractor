@@ -11,8 +11,6 @@ class InspectCommand extends RefractorCommand {
     argParser.addFlag(
       'sdk',
       help: 'Include dart:* SDK libraries in the output.',
-      negatable: true,
-      defaultsTo: false,
     );
   }
 
