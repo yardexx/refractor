@@ -2,6 +2,9 @@
 
 A Dart kernel (`.dill`) obfuscation tool. Compiles a Dart entrypoint to kernel bytecode, applies configurable obfuscation passes, and outputs an executable, AOT snapshot, JIT snapshot, or kernel file.
 
+> [!IMPORTANT]
+> refractor is in early stages of development. Real impact at generated binary may differ.
+
 ## Features
 
 - **Rename** — rewrites class, method, and field identifiers to short meaningless names
