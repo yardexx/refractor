@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/exceptions/refractor_exception.dart';
 
 class ConfigManager {
   /// Default config file name.
@@ -15,27 +16,21 @@ class ConfigManager {
     final resolvedPath = _resolveConfigPath(configPath);
 
     if (resolvedPath == null) {
-      return _defaultConfig();
+      final target = configPath.isNotEmpty ? configPath : defaultConfigName;
+      throw ConfigException('Configuration file not found: $target');
     }
 
     final file = File(resolvedPath);
     if (!file.existsSync()) {
-      return _defaultConfig();
+      throw ConfigException('Configuration file not found: $resolvedPath');
     }
 
     final content = file.readAsStringSync();
     if (content.trim().isEmpty) {
-      return _defaultConfig();
+      throw ConfigException('Configuration file is empty: $resolvedPath');
     }
 
     return RefractorConfig.fromYaml(content);
-  }
-
-  /// Returns a default config with rename + string_encrypt enabled.
-  static RefractorConfig _defaultConfig() {
-    return RefractorConfig(
-      passes: [RenamePassConfig(), StringEncryptPassConfig()],
-    );
   }
 
   /// Find the config file path. Returns null if none found.

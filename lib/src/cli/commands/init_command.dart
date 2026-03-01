@@ -6,18 +6,12 @@ import 'package:mason_logger/mason_logger.dart';
 /// Scaffolds a `refractor.yaml` template in the current directory.
 class InitCommand extends Command<int> {
   InitCommand({Logger? logger}) : _logger = logger ?? Logger() {
-    argParser
-      ..addOption(
-        'output',
-        abbr: 'o',
-        help: 'Output path for the config file',
-        defaultsTo: 'refractor.yaml',
-      )
-      ..addFlag(
-        'flutter',
-        help: 'Generate a Flutter-specific config template',
-        negatable: false,
-      );
+    argParser.addOption(
+      'output',
+      abbr: 'o',
+      help: 'Output path for the config file',
+      defaultsTo: 'refractor.yaml',
+    );
   }
 
   final Logger _logger;
@@ -58,7 +52,9 @@ refractor:
   # Output path for the symbol map (original → obfuscated name mapping).
   # symbol_map: build/refractor_map.json
 
-  # File-level exclusions using glob patterns.
+  # Scope is fixed to the current project (pubspec package + current folder).
+
+  # Library URI/path exclusions using glob patterns.
   # exclude:
   #   - "**/*.g.dart"
   #   - "**/*.freezed.dart"
@@ -68,15 +64,12 @@ refractor:
 passes:
   rename:
     # preserve_main: true
-    exclude_names: []
-      # - mySpecialMethod
-    exclude_patterns: []
-      # - "^on[A-Z]"    # Event handlers
-    exclude_annotations: []
-      # - JsonKey
-      # - HiveField
 
   string_encrypt: true
+  # string_encrypt:
+  #   xor_key: 0x5A
+  #   exclude_patterns:
+  #     - "^https://"
 
   dead_code: false
 

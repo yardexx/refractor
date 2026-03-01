@@ -2,9 +2,7 @@ import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/passes/pass_visitor.dart';
 
 class RenameVisitor extends PassVisitor {
-  RenameVisitor({required this.excludedNames, required super.context});
-
-  final Set<String> excludedNames;
+  RenameVisitor({required super.context});
 
   /// Maps class nodes to their new name strings.
   final Map<Class, String> classRenames = {};
@@ -23,10 +21,6 @@ class RenameVisitor extends PassVisitor {
     final lib = node.enclosingLibrary;
     if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) {
-      super.visitClass(node);
-      return;
-    }
-    if (_hasExcludedAnnotation(node.annotations)) {
       super.visitClass(node);
       return;
     }
@@ -50,10 +44,6 @@ class RenameVisitor extends PassVisitor {
       super.visitProcedure(node);
       return;
     }
-    if (_hasExcludedAnnotation(node.annotations)) {
-      super.visitProcedure(node);
-      return;
-    }
     final n = node.name.text;
     if (context.options.preserveMain && n == 'main') {
       super.visitProcedure(node);
@@ -72,7 +62,6 @@ class RenameVisitor extends PassVisitor {
     final lib = node.enclosingLibrary;
     if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) return;
-    if (_hasExcludedAnnotation(node.annotations)) return;
     if (_shouldRename(node.name.text)) {
       final obf = _assignMemberName(lib, node.name.text);
       final nameLib = obf.startsWith('_') ? lib : node.name.library;
@@ -83,15 +72,7 @@ class RenameVisitor extends PassVisitor {
   bool _shouldObfuscateLib(Library lib) => context.shouldObfuscateLibrary(lib);
 
   bool _shouldRename(String name) {
-    if (excludedNames.contains(name)) return false;
-
-    if (context.options.excludeNames.contains(name)) return false;
-
     if (name.isEmpty) return false;
-
-    for (final pattern in context.options.excludePatterns) {
-      if (pattern.hasMatch(name)) return false;
-    }
 
     return true;
   }
@@ -102,27 +83,6 @@ class RenameVisitor extends PassVisitor {
         final c = ann.constant;
         if (c is InstanceConstant) {
           if (c.classNode.name == 'pragma') return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  bool _hasExcludedAnnotation(List<Expression> annotations) {
-    if (context.options.excludeAnnotations.isEmpty) return false;
-    for (final ann in annotations) {
-      if (ann is ConstantExpression) {
-        final c = ann.constant;
-        if (c is InstanceConstant) {
-          if (context.options.excludeAnnotations.contains(c.classNode.name)) {
-            return true;
-          }
-        }
-      } else if (ann is ConstructorInvocation) {
-        if (context.options.excludeAnnotations.contains(
-          ann.target.enclosingClass.name,
-        )) {
-          return true;
         }
       }
     }

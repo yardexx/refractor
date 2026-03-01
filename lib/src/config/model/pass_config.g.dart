@@ -34,30 +34,10 @@ RenamePassConfig _$RenamePassConfigFromJson(
     final val = RenamePassConfig(
       enabled: $checkedConvert('enabled', (v) => v as bool? ?? true),
       preserveMain: $checkedConvert('preserve_main', (v) => v as bool? ?? true),
-      excludeNames: $checkedConvert(
-        'exclude_names',
-        (v) =>
-            (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-      ),
-      excludePatterns: $checkedConvert(
-        'exclude_patterns',
-        (v) =>
-            (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-      ),
-      excludeAnnotations: $checkedConvert(
-        'exclude_annotations',
-        (v) =>
-            (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-      ),
     );
     return val;
   },
-  fieldKeyMap: const {
-    'preserveMain': 'preserve_main',
-    'excludeNames': 'exclude_names',
-    'excludePatterns': 'exclude_patterns',
-    'excludeAnnotations': 'exclude_annotations',
-  },
+  fieldKeyMap: const {'preserveMain': 'preserve_main'},
 );
 
 StringEncryptPassConfig _$StringEncryptPassConfigFromJson(

@@ -1,3 +1,4 @@
+import 'package:glob/glob.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:refractor/src/config/converter/pass_config_converter.dart';
 import 'package:refractor/src/config/model/pass_config.dart';
@@ -25,30 +26,38 @@ part 'refractor_config.g.dart';
 final class RefractorConfig {
   RefractorConfig({
     this.refractor = const RefractorSettings(),
-    List<PassConfig>? passes,
-  }) : passes = passes ?? _defaultPasses();
+    this.passes = const [],
+  });
 
   factory RefractorConfig.fromJson(Map<String, dynamic> json) =>
       _$RefractorConfigFromJson(json);
 
   /// Parses a YAML string into a [RefractorConfig].
   factory RefractorConfig.fromYaml(String yamlString) {
-    if (yamlString.trim().isEmpty) return RefractorConfig();
-    final yaml = loadYaml(yamlString);
-    if (yaml == null) return RefractorConfig();
-
-    final json = _yamlToJson(yaml);
-    if (json is! Map<String, dynamic>) {
-      // It might be a string if you have an empty or invalid yaml like `   \n  `
-      return RefractorConfig();
+    if (yamlString.trim().isEmpty) {
+      throw const ConfigException('Configuration YAML is empty.');
     }
-    return RefractorConfig.fromJson(json);
-  }
 
-  static List<PassConfig> _defaultPasses() => [
-    RenamePassConfig(),
-    StringEncryptPassConfig(),
-  ];
+    try {
+      final yaml = loadYaml(yamlString);
+      if (yaml == null) {
+        throw const ConfigException('Configuration YAML is empty.');
+      }
+
+      final json = _yamlToJson(yaml);
+      if (json is! Map<String, dynamic>) {
+        throw const ConfigException(
+          'Configuration root must be a YAML mapping/object.',
+        );
+      }
+
+      return RefractorConfig.fromJson(json);
+    } on ConfigException {
+      rethrow;
+    } on Object catch (e) {
+      throw ConfigException('Invalid configuration YAML.', cause: e);
+    }
+  }
 
   final RefractorSettings refractor;
   final List<PassConfig> passes;
@@ -56,13 +65,14 @@ final class RefractorConfig {
   /// Convert this config to [PassOptions] for the obfuscation engine.
   PassOptions toOptions() {
     final renameConfig = passes.whereType<RenamePassConfig>().firstOrNull;
+    final stringConfig = passes
+        .whereType<StringEncryptPassConfig>()
+        .firstOrNull;
     return PassOptions(
-      packageFilter: refractor.packageFilter,
+      excludeLibraryUriPatterns: refractor.exclude.map(Glob.new).toList(),
       preserveMain: renameConfig?.preserveMain ?? true,
-      excludeNames: renameConfig?.excludeNames.toSet() ?? const {},
-      excludePatterns:
-          renameConfig?.excludePatterns.map(RegExp.new).toList() ?? const [],
-      excludeAnnotations: renameConfig?.excludeAnnotations.toSet() ?? const {},
+      stringExcludePatterns:
+          stringConfig?.excludePatterns.map(RegExp.new).toList() ?? const [],
       verbose: refractor.verbose,
     );
   }

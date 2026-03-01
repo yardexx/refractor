@@ -17,23 +17,10 @@ class RenamePass extends Pass {
   @override
   String get name => 'rename';
 
-  /// Names that should never be renamed regardless of options.
-  static const _systemNames = {
-    'toString',
-    'hashCode',
-    'noSuchMethod',
-    'runtimeType',
-    '==',
-    '_enumToString',
-  };
-
   @override
   void run(Component component, PassContext context) {
     // Phase 1: collect declarations and assign new names.
-    final collector = RenameVisitor(
-      excludedNames: _systemNames,
-      context: context,
-    );
+    final collector = RenameVisitor(context: context);
     component.accept(collector);
 
     // Phase 2: apply renames using a Transformer.

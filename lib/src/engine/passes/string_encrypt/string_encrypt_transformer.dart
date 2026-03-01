@@ -64,8 +64,10 @@ class StringEncryptTransformer extends PassTransformer {
   @override
   TreeNode visitStringLiteral(StringLiteral node) {
     if (_inConstContext) return node;
+    for (final pattern in context.options.stringExcludePatterns) {
+      if (pattern.hasMatch(node.value)) return node;
+    }
 
-    // Huh?
     final pass = StringEncryptPass(xorKey: xorKey);
     final encoded = pass.encode(node.value);
     count++;

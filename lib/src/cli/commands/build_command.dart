@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/cli/commands/refractor_command.dart';
 import 'package:refractor/src/config/config_manager.dart';
@@ -9,9 +11,9 @@ import 'package:refractor/src/utils/result.dart';
 
 /// Full compile -> obfuscate -> final-compile pipeline command.
 ///
-/// Usage: `refractor build [options] <target>`
+/// Usage: `refractor build [options]`
 ///
-/// Targets: exe, aot, jit, kernel
+/// Targets: exe, aot, jit, kernel (default: exe)
 class BuildCommand extends RefractorCommand {
   BuildCommand({super.logger}) {
     argParser
@@ -32,6 +34,7 @@ class BuildCommand extends RefractorCommand {
         abbr: 't',
         help: 'Target format to build for (exe, aot, jit, kernel)',
         allowed: ['exe', 'aot', 'jit', 'kernel'],
+        defaultsTo: 'exe',
       );
   }
 
@@ -43,9 +46,11 @@ class BuildCommand extends RefractorCommand {
 
   @override
   Future<int> run() async {
-    final target = Target.fromString(argResults.option('target') ?? '');
+    final target = Target.fromString(argResults.option('target')!);
     final input = argResults.option('input')!;
-    final output = "${argResults.option('output')!}/out${target.extension}";
+    final outputDir = argResults.option('output')!;
+    Directory(outputDir).createSync(recursive: true);
+    final output = '$outputDir/out${target.extension}';
 
     final config = ConfigManager.loadConfig();
 
