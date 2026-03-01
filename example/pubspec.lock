@@ -179,7 +179,7 @@ packages:
   kernel_model:
     dependency: transitive
     description:
-      path: "../../kernel_model"
+      path: "../pkg/kernel_model"
       relative: true
     source: path
     version: "0.1.0"
