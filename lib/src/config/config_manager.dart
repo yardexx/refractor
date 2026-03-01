@@ -17,20 +17,35 @@ class ConfigManager {
 
     if (resolvedPath == null) {
       final target = configPath.isNotEmpty ? configPath : defaultConfigName;
-      throw ConfigException('Configuration file not found: $target');
+      throw ConfigException(
+        'Configuration file not found: ${File(target).absolute.path}\n'
+        'Run "refractor init" to create one.',
+      );
     }
 
     final file = File(resolvedPath);
     if (!file.existsSync()) {
-      throw ConfigException('Configuration file not found: $resolvedPath');
+      throw ConfigException(
+        'Configuration file not found: ${file.absolute.path}\n'
+        'Run "refractor init" to create one.',
+      );
     }
 
     final content = file.readAsStringSync();
     if (content.trim().isEmpty) {
-      throw ConfigException('Configuration file is empty: $resolvedPath');
+      throw ConfigException(
+        'Configuration file is empty: ${file.absolute.path}',
+      );
     }
 
-    return RefractorConfig.fromYaml(content);
+    try {
+      return RefractorConfig.fromYaml(content);
+    } on ConfigException catch (e) {
+      throw ConfigException(
+        'Invalid configuration at ${file.absolute.path}: ${e.message}',
+        cause: e.cause,
+      );
+    }
   }
 
   /// Find the config file path. Returns null if none found.

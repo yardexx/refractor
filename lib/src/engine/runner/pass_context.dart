@@ -4,6 +4,7 @@ import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/name_generator.dart';
 import 'package:refractor/src/engine/runner/pass_options.dart';
 import 'package:refractor/src/engine/symbol_table.dart';
+import 'package:yaml/yaml.dart';
 
 /// Shared mutable context passed to every obfuscation pass.
 class PassContext {
@@ -51,14 +52,13 @@ class PassContext {
   static String? _detectProjectPackage(Directory cwd) {
     final pubspec = File('${cwd.path}${Platform.pathSeparator}pubspec.yaml');
     if (!pubspec.existsSync()) return null;
-
-    for (final line in pubspec.readAsLinesSync()) {
-      final trimmed = line.trim();
-      if (!trimmed.startsWith('name:')) continue;
-      final value = trimmed.substring('name:'.length).trim();
-      if (value.isEmpty) return null;
-      return value.replaceAll("'", '').replaceAll('"', '');
+    try {
+      final yaml = loadYaml(pubspec.readAsStringSync());
+      if (yaml is! YamlMap) return null;
+      final name = yaml['name'];
+      return name is String && name.isNotEmpty ? name : null;
+    } on Object {
+      return null;
     }
-    return null;
   }
 }

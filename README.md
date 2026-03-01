@@ -61,7 +61,14 @@ This writes `build/out.dill`.
 
 ## Configuration (`refractor.yaml`)
 
-Refractor looks for `refractor.yaml` in the current directory.
+`refractor.yaml` is required. Refractor fails fast if the file is missing,
+empty, or invalid.
+
+There are no implicit configuration fallbacks.
+
+Scope is fixed to the current project only:
+- package libraries matching the current `pubspec.yaml` `name`
+- file libraries under the current working directory
 
 Example:
 
@@ -92,6 +99,9 @@ Pass values can be:
 - `true` (enabled with defaults)
 - `false` (disabled)
 - map/object with pass-specific options
+
+Rename note:
+- `rename` supports only `preserve_main` in config.
 
 ## Command Reference
 
