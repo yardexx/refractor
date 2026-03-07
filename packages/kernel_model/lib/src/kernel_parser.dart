@@ -106,12 +106,10 @@ class KernelParser {
     final positional = function.positionalParameters
         .map((p) => '${_formatType(p.type)} ${p.name ?? ''}')
         .toList();
-    final named = function.namedParameters
-        .map((p) {
-          final req = p.isRequired ? 'required ' : '';
-          return '$req${_formatType(p.type)} ${p.name}';
-        })
-        .toList();
+    final named = function.namedParameters.map((p) {
+      final req = p.isRequired ? 'required ' : '';
+      return '$req${_formatType(p.type)} ${p.name}';
+    }).toList();
 
     final parts = <String>[...positional];
     if (named.isNotEmpty) {
