@@ -53,12 +53,15 @@ class BuildCommand extends RefractorCommand {
     final output = '$outputDir/out${target.extension}';
 
     final config = ConfigManager.loadConfig();
+    final ws = workspace..ensureBuildDirectory();
 
     final request = BuildRequest(
       input: input,
       output: output,
       target: target,
-      workDirectory: workspace.path,
+      workDirectory: ws.buildDirectory.path,
+      projectRootUri: ws.rootUri,
+      projectPackageName: ws.packageName,
     );
 
     final engine = RefractorEngine(
@@ -73,11 +76,10 @@ class BuildCommand extends RefractorCommand {
       case Ok<BuildResult>():
         logger.detail('Writing output to ${result.value.outputPath}...');
         result.value.symbolTable.writeToFile(config.symbolMapPath);
+        logger.success('Build complete: ${result.value.outputPath}');
       case Error<BuildResult>():
         throw BuildException('Build failed: ${result.error}');
     }
-
-    logger.success('Build complete: ${result.value.outputPath}');
     return ExitCode.success.code;
   }
 }

@@ -44,7 +44,6 @@ void main() {
 passes:
   rename: false
   string_encrypt: false
-  dead_code: false
 ''');
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');

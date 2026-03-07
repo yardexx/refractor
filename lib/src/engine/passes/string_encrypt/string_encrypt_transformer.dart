@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/passes/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
@@ -5,14 +7,12 @@ import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.d
 class StringEncryptTransformer extends PassTransformer {
   StringEncryptTransformer({
     required this.decodeProcedure,
-    // TODO(user): Consider using an object which encapsulates random
-    // generation and encoding logic, to support multiple algorithms.
-    required this.xorKey,
+    required this.random,
     required super.context,
   });
 
   final Procedure decodeProcedure;
-  final int xorKey;
+  final Random random;
   int count = 0;
 
   // Track whether we're inside a const context or annotation.
@@ -68,18 +68,18 @@ class StringEncryptTransformer extends PassTransformer {
       if (pattern.hasMatch(node.value)) return node;
     }
 
-    final pass = StringEncryptPass(xorKey: xorKey);
-    final encoded = pass.encode(node.value);
+    final key = random.nextInt(0xFFFFFFFF) + 1;
+    final encoded = StringEncryptPass.encodeWithKey(node.value, key);
     count++;
 
-    // Build: _obfDecode$([encoded bytes], xorKey)
+    // Build: _obfDecode$([encoded bytes], per-string key)
     return StaticInvocation(
       decodeProcedure,
       Arguments([
         ListLiteral(
           encoded.map((b) => IntLiteral(b) as Expression).toList(),
         ),
-        IntLiteral(xorKey),
+        IntLiteral(key),
       ]),
     );
   }

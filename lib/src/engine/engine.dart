@@ -15,11 +15,15 @@ class BuildRequest {
     required this.output,
     required this.target,
     required this.workDirectory,
+    required this.projectRootUri,
+    required this.projectPackageName,
   });
   final String input;
   final String output;
   final Target target;
   final String workDirectory;
+  final Uri projectRootUri;
+  final String? projectPackageName;
 }
 
 /// Orchestrates the full compile → obfuscate → compile pipeline.
@@ -39,7 +43,7 @@ class RefractorEngine {
   Result<BuildResult> run({
     required RefractorConfig config,
     required BuildRequest request,
-  }) {
+  }) => runCatching(() {
     // 1. Compile source → kernel.
     _logger?.detail('Compiling ${request.input} to kernel...');
     final dillPath = '${request.workDirectory}/app.dill';
@@ -50,7 +54,12 @@ class RefractorEngine {
     final enabledPasses = config.buildPasses();
     final component = kernelIO.load(dillPath);
     final runner = PassRunner(passes: enabledPasses);
-    final (obfuscated, symbolTable) = runner.run(component, config.toOptions());
+    final (obfuscated, symbolTable) = runner.run(
+      component,
+      config.toOptions(),
+      projectRootUri: request.projectRootUri,
+      projectPackageName: request.projectPackageName,
+    );
 
     // 3. Write obfuscated kernel.
     _logger?.detail('Writing obfuscated kernel...');
@@ -75,14 +84,12 @@ class RefractorEngine {
 
     _logger?.detail('Build complete: ${request.output}');
 
-    final result = BuildResult(
+    return BuildResult(
       outputPath: request.output,
       symbolTable: symbolTable,
       passesRun: enabledPasses.map((p) => p.name).toList(),
     );
-
-    return Result.ok(result);
-  }
+  });
 }
 
 /// Result of an [RefractorEngine.run] invocation.

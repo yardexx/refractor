@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_transformer.dart';
@@ -41,7 +42,7 @@ class StringEncryptPass extends Pass {
     final transformer = StringEncryptTransformer(
       context: context,
       decodeProcedure: decodeProcedure,
-      xorKey: xorKey,
+      random: Random(xorKey),
     );
     component.transformChildren(transformer);
   }
@@ -175,7 +176,9 @@ class StringEncryptPass extends Pass {
     return procedure;
   }
 
-  List<int> encode(String s) {
-    return utf8.encode(s).map((b) => b ^ xorKey).toList();
+  List<int> encode(String s) => encodeWithKey(s, xorKey);
+
+  static List<int> encodeWithKey(String s, int key) {
+    return utf8.encode(s).map((b) => b ^ key).toList();
   }
 }

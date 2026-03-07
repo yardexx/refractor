@@ -1,6 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part 'dead_code_pass_config.dart';
 part 'pass_config.g.dart';
 part 'rename_pass_config.dart';
 part 'string_encrypt_pass_config.dart';

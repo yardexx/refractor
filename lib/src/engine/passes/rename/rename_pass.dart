@@ -29,6 +29,7 @@ class RenamePass extends Pass {
     final renamer = RenameTransformer(
       classRenames: collector.classRenames,
       memberRenames: collector.memberRenames,
+      variableRenames: collector.variableRenames,
       context: context,
     );
     component.transformChildren(renamer);

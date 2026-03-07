@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Dead code pass** — removed entirely. The Dart VM's CFG optimizer (ConstantPropagation + ControlFlowOptimizations) eliminates all inserted dead branches regardless of predicate complexity, because the branch bodies have no observable side effects. The pass provided zero obfuscation value in compiled output. See `docs/optimization-resistance.md` for full analysis. **Breaking:** existing `refractor.yaml` files with a `dead_code:` key will now throw `ConfigException`.
+
 ## [0.1.0] - 2026-03-01
 
 Initial release.

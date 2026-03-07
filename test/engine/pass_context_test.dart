@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:glob/glob.dart';
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/name_generator.dart';
@@ -10,11 +8,17 @@ import 'package:test/test.dart';
 
 void main() {
   group('PassContext.shouldObfuscateLibrary', () {
-    PassContext makeContext([PassOptions? options]) {
+    PassContext makeContext({
+      PassOptions? options,
+      Uri? projectRootUri,
+      String? projectPackageName = 'my_app',
+    }) {
       return PassContext(
         symbolTable: SymbolTable(),
         nameGenerator: NameGenerator(),
         options: options ?? const PassOptions(),
+        projectRootUri: projectRootUri ?? Uri.file('/project/'),
+        projectPackageName: projectPackageName,
       );
     }
 
@@ -40,12 +44,10 @@ void main() {
     });
 
     test('obfuscates only files inside current project folder', () {
-      final context = makeContext();
-      final inProjectUri = Uri.file(
-        '${Directory.current.path}'
-        '${Platform.pathSeparator}lib'
-        '${Platform.pathSeparator}main.dart',
+      final context = makeContext(
+        projectRootUri: Uri.file('/project/'),
       );
+      final inProjectUri = Uri.file('/project/lib/main.dart');
 
       expect(
         context.shouldObfuscateLibrary(
@@ -63,7 +65,9 @@ void main() {
 
     test('exclude patterns can block by import URI string', () {
       final context = makeContext(
-        PassOptions(excludeLibraryUriPatterns: [Glob('**/generated/**')]),
+        options: PassOptions(
+          excludeLibraryUriPatterns: [Glob('**/generated/**')],
+        ),
       );
 
       expect(
@@ -80,6 +84,16 @@ void main() {
       expect(
         context.shouldObfuscateLibrary(
           makeLibrary('file:///outside/project/main.dart'),
+        ),
+        isFalse,
+      );
+    });
+
+    test('skips all package libraries when project package is unknown', () {
+      final context = makeContext(projectPackageName: null);
+      expect(
+        context.shouldObfuscateLibrary(
+          makeLibrary('package:my_app/main.dart'),
         ),
         isFalse,
       );

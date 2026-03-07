@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:refractor/src/cli/project_workspace.dart';
 
 abstract class RefractorCommand extends Command<int> {
   RefractorCommand({Logger? logger}) : _logger = logger;
@@ -19,15 +20,12 @@ abstract class RefractorCommand extends Command<int> {
 
   Logger get logger => _logger ??= Logger();
 
-  /// Root directory for all refractor build artifacts and intermediates.
+  /// The current project workspace context.
   ///
-  /// Created on first access. All commands should work within this directory
-  /// to avoid polluting the project or system temp.
-  Directory get workspace {
-    final dir = Directory('.dart_tool/refractor');
-    if (!dir.existsSync()) dir.createSync(recursive: true);
-    return dir;
-  }
+  /// Provides access to project root, package name, and build directory.
+  ProjectWorkspace get workspace =>
+      _workspace ??= ProjectWorkspace(root: Directory.current);
 
+  ProjectWorkspace? _workspace;
   Logger? _logger;
 }

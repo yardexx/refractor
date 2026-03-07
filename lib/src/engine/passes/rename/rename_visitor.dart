@@ -11,6 +11,7 @@ class RenameVisitor extends PassVisitor {
   /// Uses member identity so lookups work even after the member's name is
   /// mutated.
   final Map<Member, Name> memberRenames = {};
+  final Map<VariableDeclaration, String> variableRenames = {};
 
   /// Tracks assigned names per library to deduplicate (e.g., field `appName`
   /// and getter `appName` in the same lib should get the same obfuscated name).
@@ -18,13 +19,12 @@ class RenameVisitor extends PassVisitor {
 
   @override
   void visitClass(Class node) {
-    final lib = node.enclosingLibrary;
-    if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) {
       super.visitClass(node);
       return;
     }
     if (_shouldRename(node.name)) {
+      final lib = node.enclosingLibrary;
       final key = 'class:${lib.importUri}:${node.name}';
       final obf = _nameDedup.putIfAbsent(key, () {
         final o = context.nameGenerator.next();
@@ -38,8 +38,6 @@ class RenameVisitor extends PassVisitor {
 
   @override
   void visitProcedure(Procedure node) {
-    final lib = node.enclosingLibrary;
-    if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) {
       super.visitProcedure(node);
       return;
@@ -50,6 +48,7 @@ class RenameVisitor extends PassVisitor {
       return;
     }
     if (_shouldRename(n)) {
+      final lib = node.enclosingLibrary;
       final obf = _assignMemberName(lib, n);
       final nameLib = obf.startsWith('_') ? lib : node.name.library;
       memberRenames[node] = Name(obf, nameLib);
@@ -59,17 +58,41 @@ class RenameVisitor extends PassVisitor {
 
   @override
   void visitField(Field node) {
-    final lib = node.enclosingLibrary;
-    if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) return;
     if (_shouldRename(node.name.text)) {
+      final lib = node.enclosingLibrary;
       final obf = _assignMemberName(lib, node.name.text);
       final nameLib = obf.startsWith('_') ? lib : node.name.library;
       memberRenames[node] = Name(obf, nameLib);
     }
   }
 
-  bool _shouldObfuscateLib(Library lib) => context.shouldObfuscateLibrary(lib);
+  @override
+  void visitConstructor(Constructor node) {
+    if (_hasEntryPointPragma(node.annotations)) {
+      super.visitConstructor(node);
+      return;
+    }
+    final n = node.name.text;
+    if (_shouldRename(n)) {
+      final lib = node.enclosingLibrary;
+      final obf = _assignMemberName(lib, n);
+      final nameLib = obf.startsWith('_') ? lib : node.name.library;
+      memberRenames[node] = Name(obf, nameLib);
+    }
+    super.visitConstructor(node);
+  }
+
+  @override
+  void visitVariableDeclaration(VariableDeclaration node) {
+    final originalName = node.name;
+    if (originalName != null && _shouldRename(originalName)) {
+      final obf = context.nameGenerator.next();
+      context.symbolTable.record(originalName, obf);
+      variableRenames[node] = obf;
+    }
+    super.visitVariableDeclaration(node);
+  }
 
   bool _shouldRename(String name) {
     if (name.isEmpty) return false;
