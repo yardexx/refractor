@@ -45,28 +45,30 @@ void main() {
       userLib = makeUserLibrary();
     });
 
-    test('string literal in procedure body is replaced with StaticInvocation',
-        () {
-      final proc = Procedure(
-        Name('greet'),
-        ProcedureKind.Method,
-        FunctionNode(
-          Block([
-            ReturnStatement(StringLiteral('hello')),
-          ]),
-        ),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(proc);
+    test(
+      'string literal in procedure body is replaced with StaticInvocation',
+      () {
+        final proc = Procedure(
+          Name('greet'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              ReturnStatement(StringLiteral('hello')),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(proc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final context = makePassContext();
-      StringEncryptPass().run(component, context);
+        component = makeComponent(coreLib: coreLib, userLib: userLib);
+        final context = makePassContext();
+        StringEncryptPass().run(component, context);
 
-      final body = proc.function.body! as Block;
-      final ret = body.statements.first as ReturnStatement;
-      expect(ret.expression, isA<StaticInvocation>());
-    });
+        final body = proc.function.body! as Block;
+        final ret = body.statements.first as ReturnStatement;
+        expect(ret.expression, isA<StaticInvocation>());
+      },
+    );
 
     test('string literal inside ConstantExpression is NOT replaced', () {
       // Create a ConstantExpression wrapping a string — the pass should skip.
@@ -191,6 +193,35 @@ void main() {
       final coreBody = coreProc.function.body! as Block;
       final coreRet = coreBody.statements.first as ReturnStatement;
       expect(coreRet.expression, isA<StringLiteral>());
+    });
+
+    test('uses per-string keys instead of one fixed key', () {
+      final proc = Procedure(
+        Name('keys'),
+        ProcedureKind.Method,
+        FunctionNode(
+          Block([
+            ExpressionStatement(StringLiteral('first')),
+            ReturnStatement(StringLiteral('second')),
+          ]),
+        ),
+        fileUri: userLib.fileUri,
+      );
+      userLib.addProcedure(proc);
+
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final context = makePassContext();
+      StringEncryptPass().run(component, context);
+
+      final body = proc.function.body! as Block;
+      final firstExpr = body.statements[0] as ExpressionStatement;
+      final secondRet = body.statements[1] as ReturnStatement;
+      final firstCall = firstExpr.expression as StaticInvocation;
+      final secondCall = secondRet.expression! as StaticInvocation;
+      final firstKey = firstCall.arguments.positional[1] as IntLiteral;
+      final secondKey = secondCall.arguments.positional[1] as IntLiteral;
+
+      expect(firstKey.value, isNot(equals(secondKey.value)));
     });
   });
 }

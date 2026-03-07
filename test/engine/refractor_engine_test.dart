@@ -21,11 +21,13 @@ void main() {
     test('runs compile -> load -> write -> target compile for exe', () {
       final result = engine.run(
         config: RefractorConfig(passes: []),
-        request: const BuildRequest(
+        request: BuildRequest(
           input: 'lib/main.dart',
           output: 'build/out',
           target: Target.exe,
           workDirectory: '.dart_tool/refractor',
+          projectRootUri: Uri(scheme: 'file', path: '/project/'),
+          projectPackageName: 'sample_app',
         ),
       );
 
@@ -60,11 +62,13 @@ void main() {
       () {
         final result = engine.run(
           config: RefractorConfig(passes: []),
-          request: const BuildRequest(
+          request: BuildRequest(
             input: 'lib/main.dart',
             output: 'build/out.dill',
             target: Target.kernel,
             workDirectory: '.dart_tool/refractor',
+            projectRootUri: Uri(scheme: 'file', path: '/project/'),
+            projectPackageName: 'sample_app',
           ),
         );
 

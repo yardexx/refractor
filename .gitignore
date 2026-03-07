@@ -1,6 +1,7 @@
 # Dart
 .dart_tool/
 build/
+pubspec.lock
 
 # Refractor shadow workspace
 .refractor/

@@ -19,11 +19,18 @@ class PassRunner {
   final Logger? logger;
 
   /// Run all passes on [component] and return it along with the symbol table.
-  (Component, SymbolTable) run(Component component, PassOptions options) {
+  (Component, SymbolTable) run(
+    Component component,
+    PassOptions options, {
+    required Uri projectRootUri,
+    String? projectPackageName,
+  }) {
     final ctx = PassContext(
       symbolTable: SymbolTable(),
       nameGenerator: NameGenerator(),
       options: options,
+      projectRootUri: projectRootUri,
+      projectPackageName: projectPackageName,
     );
 
     for (final pass in passes) {

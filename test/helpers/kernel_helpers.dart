@@ -88,6 +88,29 @@ Library makeDartCoreLibrary() {
   final boolClass = Class(name: 'bool', fileUri: coreUri);
   lib.addClass(boolClass);
 
+  // top-level identical(Object? a, Object? b) -> bool
+  final objectClass = Class(name: 'Object', fileUri: coreUri);
+  lib.addClass(objectClass);
+  final objectType = InterfaceType(objectClass, Nullability.nullable);
+  final boolType = InterfaceType(boolClass, Nullability.nonNullable);
+  lib.addProcedure(
+    Procedure(
+      Name('identical'),
+      ProcedureKind.Method,
+      FunctionNode(
+        EmptyStatement(),
+        positionalParameters: [
+          VariableDeclaration('a', type: objectType),
+          VariableDeclaration('b', type: objectType),
+        ],
+        requiredParameterCount: 2,
+        returnType: boolType,
+      ),
+      fileUri: coreUri,
+      isStatic: true,
+    ),
+  );
+
   return lib;
 }
 
@@ -97,6 +120,8 @@ PassContext makePassContext([PassOptions? options]) {
     symbolTable: SymbolTable(),
     nameGenerator: NameGenerator(),
     options: options ?? const PassOptions(),
+    projectRootUri: Uri.directory('/virtual/project'),
+    projectPackageName: 'refractor',
   );
 }
 

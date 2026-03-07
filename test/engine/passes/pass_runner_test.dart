@@ -62,6 +62,7 @@ void main() {
       final (result, symbolTable) = runner.run(
         component,
         const PassOptions(),
+        projectRootUri: Uri.directory('/virtual/project'),
       );
 
       expect(pass1.wasRun, isTrue);
@@ -79,6 +80,7 @@ void main() {
       final (result, symbolTable) = runner.run(
         component,
         const PassOptions(),
+        projectRootUri: Uri.directory('/virtual/project'),
       );
 
       expect(result.libraries, hasLength(libraryCount));
@@ -90,7 +92,12 @@ void main() {
       final tracker = _TrackingPass('after');
 
       final runner = PassRunner(passes: [mutating, tracker]);
-      final (result, _) = runner.run(component, const PassOptions());
+      final (result, _) = runner.run(
+        component,
+        const PassOptions(),
+        projectRootUri: Uri.directory('/virtual/project'),
+        projectPackageName: 'refractor',
+      );
 
       // Mutating pass should have added a class.
       final userLib = result.libraries.firstWhere(

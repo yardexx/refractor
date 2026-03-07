@@ -215,5 +215,36 @@ void main() {
       expect(context.symbolTable.size, greaterThan(0));
       expect(context.symbolTable.obfuscated('Tracker'), equals(cls.name));
     });
+
+    test('renames local variables and parameters', () {
+      final local = VariableDeclaration(
+        'localValue',
+        initializer: IntLiteral(1),
+      );
+      final param = VariableDeclaration('count');
+      final proc = Procedure(
+        Name('work'),
+        ProcedureKind.Method,
+        FunctionNode(
+          Block([
+            local,
+            ReturnStatement(VariableGet(param)),
+          ]),
+          positionalParameters: [param],
+          requiredParameterCount: 1,
+        ),
+        fileUri: userLib.fileUri,
+      );
+      userLib.addProcedure(proc);
+
+      final context = makePassContext();
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      RenamePass().run(component, context);
+
+      expect(local.name, startsWith(r'_$'));
+      expect(param.name, startsWith(r'_$'));
+      expect(local.name, isNot('localValue'));
+      expect(param.name, isNot('count'));
+    });
   });
 }
