@@ -6,25 +6,6 @@ part of 'pass_config.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-DeadCodePassConfig _$DeadCodePassConfigFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'DeadCodePassConfig',
-      json,
-      ($checkedConvert) {
-        final val = DeadCodePassConfig(
-          enabled: $checkedConvert('enabled', (v) => v as bool? ?? true),
-          maxInsertionsPerProcedure: $checkedConvert(
-            'max_insertions_per_procedure',
-            (v) => (v as num?)?.toInt() ?? 2,
-          ),
-        );
-        return val;
-      },
-      fieldKeyMap: const {
-        'maxInsertionsPerProcedure': 'max_insertions_per_procedure',
-      },
-    );
-
 RenamePassConfig _$RenamePassConfigFromJson(
   Map<String, dynamic> json,
 ) => $checkedCreate(

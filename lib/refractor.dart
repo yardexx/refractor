@@ -8,7 +8,6 @@ export 'src/engine/compiler/compiler.dart';
 export 'src/engine/engine.dart';
 export 'src/engine/kernel/kernel_io.dart';
 export 'src/engine/name_generator.dart';
-export 'src/engine/passes/dead_code/dead_code_pass.dart';
 export 'src/engine/passes/rename/rename_pass.dart';
 export 'src/engine/passes/string_encrypt/string_encrypt_pass.dart';
 export 'src/engine/runner/pass.dart';
