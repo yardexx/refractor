@@ -19,13 +19,12 @@ class RenameVisitor extends PassVisitor {
 
   @override
   void visitClass(Class node) {
-    final lib = node.enclosingLibrary;
-    if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) {
       super.visitClass(node);
       return;
     }
     if (_shouldRename(node.name)) {
+      final lib = node.enclosingLibrary;
       final key = 'class:${lib.importUri}:${node.name}';
       final obf = _nameDedup.putIfAbsent(key, () {
         final o = context.nameGenerator.next();
@@ -39,8 +38,6 @@ class RenameVisitor extends PassVisitor {
 
   @override
   void visitProcedure(Procedure node) {
-    final lib = node.enclosingLibrary;
-    if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) {
       super.visitProcedure(node);
       return;
@@ -51,6 +48,7 @@ class RenameVisitor extends PassVisitor {
       return;
     }
     if (_shouldRename(n)) {
+      final lib = node.enclosingLibrary;
       final obf = _assignMemberName(lib, n);
       final nameLib = obf.startsWith('_') ? lib : node.name.library;
       memberRenames[node] = Name(obf, nameLib);
@@ -60,14 +58,29 @@ class RenameVisitor extends PassVisitor {
 
   @override
   void visitField(Field node) {
-    final lib = node.enclosingLibrary;
-    if (!_shouldObfuscateLib(lib)) return;
     if (_hasEntryPointPragma(node.annotations)) return;
     if (_shouldRename(node.name.text)) {
+      final lib = node.enclosingLibrary;
       final obf = _assignMemberName(lib, node.name.text);
       final nameLib = obf.startsWith('_') ? lib : node.name.library;
       memberRenames[node] = Name(obf, nameLib);
     }
+  }
+
+  @override
+  void visitConstructor(Constructor node) {
+    if (_hasEntryPointPragma(node.annotations)) {
+      super.visitConstructor(node);
+      return;
+    }
+    final n = node.name.text;
+    if (_shouldRename(n)) {
+      final lib = node.enclosingLibrary;
+      final obf = _assignMemberName(lib, n);
+      final nameLib = obf.startsWith('_') ? lib : node.name.library;
+      memberRenames[node] = Name(obf, nameLib);
+    }
+    super.visitConstructor(node);
   }
 
   @override
@@ -80,8 +93,6 @@ class RenameVisitor extends PassVisitor {
     }
     super.visitVariableDeclaration(node);
   }
-
-  bool _shouldObfuscateLib(Library lib) => context.shouldObfuscateLibrary(lib);
 
   bool _shouldRename(String name) {
     if (name.isEmpty) return false;
