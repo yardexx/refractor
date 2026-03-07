@@ -8,11 +8,11 @@ import 'package:yaml/yaml.dart' show YamlMap, loadYaml;
 /// `pubspec.yaml`, and the build artifact directory.
 class ProjectWorkspace {
   ProjectWorkspace({required this.root})
-      : packageName = _detectPackageName(root),
-        buildDirectory = Directory(
-          '${root.path}${Platform.pathSeparator}.dart_tool'
-          '${Platform.pathSeparator}refractor',
-        );
+    : packageName = _detectPackageName(root),
+      buildDirectory = Directory(
+        '${root.path}${Platform.pathSeparator}.dart_tool'
+        '${Platform.pathSeparator}refractor',
+      );
 
   final Directory root;
   final String? packageName;

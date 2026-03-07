@@ -41,9 +41,9 @@ class LibraryNode extends KernelNode {
     super.annotations,
     super.children,
   }) : super(
-          label: '',
-          kind: KernelNodeKind.library,
-        );
+         label: '',
+         kind: KernelNodeKind.library,
+       );
 
   final Uri importUri;
 
@@ -75,10 +75,10 @@ class ProcedureNode extends KernelNode {
     required this.isStatic,
     super.annotations,
   }) : super(
-          label: signature,
-          kind: KernelNodeKind.procedure,
-          children: const [],
-        );
+         label: signature,
+         kind: KernelNodeKind.procedure,
+         children: const [],
+       );
 
   final String name;
   final String returnType;
@@ -99,10 +99,10 @@ class FieldNode extends KernelNode {
     required this.isLate,
     super.annotations,
   }) : super(
-          label: '',
-          kind: KernelNodeKind.field,
-          children: const [],
-        );
+         label: '',
+         kind: KernelNodeKind.field,
+         children: const [],
+       );
 
   final String name;
   final String type;
@@ -130,10 +130,10 @@ class ConstructorNode extends KernelNode {
     required this.signature,
     super.annotations,
   }) : super(
-          label: signature,
-          kind: KernelNodeKind.constructor,
-          children: const [],
-        );
+         label: signature,
+         kind: KernelNodeKind.constructor,
+         children: const [],
+       );
 
   final String name;
   final String signature;

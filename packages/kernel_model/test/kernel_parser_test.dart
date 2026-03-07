@@ -124,6 +124,7 @@ class UserService {
         ids.add(node.id);
         node.children.forEach(collectIds);
       }
+
       tree.libraries.forEach(collectIds);
       expect(ids.toSet().length, equals(ids.length));
     });
