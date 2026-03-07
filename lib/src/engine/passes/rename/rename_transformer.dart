@@ -20,8 +20,6 @@ class RenameTransformer extends PassTransformer {
 
   @override
   TreeNode visitClass(Class node) {
-    final lib = node.enclosingLibrary;
-    if (!context.shouldObfuscateLibrary(lib)) return node;
     final obf = classRenames[node];
     if (obf != null) node.name = obf;
     return super.visitClass(node);
@@ -29,8 +27,6 @@ class RenameTransformer extends PassTransformer {
 
   @override
   TreeNode visitProcedure(Procedure node) {
-    final lib = node.enclosingLibrary;
-    if (!context.shouldObfuscateLibrary(lib)) return node;
     final newName = memberRenames[node];
     if (newName != null) node.name = newName;
     return super.visitProcedure(node);
@@ -38,11 +34,16 @@ class RenameTransformer extends PassTransformer {
 
   @override
   TreeNode visitField(Field node) {
-    final lib = node.enclosingLibrary;
-    if (!context.shouldObfuscateLibrary(lib)) return node;
     final newName = memberRenames[node];
     if (newName != null) node.name = newName;
     return super.visitField(node);
+  }
+
+  @override
+  TreeNode visitConstructor(Constructor node) {
+    final newName = memberRenames[node];
+    if (newName != null) node.name = newName;
+    return super.visitConstructor(node);
   }
 
   @override
