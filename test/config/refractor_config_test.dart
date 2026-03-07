@@ -1,5 +1,4 @@
 import 'package:refractor/src/config/model/refractor_config.dart';
-import 'package:refractor/src/engine/passes/dead_code/dead_code_pass.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
@@ -33,7 +32,6 @@ void main() {
 passes:
   rename: false
   string_encrypt: true
-  dead_code: true
 ''');
 
       expect(
@@ -42,10 +40,6 @@ passes:
       );
       expect(
         config.passes.whereType<StringEncryptPassConfig>().single.enabled,
-        isTrue,
-      );
-      expect(
-        config.passes.whereType<DeadCodePassConfig>().single.enabled,
         isTrue,
       );
     });
@@ -72,17 +66,13 @@ passes:
   rename: false
   string_encrypt:
     xor_key: 23
-  dead_code:
-    max_insertions_per_procedure: 5
 ''');
 
       final passes = config.buildPasses();
 
-      expect(passes.length, 2);
+      expect(passes.length, 1);
       expect(passes[0], isA<StringEncryptPass>());
       expect((passes[0] as StringEncryptPass).xorKey, 23);
-      expect(passes[1], isA<DeadCodePass>());
-      expect((passes[1] as DeadCodePass).maxInsertionsPerProcedure, 5);
     });
   });
 
@@ -135,12 +125,10 @@ passes:
       final passes = RefractorConfig.passesFromNames([
         'rename',
         'string_encrypt',
-        'dead_code',
       ]);
 
       expect(passes[0], isA<RenamePass>());
       expect(passes[1], isA<StringEncryptPass>());
-      expect(passes[2], isA<DeadCodePass>());
     });
 
     test('throws ConfigException for invalid names', () {

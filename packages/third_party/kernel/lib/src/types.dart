@@ -13,7 +13,7 @@ import '../type_algebra.dart'
 
 import '../type_environment.dart' show IsSubtypeOf;
 
-import '../src/standard_bounds.dart';
+import 'standard_bounds.dart';
 
 class Types with StandardBounds {
   @override

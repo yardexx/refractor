@@ -11,6 +11,7 @@ class RenameVisitor extends PassVisitor {
   /// Uses member identity so lookups work even after the member's name is
   /// mutated.
   final Map<Member, Name> memberRenames = {};
+  final Map<VariableDeclaration, String> variableRenames = {};
 
   /// Tracks assigned names per library to deduplicate (e.g., field `appName`
   /// and getter `appName` in the same lib should get the same obfuscated name).
@@ -67,6 +68,17 @@ class RenameVisitor extends PassVisitor {
       final nameLib = obf.startsWith('_') ? lib : node.name.library;
       memberRenames[node] = Name(obf, nameLib);
     }
+  }
+
+  @override
+  void visitVariableDeclaration(VariableDeclaration node) {
+    final originalName = node.name;
+    if (originalName != null && _shouldRename(originalName)) {
+      final obf = context.nameGenerator.next();
+      context.symbolTable.record(originalName, obf);
+      variableRenames[node] = obf;
+    }
+    super.visitVariableDeclaration(node);
   }
 
   bool _shouldObfuscateLib(Library lib) => context.shouldObfuscateLibrary(lib);

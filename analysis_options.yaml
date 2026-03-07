@@ -4,7 +4,6 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "test/fixtures/**"
-    - "third_party/**"
   errors:
     todo: false
     public_member_api_docs: false

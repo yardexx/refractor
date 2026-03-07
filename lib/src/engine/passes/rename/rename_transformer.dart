@@ -5,6 +5,7 @@ class RenameTransformer extends PassTransformer {
   RenameTransformer({
     required this.classRenames,
     required this.memberRenames,
+    required this.variableRenames,
     required super.context,
   });
 
@@ -15,6 +16,7 @@ class RenameTransformer extends PassTransformer {
   /// Lookups use object identity, so they work even after the member's
   /// name has been mutated during traversal.
   final Map<Member, Name> memberRenames;
+  final Map<VariableDeclaration, String> variableRenames;
 
   @override
   TreeNode visitClass(Class node) {
@@ -41,6 +43,13 @@ class RenameTransformer extends PassTransformer {
     final newName = memberRenames[node];
     if (newName != null) node.name = newName;
     return super.visitField(node);
+  }
+
+  @override
+  TreeNode visitVariableDeclaration(VariableDeclaration node) {
+    final newName = variableRenames[node];
+    if (newName != null) node.name = newName;
+    return super.visitVariableDeclaration(node);
   }
 
   // ---- Call site renames ----

@@ -3,7 +3,6 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:refractor/src/config/converter/pass_config_converter.dart';
 import 'package:refractor/src/config/model/pass_config.dart';
 import 'package:refractor/src/config/model/refractor_settings.dart';
-import 'package:refractor/src/engine/passes/dead_code/dead_code_pass.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
@@ -87,9 +86,6 @@ final class RefractorConfig {
         StringEncryptPassConfig(:final xorKey) => StringEncryptPass(
           xorKey: xorKey,
         ),
-        DeadCodePassConfig(:final maxInsertionsPerProcedure) => DeadCodePass(
-          maxInsertionsPerProcedure: maxInsertionsPerProcedure,
-        ),
       };
     }).toList();
   }
@@ -106,7 +102,6 @@ final class RefractorConfig {
     final available = <String, Pass>{
       'rename': RenamePass(),
       'string_encrypt': StringEncryptPass(),
-      'dead_code': DeadCodePass(),
     };
     return names.map((n) {
       final pass = available[n.trim()];

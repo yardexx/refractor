@@ -9,7 +9,6 @@ A Dart kernel (`.dill`) obfuscation tool. Compiles a Dart entrypoint to kernel b
 
 - **Rename** — rewrites class, method, and field identifiers to short meaningless names
 - **String encryption** — replaces string literals with XOR-encoded byte arrays and an injected runtime decoder
-- **Dead code injection** — inserts unreachable branches to hinder static analysis and decompilers
 - **Symbol map** — writes a JSON mapping of obfuscated names back to originals for debugging
 
 ## Installation
@@ -86,9 +85,6 @@ passes:
     xor_key: 0x5A
     exclude_patterns:
       - "^https://"
-
-  dead_code:
-    max_insertions_per_procedure: 2
 ```
 
 Each pass value can be `true` (enabled with defaults), `false` (disabled), or a map with pass-specific options.

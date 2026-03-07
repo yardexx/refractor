@@ -71,8 +71,6 @@ passes:
   #   exclude_patterns:
   #     - "^https://"
 
-  dead_code: false
-
 # Verbose logging.
 # verbose: false
 ''';

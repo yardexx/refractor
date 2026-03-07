@@ -23,7 +23,6 @@ class PassConfigListConverter
       return switch (type) {
         'rename' => RenamePassConfig.fromJson(map),
         'string_encrypt' => StringEncryptPassConfig.fromJson(map),
-        'dead_code' => DeadCodePassConfig.fromJson(map),
         _ => throw ConfigException('Unknown pass type: $type'),
       };
     }).toList();

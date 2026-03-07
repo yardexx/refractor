@@ -14,8 +14,3 @@ resolution: workspace
 dependencies:
   _fe_analyzer_shared: any
 
-# Use 'any' constraints here; we get our versions from the DEPS file.
-dev_dependencies:
-  args: any
-  expect: any
-  test: any
