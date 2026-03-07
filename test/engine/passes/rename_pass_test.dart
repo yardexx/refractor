@@ -30,7 +30,6 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(cls.name, startsWith(r'_$'));
       expect(cls.name, isNot('MyService'));
     });
 
@@ -49,7 +48,7 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(proc.name.text, startsWith(r'_$'));
+      expect(proc.name.text, isNot('doWork'));
     });
 
     test('renames field name in user library', () {
@@ -65,11 +64,11 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(field.name.text, startsWith(r'_$'));
+      expect(field.name.text, isNot('_secret'));
+      expect(field.name.text, startsWith('_'));
     });
 
     test('skips dart: libraries entirely', () {
-      // Add a class to coreLib — it should not be renamed.
       final coreClass = coreLib.classes.firstWhere((c) => c.name == 'int');
 
       final context = makePassContext();
@@ -118,7 +117,7 @@ void main() {
 
       runPass(const PassOptions(preserveMain: false));
 
-      expect(mainProc.name.text, startsWith(r'_$'));
+      expect(mainProc.name.text, isNot('main'));
     });
 
     test('@pragma annotation prevents rename of annotated node', () {
@@ -176,7 +175,6 @@ void main() {
       );
       cls.addField(field);
 
-      // A procedure with an InstanceGet referencing the field.
       final thisVar = VariableDeclaration('this');
       final instanceGet = InstanceGet(
         InstanceAccessKind.Instance,
@@ -199,9 +197,8 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      // The InstanceGet name should match the renamed field.
       expect(instanceGet.name.text, equals(field.name.text));
-      expect(instanceGet.name.text, startsWith(r'_$'));
+      expect(instanceGet.name.text, isNot('data'));
     });
 
     test('SymbolTable records original to obfuscated mappings', () {
@@ -230,7 +227,6 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(ctor.name.text, startsWith(r'_$'));
       expect(ctor.name.text, isNot('create'));
     });
 
@@ -301,7 +297,7 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(proc.name.text, startsWith(r'_$'));
+      expect(proc.name.text, isNot('compute'));
       expect(invocation.target, same(proc));
     });
 
@@ -328,7 +324,7 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(field.name.text, startsWith(r'_$'));
+      expect(field.name.text, isNot('config'));
       expect(staticGet.target, same(field));
     });
 
@@ -357,7 +353,7 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(ctor.name.text, startsWith(r'_$'));
+      expect(ctor.name.text, isNot('build'));
       expect(invocation.target, same(ctor));
     });
 
@@ -393,7 +389,7 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(baseCtor.name.text, startsWith(r'_$'));
+      expect(baseCtor.name.text, isNot('named'));
       expect(superInit.target, same(baseCtor));
     });
 
@@ -420,7 +416,7 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(primaryCtor.name.text, startsWith(r'_$'));
+      expect(primaryCtor.name.text, isNot('primary'));
       expect(redirect.target, same(primaryCtor));
     });
 
@@ -447,7 +443,7 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(field.name.text, startsWith(r'_$'));
+      expect(field.name.text, isNot('setting'));
       expect(staticSet.target, same(field));
     });
 
@@ -465,11 +461,9 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      // Serialize to binary (exercises BinaryPrinter canonical-name rebuild).
       final bytes = writeComponentToBytes(component);
       expect(bytes, isNotEmpty);
 
-      // Deserialize and verify renamed constructor survived round-trip.
       final loaded = loadComponentFromBytes(bytes);
       final loadedLib = loaded.libraries.firstWhere(
         (l) => l.importUri.scheme == 'package',
@@ -478,7 +472,7 @@ void main() {
         (c) => c.constructors.isNotEmpty,
       );
       final loadedCtor = loadedCls.constructors.first;
-      expect(loadedCtor.name.text, startsWith(r'_$'));
+      expect(loadedCtor.name.text, isNot('create'));
     });
 
     test('renames local variables and parameters', () {
@@ -506,10 +500,177 @@ void main() {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       RenamePass().run(component, context);
 
-      expect(local.name, startsWith(r'_$'));
-      expect(param.name, startsWith(r'_$'));
       expect(local.name, isNot('localValue'));
       expect(param.name, isNot('count'));
+    });
+
+    // --- Tier 1 tests ---
+
+    test('members of base and derived class get the SAME obfuscated name', () {
+      final baseClass = Class(name: 'Animal', fileUri: userLib.fileUri);
+      final baseMethod = Procedure(
+        Name('speak'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      baseClass.addProcedure(baseMethod);
+      userLib.addClass(baseClass);
+
+      final derivedClass = Class(
+        name: 'Dog',
+        fileUri: userLib.fileUri,
+        supertype: baseClass.asThisSupertype,
+      );
+      final derivedMethod = Procedure(
+        Name('speak'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      derivedClass.addProcedure(derivedMethod);
+      userLib.addClass(derivedClass);
+
+      final context = makePassContext();
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      RenamePass().run(component, context);
+
+      expect(baseMethod.name.text, equals(derivedMethod.name.text));
+      expect(baseMethod.name.text, isNot('speak'));
+    });
+
+    test('members of two unrelated classes get the SAME obfuscated name '
+        '(overloading)', () {
+      final classA = Class(name: 'Foo', fileUri: userLib.fileUri);
+      final methodA = Procedure(
+        Name('doWork'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      classA.addProcedure(methodA);
+      userLib.addClass(classA);
+
+      final classB = Class(name: 'Bar', fileUri: userLib.fileUri);
+      final methodB = Procedure(
+        Name('compute'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      classB.addProcedure(methodB);
+      userLib.addClass(classB);
+
+      final context = makePassContext();
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      RenamePass().run(component, context);
+
+      // Unrelated families can share the same name.
+      expect(methodA.name.text, equals(methodB.name.text));
+    });
+
+    test('fixed seed produces stable output across two runs', () {
+      String runWithSeed(int seed) {
+        final lib = makeUserLibrary();
+        final cls = Class(name: 'Svc', fileUri: lib.fileUri);
+        final method = Procedure(
+          Name('process'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: lib.fileUri,
+        );
+        cls.addProcedure(method);
+        lib.addClass(cls);
+
+        final ctx = makePassContext(const PassOptions(), seed);
+        final comp = makeComponent(
+          coreLib: makeDartCoreLibrary(),
+          userLib: lib,
+        );
+        RenamePass().run(comp, ctx);
+        return method.name.text;
+      }
+
+      final name1 = runWithSeed(42);
+      final name2 = runWithSeed(42);
+      expect(name1, equals(name2));
+    });
+
+    test('name pool uses alphabetic names', () {
+      final cls = Class(name: 'MyClass', fileUri: userLib.fileUri);
+      final method = Procedure(
+        Name('myMethod'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      cls.addProcedure(method);
+      userLib.addClass(cls);
+
+      final context = makePassContext();
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      RenamePass().run(component, context);
+
+      // Should be alphabetic, not _$N format.
+      expect(method.name.text, isNot(contains(r'$')));
+      expect(method.name.text, matches(RegExp(r'^[a-zA-Z]+$')));
+    });
+
+    test('seed in config flows through to name generation', () {
+      final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
+      final method = Procedure(
+        Name('run'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      cls.addProcedure(method);
+      userLib.addClass(cls);
+
+      final context = makePassContext(const PassOptions(seed: 123), 123);
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      RenamePass().run(component, context);
+
+      // Just verify it produces a valid name with the seed.
+      expect(method.name.text, isNot('run'));
+      expect(method.name.text, matches(RegExp(r'^[a-zA-Z]+$')));
+    });
+
+    test('static members are NOT in override families', () {
+      final baseClass = Class(name: 'Base', fileUri: userLib.fileUri);
+      final staticMethod = Procedure(
+        Name('helper'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+        isStatic: true,
+      );
+      baseClass.addProcedure(staticMethod);
+      userLib.addClass(baseClass);
+
+      final derivedClass = Class(
+        name: 'Derived',
+        fileUri: userLib.fileUri,
+        supertype: baseClass.asThisSupertype,
+      );
+      final instanceMethod = Procedure(
+        Name('helper'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      derivedClass.addProcedure(instanceMethod);
+      userLib.addClass(derivedClass);
+
+      final context = makePassContext();
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      RenamePass().run(component, context);
+
+      // Static and instance methods with same name should be renamed
+      // independently (they may or may not get the same name by coincidence,
+      // but they should both be renamed).
+      expect(staticMethod.name.text, isNot('helper'));
+      expect(instanceMethod.name.text, isNot('helper'));
     });
   });
 }

@@ -1,36 +1,32 @@
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/passes/pass_visitor.dart';
+import 'package:refractor/src/engine/passes/rename/rename_helpers.dart';
 
 class RenameVisitor extends PassVisitor {
-  RenameVisitor({required super.context});
+  RenameVisitor({
+    required super.context,
+    this.preMemberRenames = const {},
+  });
+
+  /// Pre-computed member renames from override family analysis.
+  final Map<Member, Name> preMemberRenames;
 
   /// Maps class nodes to their new name strings.
   final Map<Class, String> classRenames = {};
 
-  /// Maps member nodes (Field, Procedure) to their new Name.
-  /// Uses member identity so lookups work even after the member's name is
-  /// mutated.
+  /// Maps member nodes (Field, Procedure, Constructor) to their new Name.
   final Map<Member, Name> memberRenames = {};
   final Map<VariableDeclaration, String> variableRenames = {};
 
-  /// Tracks assigned names per library to deduplicate (e.g., field `appName`
-  /// and getter `appName` in the same lib should get the same obfuscated name).
-  final Map<String, String> _nameDedup = {};
-
   @override
   void visitClass(Class node) {
-    if (_hasEntryPointPragma(node.annotations)) {
+    if (hasEntryPointPragma(node.annotations)) {
       super.visitClass(node);
       return;
     }
-    if (_shouldRename(node.name)) {
-      final lib = node.enclosingLibrary;
-      final key = 'class:${lib.importUri}:${node.name}';
-      final obf = _nameDedup.putIfAbsent(key, () {
-        final o = context.nameGenerator.next();
-        context.symbolTable.record(node.name, o);
-        return o;
-      });
+    if (node.name.isNotEmpty) {
+      final obf = context.nameGenerator.next();
+      context.symbolTable.record(node.name, obf);
       classRenames[node] = obf;
     }
     super.visitClass(node);
@@ -38,7 +34,7 @@ class RenameVisitor extends PassVisitor {
 
   @override
   void visitProcedure(Procedure node) {
-    if (_hasEntryPointPragma(node.annotations)) {
+    if (hasEntryPointPragma(node.annotations)) {
       super.visitProcedure(node);
       return;
     }
@@ -47,38 +43,33 @@ class RenameVisitor extends PassVisitor {
       super.visitProcedure(node);
       return;
     }
-    if (_shouldRename(n)) {
-      final lib = node.enclosingLibrary;
-      final obf = _assignMemberName(lib, n);
-      final nameLib = obf.startsWith('_') ? lib : node.name.library;
-      memberRenames[node] = Name(obf, nameLib);
+    // Use pre-computed rename if available, otherwise skip
+    // (top-level procedures are also pre-computed by the analyzer).
+    final precomputed = preMemberRenames[node];
+    if (precomputed != null) {
+      memberRenames[node] = precomputed;
     }
     super.visitProcedure(node);
   }
 
   @override
   void visitField(Field node) {
-    if (_hasEntryPointPragma(node.annotations)) return;
-    if (_shouldRename(node.name.text)) {
-      final lib = node.enclosingLibrary;
-      final obf = _assignMemberName(lib, node.name.text);
-      final nameLib = obf.startsWith('_') ? lib : node.name.library;
-      memberRenames[node] = Name(obf, nameLib);
+    if (hasEntryPointPragma(node.annotations)) return;
+    final precomputed = preMemberRenames[node];
+    if (precomputed != null) {
+      memberRenames[node] = precomputed;
     }
   }
 
   @override
   void visitConstructor(Constructor node) {
-    if (_hasEntryPointPragma(node.annotations)) {
+    if (hasEntryPointPragma(node.annotations)) {
       super.visitConstructor(node);
       return;
     }
-    final n = node.name.text;
-    if (_shouldRename(n)) {
-      final lib = node.enclosingLibrary;
-      final obf = _assignMemberName(lib, n);
-      final nameLib = obf.startsWith('_') ? lib : node.name.library;
-      memberRenames[node] = Name(obf, nameLib);
+    final precomputed = preMemberRenames[node];
+    if (precomputed != null) {
+      memberRenames[node] = precomputed;
     }
     super.visitConstructor(node);
   }
@@ -86,42 +77,11 @@ class RenameVisitor extends PassVisitor {
   @override
   void visitVariableDeclaration(VariableDeclaration node) {
     final originalName = node.name;
-    if (originalName != null && _shouldRename(originalName)) {
+    if (originalName != null && originalName.isNotEmpty) {
       final obf = context.nameGenerator.next();
       context.symbolTable.record(originalName, obf);
       variableRenames[node] = obf;
     }
     super.visitVariableDeclaration(node);
-  }
-
-  bool _shouldRename(String name) {
-    if (name.isEmpty) return false;
-
-    return true;
-  }
-
-  bool _hasEntryPointPragma(List<Expression> annotations) {
-    for (final ann in annotations) {
-      if (ann is ConstantExpression) {
-        final c = ann.constant;
-        if (c is InstanceConstant) {
-          if (c.classNode.name == 'pragma') return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  /// Deduplication key for members in the same library.
-  String _dedupKey(Library lib, String name) => 'member:${lib.importUri}:$name';
-
-  /// Assign (or reuse) an obfuscated name for a member in [lib].
-  String _assignMemberName(Library lib, String originalName) {
-    final key = _dedupKey(lib, originalName);
-    return _nameDedup.putIfAbsent(key, () {
-      final obf = context.nameGenerator.next();
-      context.symbolTable.record(originalName, obf);
-      return obf;
-    });
   }
 }

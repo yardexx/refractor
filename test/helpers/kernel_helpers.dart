@@ -115,10 +115,13 @@ Library makeDartCoreLibrary() {
 }
 
 /// Creates a [PassContext] with fresh [SymbolTable] and [NameGenerator].
-PassContext makePassContext([PassOptions? options]) {
+PassContext makePassContext([PassOptions? options, int? seed]) {
   return PassContext(
     symbolTable: SymbolTable(),
-    nameGenerator: NameGenerator(),
+    nameGenerator: NameGenerator(
+      seed: seed,
+      projectName: 'refractor',
+    ),
     options: options ?? const PassOptions(),
     projectRootUri: Uri.directory('/virtual/project'),
     projectPackageName: 'refractor',

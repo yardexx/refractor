@@ -27,7 +27,10 @@ class PassRunner {
   }) {
     final ctx = PassContext(
       symbolTable: SymbolTable(),
-      nameGenerator: NameGenerator(),
+      nameGenerator: NameGenerator(
+        seed: options.seed,
+        projectName: projectPackageName,
+      ),
       options: options,
       projectRootUri: projectRootUri,
       projectPackageName: projectPackageName,

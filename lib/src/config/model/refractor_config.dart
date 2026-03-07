@@ -73,6 +73,7 @@ final class RefractorConfig {
       stringExcludePatterns:
           stringConfig?.excludePatterns.map(RegExp.new).toList() ?? const [],
       verbose: refractor.verbose,
+      seed: renameConfig?.seed,
     );
   }
 

@@ -7,6 +7,7 @@ class PassOptions {
     this.preserveMain = true,
     this.stringExcludePatterns = const [],
     this.verbose = false,
+    this.seed,
   });
 
   /// URI/path regex patterns for libraries to skip entirely.
@@ -20,4 +21,8 @@ class PassOptions {
 
   /// If true, enable verbose logging.
   final bool verbose;
+
+  /// Seed for deterministic name generation.
+  /// If null, derived from project name.
+  final int? seed;
 }

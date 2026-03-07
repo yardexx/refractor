@@ -15,6 +15,7 @@ RenamePassConfig _$RenamePassConfigFromJson(
     final val = RenamePassConfig(
       enabled: $checkedConvert('enabled', (v) => v as bool? ?? true),
       preserveMain: $checkedConvert('preserve_main', (v) => v as bool? ?? true),
+      seed: $checkedConvert('seed', (v) => (v as num?)?.toInt()),
     );
     return val;
   },
