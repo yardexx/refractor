@@ -256,15 +256,16 @@ void main() {
       coreLib.addClass(pragmaClass);
 
       final cls = Class(name: 'MyClass', fileUri: userLib.fileUri);
-      final ctor = Constructor(
-        FunctionNode(EmptyStatement()),
-        name: Name('kept'),
-        fileUri: userLib.fileUri,
-      )..addAnnotation(
-          ConstantExpression(
-            InstanceConstant(pragmaClass.reference, [], {}),
-          ),
-        );
+      final ctor =
+          Constructor(
+            FunctionNode(EmptyStatement()),
+            name: Name('kept'),
+            fileUri: userLib.fileUri,
+          )..addAnnotation(
+            ConstantExpression(
+              InstanceConstant(pragmaClass.reference, [], {}),
+            ),
+          );
       cls.addConstructor(ctor);
       userLib.addClass(cls);
 
@@ -373,9 +374,10 @@ void main() {
       final derivedClass = Class(
         name: 'Derived',
         fileUri: userLib.fileUri,
-        supertype: InterfaceType(baseClass, Nullability.nonNullable)
-            .classNode
-            .asThisSupertype,
+        supertype: InterfaceType(
+          baseClass,
+          Nullability.nonNullable,
+        ).classNode.asThisSupertype,
       );
       final superInit = SuperInitializer(baseCtor, Arguments.empty());
       final derivedCtor = Constructor(
@@ -469,10 +471,12 @@ void main() {
 
       // Deserialize and verify renamed constructor survived round-trip.
       final loaded = loadComponentFromBytes(bytes);
-      final loadedLib = loaded.libraries
-          .firstWhere((l) => l.importUri.scheme == 'package');
-      final loadedCls = loadedLib.classes
-          .firstWhere((c) => c.constructors.isNotEmpty);
+      final loadedLib = loaded.libraries.firstWhere(
+        (l) => l.importUri.scheme == 'package',
+      );
+      final loadedCls = loadedLib.classes.firstWhere(
+        (c) => c.constructors.isNotEmpty,
+      );
       final loadedCtor = loadedCls.constructors.first;
       expect(loadedCtor.name.text, startsWith(r'_$'));
     });
