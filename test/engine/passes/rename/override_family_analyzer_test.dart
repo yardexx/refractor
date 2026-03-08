@@ -1,5 +1,6 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/passes/rename/override_family_analyzer.dart';
+import 'package:refractor/src/engine/passes/rename/override_family/override_family_analysis.dart';
+import 'package:refractor/src/engine/passes/rename/override_family/override_family_analyzer.dart';
 import 'package:test/test.dart';
 
 import '../../../helpers/kernel_helpers.dart';

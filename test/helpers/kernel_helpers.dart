@@ -128,6 +128,18 @@ PassContext makePassContext([PassOptions? options, int? seed]) {
   );
 }
 
+/// Creates a [Procedure] with the given [name] and adds it to [cls].
+Procedure makeProcedure(String name, Class cls) {
+  final proc = Procedure(
+    Name(name),
+    ProcedureKind.Method,
+    FunctionNode(EmptyStatement()),
+    fileUri: cls.fileUri,
+  );
+  cls.addProcedure(proc);
+  return proc;
+}
+
 /// Bundles the given libraries into a [Component].
 Component makeComponent({
   required Library coreLib,

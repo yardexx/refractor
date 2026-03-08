@@ -1,6 +1,6 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/passes/rename/name_allocator.dart';
-import 'package:refractor/src/engine/passes/rename/override_family_analyzer.dart';
+import 'package:refractor/src/engine/passes/rename/override_family/override_family_analyzer.dart';
 import 'package:refractor/src/engine/passes/rename/rename_helpers.dart';
 import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
 import 'package:refractor/src/engine/passes/rename/rename_visitor.dart';
@@ -25,37 +25,25 @@ class RenamePass extends Pass {
 
   @override
   void run(Component component, PassContext context) {
-    // Phase 0: override family analysis.
+    // Phase 0 + 0.5: analyze families and allocate names.
     final analysis = OverrideFamilyAnalyzer().analyze(component, context);
-    final familyMeta = _buildFamilyMetadata(analysis);
-
-    // Phase 0.5: allocate names to families.
-    final familyNames = NameAllocator().allocate(
+    final memberRenames = NameAllocator().allocate(
       analysis,
       context.nameGenerator,
-      libraryForFamily: (familyId) => familyMeta.libraryForFamily[familyId],
-      isPrivateFamily: (familyId) =>
-          familyMeta.isPrivateFamily[familyId] ?? false,
     );
 
-    // Build pre-computed memberRenames from family assignments.
-    final preMemberRenames = <Member, Name>{};
-    for (final entry in analysis.familyOf.entries) {
-      final name = familyNames[entry.value];
-      if (name != null) {
-        preMemberRenames[entry.key] = name;
-        // Record in symbol table.
-        final originalName = memberNameText(entry.key);
-        if (originalName.isNotEmpty) {
-          context.symbolTable.record(originalName, name.text);
-        }
+    // Record allocated names in the symbol table.
+    for (final entry in memberRenames.entries) {
+      final originalName = memberNameText(entry.key);
+      if (originalName.isNotEmpty) {
+        context.symbolTable.record(originalName, entry.value.text);
       }
     }
 
     // Phase 1: visit remaining declarations (classes, variables).
     final collector = RenameVisitor(
       context: context,
-      preMemberRenames: preMemberRenames,
+      preMemberRenames: memberRenames,
     );
     component.accept(collector);
 
@@ -75,34 +63,4 @@ class RenamePass extends Pass {
       }
     }
   }
-
-  _FamilyMetadata _buildFamilyMetadata(OverrideFamilyAnalysis analysis) {
-    final libraryForFamily = <int, Library>{};
-    final isPrivateFamily = <int, bool>{};
-
-    for (final entry in analysis.familyOf.entries) {
-      final member = entry.key;
-      final familyId = entry.value;
-      libraryForFamily.putIfAbsent(familyId, () => member.enclosingLibrary);
-      isPrivateFamily.putIfAbsent(
-        familyId,
-        () => memberNameText(member).startsWith('_'),
-      );
-    }
-
-    return _FamilyMetadata(
-      libraryForFamily: libraryForFamily,
-      isPrivateFamily: isPrivateFamily,
-    );
-  }
-}
-
-class _FamilyMetadata {
-  _FamilyMetadata({
-    required this.libraryForFamily,
-    required this.isPrivateFamily,
-  });
-
-  final Map<int, Library> libraryForFamily;
-  final Map<int, bool> isPrivateFamily;
 }
