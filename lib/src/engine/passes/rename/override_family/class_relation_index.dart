@@ -6,13 +6,9 @@ import 'package:kernel/ast.dart';
 /// - Subtypes are limited to classes present in the provided class scope.
 class ClassRelationIndex {
   ClassRelationIndex._({
-    required Map<Class, Set<Class>> directSupertypes,
     required Map<Class, Set<Class>> allSupertypes,
-    required Map<Class, Set<Class>> directSubtypes,
     required Map<Class, Set<Class>> allSubtypes,
-  })  : _directSupertypes = directSupertypes,
-        _allSupertypes = allSupertypes,
-        _directSubtypes = directSubtypes,
+  })  : _allSupertypes = allSupertypes,
         _allSubtypes = allSubtypes;
 
   factory ClassRelationIndex.build(Iterable<Class> classScope) {
@@ -24,26 +20,15 @@ class ClassRelationIndex {
     final allSubtypes = _collectAllTransitiveSubtypes(scope, directSubtypes);
 
     return ClassRelationIndex._(
-      directSupertypes: directSupertypes,
       allSupertypes: allSupertypes,
-      directSubtypes: directSubtypes,
       allSubtypes: allSubtypes,
     );
   }
 
-  final Map<Class, Set<Class>> _directSupertypes;
   final Map<Class, Set<Class>> _allSupertypes;
-  final Map<Class, Set<Class>> _directSubtypes;
   final Map<Class, Set<Class>> _allSubtypes;
 
-  Set<Class> directSupertypesOf(Class cls) =>
-      _directSupertypes[cls] ?? const <Class>{};
-
-  Set<Class> supertypesOf(Class cls) =>
-      _allSupertypes[cls] ?? const <Class>{};
-
-  Set<Class> directSubtypesOf(Class cls) =>
-      _directSubtypes[cls] ?? const <Class>{};
+  Set<Class> supertypesOf(Class cls) => _allSupertypes[cls] ?? const <Class>{};
 
   Set<Class> subtypesOf(Class cls) => _allSubtypes[cls] ?? const <Class>{};
 

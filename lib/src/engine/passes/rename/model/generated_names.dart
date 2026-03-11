@@ -1,6 +1,6 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/refractor.dart' show NameGenerator;
-import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart' show NameGenerator;
+import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart'
+    show NameGenerator;
 import 'package:refractor/src/engine/passes/rename/override_family/override_families.dart';
 
 /// Raw name strings produced by a [NameGenerator].

@@ -6,9 +6,7 @@ import 'package:test/test.dart';
 Library _makeLib(List<Class> classes) {
   final uri = Uri.parse('test:test');
   final lib = Library(uri, fileUri: uri);
-  for (final cls in classes) {
-    lib.addClass(cls);
-  }
+  classes.forEach(lib.addClass);
   return lib;
 }
 
@@ -16,15 +14,15 @@ void main() {
   final fileUri = Uri.parse('test:test');
 
   group('ClassRelationIndex', () {
-    test('lone class has empty directSubtypes', () {
+    test('lone class has empty subtypes', () {
       final a = Class(name: 'A', fileUri: fileUri);
       _makeLib([a]);
       final index = ClassRelationIndex.build([a]);
 
-      expect(index.directSubtypesOf(a), isEmpty);
+      expect(index.subtypesOf(a), isNot(contains(isNot(a))));
     });
 
-    test('simple inheritance: directSupertypesOf child contains parent', () {
+    test('simple inheritance: supertypesOf child contains parent', () {
       final parent = Class(name: 'Parent', fileUri: fileUri);
       _makeLib([parent]);
       final child = Class(
@@ -35,10 +33,10 @@ void main() {
       parent.enclosingLibrary.addClass(child);
       final index = ClassRelationIndex.build([parent, child]);
 
-      expect(index.directSupertypesOf(child), contains(parent));
+      expect(index.supertypesOf(child), contains(parent));
     });
 
-    test('simple inheritance: directSubtypesOf parent contains child', () {
+    test('simple inheritance: subtypesOf parent contains child', () {
       final parent = Class(name: 'Parent', fileUri: fileUri);
       _makeLib([parent]);
       final child = Class(
@@ -49,7 +47,7 @@ void main() {
       parent.enclosingLibrary.addClass(child);
       final index = ClassRelationIndex.build([parent, child]);
 
-      expect(index.directSubtypesOf(parent), contains(child));
+      expect(index.subtypesOf(parent), contains(child));
     });
 
     test('transitive supertypes: A extends B extends C', () {
@@ -96,7 +94,7 @@ void main() {
       expect(subtypesOfC, contains(a));
     });
 
-    test('interface implementation: directSupertypesOf includes interface', () {
+    test('interface implementation: supertypesOf includes interface', () {
       final iface = Class(name: 'I', fileUri: fileUri);
       _makeLib([iface]);
       final a = Class(
@@ -107,10 +105,10 @@ void main() {
       iface.enclosingLibrary.addClass(a);
       final index = ClassRelationIndex.build([a, iface]);
 
-      expect(index.directSupertypesOf(a), contains(iface));
+      expect(index.supertypesOf(a), contains(iface));
     });
 
-    test('mixin: directSupertypesOf includes mixin', () {
+    test('mixin: supertypesOf includes mixin', () {
       final m = Class(name: 'M', fileUri: fileUri);
       _makeLib([m]);
       final a = Class(
@@ -121,7 +119,7 @@ void main() {
       m.enclosingLibrary.addClass(a);
       final index = ClassRelationIndex.build([a, m]);
 
-      expect(index.directSupertypesOf(a), contains(m));
+      expect(index.supertypesOf(a), contains(m));
     });
 
     test('areRelated returns true for parent-child', () {
@@ -148,67 +146,82 @@ void main() {
       expect(index.areRelated(a, b), isFalse);
     });
 
-    test('shareDeclaringSupertypeForName returns true when common supertype '
-        'declares member', () {
-      final base = Class(name: 'Base', fileUri: fileUri);
-      base.addProcedure(Procedure(
-        Name('foo'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: fileUri,
-      ));
-      _makeLib([base]);
-      final a = Class(
-        name: 'A',
-        fileUri: fileUri,
-        supertype: base.asThisSupertype,
-      );
-      final b = Class(
-        name: 'B',
-        fileUri: fileUri,
-        supertype: base.asThisSupertype,
-      );
-      base.enclosingLibrary..addClass(a)..addClass(b);
-      final index = ClassRelationIndex.build([base, a, b]);
+    test(
+      'shareDeclaringSupertypeForName returns true when common supertype '
+      'declares member',
+      () {
+        final base = Class(name: 'Base', fileUri: fileUri)
+          ..addProcedure(
+            Procedure(
+              Name('foo'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: fileUri,
+            ),
+          );
+        _makeLib([base]);
+        final a = Class(
+          name: 'A',
+          fileUri: fileUri,
+          supertype: base.asThisSupertype,
+        );
+        final b = Class(
+          name: 'B',
+          fileUri: fileUri,
+          supertype: base.asThisSupertype,
+        );
+        base.enclosingLibrary
+          ..addClass(a)
+          ..addClass(b);
+        final index = ClassRelationIndex.build([base, a, b]);
 
-      expect(index.shareDeclaringSupertypeForName(a, b, 'foo'), isTrue);
-    });
+        expect(index.shareDeclaringSupertypeForName(a, b, 'foo'), isTrue);
+      },
+    );
 
-    test('shareDeclaringSupertypeForName returns false for undeclared name',
-        () {
-      final base = Class(name: 'Base', fileUri: fileUri);
-      base.addProcedure(Procedure(
-        Name('foo'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: fileUri,
-      ));
-      _makeLib([base]);
-      final a = Class(
-        name: 'A',
-        fileUri: fileUri,
-        supertype: base.asThisSupertype,
-      );
-      final b = Class(
-        name: 'B',
-        fileUri: fileUri,
-        supertype: base.asThisSupertype,
-      );
-      base.enclosingLibrary..addClass(a)..addClass(b);
-      final index = ClassRelationIndex.build([base, a, b]);
+    test(
+      'shareDeclaringSupertypeForName returns false for undeclared name',
+      () {
+        final base = Class(name: 'Base', fileUri: fileUri)
+          ..addProcedure(
+            Procedure(
+              Name('foo'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: fileUri,
+            ),
+          );
+        _makeLib([base]);
+        final a = Class(
+          name: 'A',
+          fileUri: fileUri,
+          supertype: base.asThisSupertype,
+        );
+        final b = Class(
+          name: 'B',
+          fileUri: fileUri,
+          supertype: base.asThisSupertype,
+        );
+        base.enclosingLibrary
+          ..addClass(a)
+          ..addClass(b);
+        final index = ClassRelationIndex.build([base, a, b]);
 
-      expect(index.shareDeclaringSupertypeForName(a, b, 'bar'), isFalse);
-    });
+        expect(index.shareDeclaringSupertypeForName(a, b, 'bar'), isFalse);
+      },
+    );
 
-    test('shareDeclaringSupertypeForName returns false for unrelated classes',
-        () {
-      final a = Class(name: 'A', fileUri: fileUri);
-      final b = Class(name: 'B', fileUri: fileUri);
-      _makeLib([a, b]);
-      final index = ClassRelationIndex.build([a, b]);
+    test(
+      'shareDeclaringSupertypeForName returns false for unrelated classes',
+      () {
+        final a = Class(name: 'A', fileUri: fileUri);
+        final b = Class(name: 'B', fileUri: fileUri);
+        _makeLib([a, b]);
+        final index = ClassRelationIndex.build([a, b]);
 
-      expect(index.shareDeclaringSupertypeForName(a, b, 'foo'), isFalse);
-    });
+        expect(index.shareDeclaringSupertypeForName(a, b, 'foo'), isFalse);
+      },
+    );
 
     test('diamond hierarchy: D extends B, C; B extends A; C extends A', () {
       final a = Class(name: 'A', fileUri: fileUri);

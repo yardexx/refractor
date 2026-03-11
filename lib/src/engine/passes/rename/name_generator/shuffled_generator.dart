@@ -2,9 +2,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
-import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/passes/rename/model/generated_names.dart';
-import 'package:refractor/src/engine/passes/rename/model/rename_scope.dart';
 import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart';
 
 /// Generates names from a seeded random permutation.
@@ -20,16 +17,16 @@ class ShuffledGenerator extends NameGenerator {
   late final List<int> _digitMap = _buildDigitMap(_seed);
   int _level = 1;
   int _indexInLevel = 0;
-  int _levelSize = pow(_alphabetSize, 1).toInt();
+  int _levelSize = pow(nameAlphabetSize, 1).toInt();
   int? _multiplier;
   int? _offset;
 
-  /// Returns the next name in the shuffled sequence.
+  @override
   String nextName() {
     if (_indexInLevel >= _levelSize) {
       _level++;
       _indexInLevel = 0;
-      _levelSize = pow(_alphabetSize, _level).toInt();
+      _levelSize = pow(nameAlphabetSize, _level).toInt();
       _multiplier = null;
       _offset = null;
     }
@@ -37,26 +34,6 @@ class ShuffledGenerator extends NameGenerator {
     final permuted = _permuteIndex(_indexInLevel, _levelSize, _level);
     _indexInLevel++;
     return _encodeFixedWidth(permuted, _level);
-  }
-
-  @override
-  Future<GeneratedNames> generate(RenameScope scope) async {
-    final families = scope.overrideFamilies;
-
-    return GeneratedNames(
-      familyNames: {
-        for (final f in families.families) f: nextName(),
-      },
-      singletonNames: {
-        for (final m in _allSingletons(scope)) m: nextName(),
-      },
-      classNames: {
-        for (final c in scope.classScopes) c.node: nextName(),
-      },
-      variableNames: {
-        for (final v in scope.variables) v: nextName(),
-      },
-    );
   }
 
   static int _defaultSeed(String? projectName) =>
@@ -70,7 +47,8 @@ class ShuffledGenerator extends NameGenerator {
   }
 
   static List<int> _buildDigitMap(int seed) {
-    return List<int>.generate(_alphabetSize, (i) => i)..shuffle(Random(seed));
+    return List<int>.generate(nameAlphabetSize, (i) => i)
+      ..shuffle(Random(seed));
   }
 
   int _permuteIndex(int index, int modulus, int level) {
@@ -97,25 +75,12 @@ class ShuffledGenerator extends NameGenerator {
     final codes = List<int>.filled(width, 0);
     var n = value;
     for (var pos = width - 1; pos >= 0; pos--) {
-      final digit = n % _alphabetSize;
-      n ~/= _alphabetSize;
+      final digit = n % nameAlphabetSize;
+      n ~/= nameAlphabetSize;
       codes[pos] = _digitMap[digit];
     }
     return String.fromCharCodes([
-      for (final digit in codes) _alphabet.codeUnitAt(digit),
+      for (final digit in codes) nameAlphabet.codeUnitAt(digit),
     ]);
-  }
-
-  static const String _alphabet =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  static const int _alphabetSize = 52;
-}
-
-/// Collects all singleton members (top-level + static) from a scope.
-Iterable<Member> _allSingletons(RenameScope scope) sync* {
-  yield* scope.topLevelMembers;
-  for (final cs in scope.classScopes) {
-    yield* cs.staticMembers;
-    yield* cs.constructors;
   }
 }

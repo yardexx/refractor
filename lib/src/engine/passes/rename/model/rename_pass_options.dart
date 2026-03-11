@@ -1,5 +1,5 @@
-import 'package:refractor/refractor.dart' show RenamePass;
-import 'package:refractor/src/engine/passes/rename/rename_pass.dart' show RenamePass;
+import 'package:refractor/src/engine/passes/rename/rename_pass.dart'
+    show RenamePass;
 
 /// Per-pass options for [RenamePass].
 ///

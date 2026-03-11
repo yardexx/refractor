@@ -11,7 +11,7 @@ import 'package:refractor/src/utils/rename_helpers.dart';
 ///
 /// Handles privacy wiring, family expansion, and symbolMap building.
 class NameAllocator {
-  /// Allocates from prcd ee-generated names.
+  /// Allocates from pre-generated names.
   ///
   /// Expands family names → one Name per member, adds `_` prefix for
   /// private members + sets library scope, builds symbolMap.
