@@ -1,27 +1,31 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:crypto/crypto.dart';
 
-/// Generates obfuscated identifiers from a seeded random pool.
+import 'package:crypto/crypto.dart';
+import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/passes/rename/model/generated_names.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_scope.dart';
+import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart';
+
+/// Generates names from a seeded random permutation.
 ///
 /// Names are drawn from an alphabetic pool (`a`–`z`, `A`–`Z`, then `aa`–`zz`,
 /// etc.) shuffled with a deterministic seed. Same seed + same call sequence
 /// produces identical names.
-class NameGenerator {
-  NameGenerator({int? seed, String? projectName})
+class ShuffledGenerator extends NameGenerator {
+  ShuffledGenerator({int? seed, String? projectName})
     : _seed = seed ?? _defaultSeed(projectName);
 
   final int _seed;
   late final List<int> _digitMap = _buildDigitMap(_seed);
-  int _generated = 0;
   int _level = 1;
   int _indexInLevel = 0;
   int _levelSize = pow(_alphabetSize, 1).toInt();
   int? _multiplier;
   int? _offset;
 
-  /// Return the next unique obfuscated name.
-  String next() {
+  /// Returns the next name in the shuffled sequence.
+  String nextName() {
     if (_indexInLevel >= _levelSize) {
       _level++;
       _indexInLevel = 0;
@@ -32,18 +36,32 @@ class NameGenerator {
 
     final permuted = _permuteIndex(_indexInLevel, _levelSize, _level);
     _indexInLevel++;
-    _generated++;
     return _encodeFixedWidth(permuted, _level);
   }
 
-  /// Peek at the current counter value without incrementing.
-  int get currentCount => _generated;
+  @override
+  Future<GeneratedNames> generate(RenameScope scope) async {
+    final families = scope.overrideFamilies;
+
+    return GeneratedNames(
+      familyNames: {
+        for (final f in families.families) f: nextName(),
+      },
+      singletonNames: {
+        for (final m in _allSingletons(scope)) m: nextName(),
+      },
+      classNames: {
+        for (final c in scope.classScopes) c.node: nextName(),
+      },
+      variableNames: {
+        for (final v in scope.variables) v: nextName(),
+      },
+    );
+  }
 
   static int _defaultSeed(String? projectName) =>
       _stableHash(projectName ?? 'refractor');
 
-  // Stable hash derived from SHA-256 so default seeding does not depend on
-  // runtime-specific String.hashCode behavior.
   static int _stableHash(String input) {
     final digest = sha256.convert(utf8.encode(input)).bytes;
     final seed =
@@ -62,7 +80,6 @@ class NameGenerator {
   }
 
   int _chooseMultiplier(int modulus, int level) {
-    // Need gcd(multiplier, modulus) == 1 for bijection.
     var candidate = (_stableHash('mul:$_seed:$level') % modulus).abs();
     if (candidate == 0) candidate = 1;
     while (candidate.gcd(modulus) != 1) {
@@ -92,4 +109,13 @@ class NameGenerator {
   static const String _alphabet =
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   static const int _alphabetSize = 52;
+}
+
+/// Collects all singleton members (top-level + static) from a scope.
+Iterable<Member> _allSingletons(RenameScope scope) sync* {
+  yield* scope.topLevelMembers;
+  for (final cs in scope.classScopes) {
+    yield* cs.staticMembers;
+    yield* cs.constructors;
+  }
 }

@@ -1,14 +1,14 @@
 import 'package:kernel/ast.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 
 abstract class PassTransformer extends Transformer {
-  PassTransformer({required this.context});
+  PassTransformer({required this.target});
 
-  final PassContext context;
+  final ObfuscationTarget target;
 
   @override
   TreeNode visitLibrary(Library node) {
-    if (!context.shouldObfuscateLibrary(node)) return node;
+    if (!target.shouldObfuscateLibrary(node)) return node;
     return super.visitLibrary(node);
   }
 }

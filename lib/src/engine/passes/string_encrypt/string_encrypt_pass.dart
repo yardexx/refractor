@@ -3,8 +3,9 @@ import 'dart:math';
 
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_transformer.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
+import 'package:refractor/src/utils/result.dart';
 
 /// Obfuscation pass that replaces plaintext [StringLiteral] nodes with a
 /// call to an injected decode helper, so strings are not visible in the binary.
@@ -12,27 +13,35 @@ import 'package:refractor/src/engine/runner/pass_context.dart';
 /// Encoding: XOR each UTF-8 byte with a fixed key (configurable, default 0x5A).
 /// At runtime, the injected `_obfDecode$` reverses this to recover the
 /// original string.
-class StringEncryptPass extends Pass {
-  StringEncryptPass({this.xorKey = 0x5A});
+class StringEncryptPass extends Pass<void> {
+  StringEncryptPass({
+    this.xorKey = 0x5A,
+    this.excludePatterns = const [],
+  });
+
   static const String _helperName = r'_obfDecode$';
 
   final int xorKey;
+  final List<RegExp> excludePatterns;
 
   @override
   String get name => 'string_encrypt';
 
   @override
-  void run(Component component, PassContext context) {
+  Future<Result<void>> run(
+    Component component,
+    ObfuscationTarget target,
+  ) async {
     // Find the first user library to inject our helper into.
     Library? targetLib;
     for (final lib in component.libraries) {
-      if (context.shouldObfuscateLibrary(lib)) {
+      if (target.shouldObfuscateLibrary(lib)) {
         targetLib = lib;
         break;
       }
     }
     if (targetLib == null) {
-      return;
+      return const Result.ok(null);
     }
 
     // Inject the _obfDecode$ helper and get the procedure.
@@ -40,11 +49,14 @@ class StringEncryptPass extends Pass {
 
     // Walk the component and replace string literals.
     final transformer = StringEncryptTransformer(
-      context: context,
+      target: target,
       decodeProcedure: decodeProcedure,
       random: Random(xorKey),
+      excludePatterns: excludePatterns,
     );
     component.transformChildren(transformer);
+
+    return const Result.ok(null);
   }
 
   /// Inject the `_obfDecode$` procedure into [lib] and return it.

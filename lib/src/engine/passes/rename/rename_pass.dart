@@ -1,66 +1,63 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
 import 'package:refractor/src/engine/passes/rename/name_allocator.dart';
-import 'package:refractor/src/engine/passes/rename/override_family/override_family_analyzer.dart';
-import 'package:refractor/src/engine/passes/rename/rename_helpers.dart';
+import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart';
+import 'package:refractor/src/engine/passes/rename/name_generator/sequential_generator.dart';
+import 'package:refractor/src/engine/passes/rename/name_generator/shuffled_generator.dart';
+import 'package:refractor/src/engine/passes/rename/rename_collector.dart';
 import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
-import 'package:refractor/src/engine/passes/rename/rename_visitor.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
+import 'package:refractor/src/utils/result.dart';
 
-/// Obfuscation pass that renames user-defined identifiers (classes, methods,
-/// fields, variables) to short alphabetic names with ProGuard-style name
-/// overloading.
+/// Obfuscation pass that renames user-defined identifiers.
 ///
-/// Uses a multi-phase approach:
-///   Phase 0   — analyze override families (members connected by inheritance).
-///   Phase 0.5 — allocate obfuscated names to families, reusing names across
-///               unrelated families.
-///   Phase 1   — visit remaining declarations (classes, variables).
-///   Phase 2   — apply all renames so declarations and references are updated.
-///   Phase 3   — unbind canonical names for renamed user libraries so they can
-///               be recomputed correctly by BinaryPrinter.writeComponentFile.
-class RenamePass extends Pass {
+/// Dumb orchestrator wiring three phases:
+///   1. Collect — gather all declarations to rename.
+///   2. Generate + Allocate — produce an obfuscation map.
+///   3. Apply — mutate the AST and unbind canonical names.
+class RenamePass extends Pass<RenameMapping> {
+  RenamePass({
+    this.options = const RenamePassOptions(),
+    NameGenerator? generator,
+  }) : _generator = generator;
+
+  final RenamePassOptions options;
+  final NameGenerator? _generator;
+
   @override
   String get name => 'rename';
 
   @override
-  void run(Component component, PassContext context) {
-    // Phase 0 + 0.5: analyze families and allocate names.
-    final analysis = OverrideFamilyAnalyzer().analyze(component, context);
-    final memberRenames = NameAllocator().allocate(
-      analysis,
-      context.nameGenerator,
-    );
+  Future<Result<RenameMapping>> run(
+    Component component,
+    ObfuscationTarget target,
+  ) async {
+    try {
+      // 1. Collect.
+      final scope = RenameCollector().collect(component, target, options);
 
-    // Record allocated names in the symbol table.
-    for (final entry in memberRenames.entries) {
-      final originalName = memberNameText(entry.key);
-      if (originalName.isNotEmpty) {
-        context.symbolTable.record(originalName, entry.value.text);
-      }
+      // 2. Generate names.
+      final generator = _generator ?? _defaultGenerator();
+      final names = await generator.generate(scope);
+
+      // 3. Allocate (wire names into kernel Name objects).
+      final mapping = NameAllocator().allocate(scope, names);
+
+      // 4. Apply.
+      RenameTransformer(mapping: mapping, target: target).apply(component);
+
+      return Result.ok(mapping);
+    } on Exception catch (e) {
+      return Result.error(e);
     }
+  }
 
-    // Phase 1: visit remaining declarations (classes, variables).
-    final collector = RenameVisitor(
-      context: context,
-      preMemberRenames: memberRenames,
-    );
-    component.accept(collector);
-
-    // Phase 2: apply renames using a Transformer.
-    final renamer = RenameTransformer(
-      classRenames: collector.classRenames,
-      memberRenames: collector.memberRenames,
-      variableRenames: collector.variableRenames,
-      context: context,
-    );
-    component.transformChildren(renamer);
-
-    // Phase 3: unbind canonical names for renamed user libraries.
-    for (final lib in component.libraries) {
-      if (context.shouldObfuscateLibrary(lib)) {
-        lib.reference.canonicalName?.unbindAll();
-      }
-    }
+  NameGenerator _defaultGenerator() {
+    return switch (options.namingStrategy) {
+      NamingStrategy.shuffled => ShuffledGenerator(seed: options.seed),
+      NamingStrategy.sequential => SequentialGenerator(),
+    };
   }
 }
