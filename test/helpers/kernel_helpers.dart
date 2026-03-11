@@ -1,11 +1,8 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/name_generator.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
-import 'package:refractor/src/engine/runner/pass_options.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 
 /// Creates a user library with a `package:refractor/...` URI so that
-/// [PassContext.shouldObfuscateLibrary] returns `true`.
+/// [ObfuscationTarget.shouldObfuscateLibrary] returns `true`.
 Library makeUserLibrary([String path = 'src/app.dart']) {
   final uri = Uri.parse('package:refractor/$path');
   return Library(uri, fileUri: uri);
@@ -114,15 +111,9 @@ Library makeDartCoreLibrary() {
   return lib;
 }
 
-/// Creates a [PassContext] with fresh [SymbolTable] and [NameGenerator].
-PassContext makePassContext([PassOptions? options, int? seed]) {
-  return PassContext(
-    symbolTable: SymbolTable(),
-    nameGenerator: NameGenerator(
-      seed: seed,
-      projectName: 'refractor',
-    ),
-    options: options ?? const PassOptions(),
+/// Creates an [ObfuscationTarget] with defaults suitable for tests.
+ObfuscationTarget makeObfuscationTarget() {
+  return ObfuscationTarget(
     projectRootUri: Uri.directory('/virtual/project'),
     projectPackageName: 'refractor',
   );

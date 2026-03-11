@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
-import 'package:refractor/src/engine/runner/pass_options.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:test/test.dart';
 
 import '../../helpers/kernel_helpers.dart';
@@ -39,15 +39,17 @@ void main() {
     late Library coreLib;
     late Library userLib;
     late Component component;
+    late ObfuscationTarget target;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
       userLib = makeUserLibrary();
+      target = makeObfuscationTarget();
     });
 
     test(
       'string literal in procedure body is replaced with StaticInvocation',
-      () {
+      () async {
         final proc = Procedure(
           Name('greet'),
           ProcedureKind.Method,
@@ -61,8 +63,7 @@ void main() {
         userLib.addProcedure(proc);
 
         component = makeComponent(coreLib: coreLib, userLib: userLib);
-        final context = makePassContext();
-        StringEncryptPass().run(component, context);
+        await StringEncryptPass().run(component, target);
 
         final body = proc.function.body! as Block;
         final ret = body.statements.first as ReturnStatement;
@@ -70,8 +71,7 @@ void main() {
       },
     );
 
-    test('string literal inside ConstantExpression is NOT replaced', () {
-      // Create a ConstantExpression wrapping a string — the pass should skip.
+    test('string literal inside ConstantExpression is NOT replaced', () async {
       final constExpr = ConstantExpression(StringConstant('keep'));
       final proc = Procedure(
         Name('constTest'),
@@ -86,29 +86,27 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final context = makePassContext();
-      StringEncryptPass().run(component, context);
+      await StringEncryptPass().run(component, target);
 
       final body = proc.function.body! as Block;
       final ret = body.statements.first as ReturnStatement;
       expect(ret.expression, isA<ConstantExpression>());
     });
 
-    test('string literal in class annotation is NOT replaced', () {
+    test('string literal in class annotation is NOT replaced', () async {
       final cls = Class(name: 'Annotated', fileUri: userLib.fileUri)
         ..addAnnotation(ConstantExpression(StringConstant('keep_me')));
       userLib.addClass(cls);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final context = makePassContext();
-      StringEncryptPass().run(component, context);
+      await StringEncryptPass().run(component, target);
 
       final annotation = cls.annotations.first as ConstantExpression;
       expect(annotation.constant, isA<StringConstant>());
       expect((annotation.constant as StringConstant).value, equals('keep_me'));
     });
 
-    test('stringExcludePatterns exempts matching strings', () {
+    test('stringExcludePatterns exempts matching strings', () async {
       final proc = Procedure(
         Name('exempt'),
         ProcedureKind.Method,
@@ -122,10 +120,9 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final context = makePassContext(
-        PassOptions(stringExcludePatterns: [RegExp('DO_NOT_ENCRYPT')]),
-      );
-      StringEncryptPass().run(component, context);
+      await StringEncryptPass(
+        excludePatterns: [RegExp('DO_NOT_ENCRYPT')],
+      ).run(component, target);
 
       final body = proc.function.body! as Block;
       final ret = body.statements.first as ReturnStatement;
@@ -133,17 +130,16 @@ void main() {
       expect((ret.expression! as StringLiteral).value, 'DO_NOT_ENCRYPT');
     });
 
-    test('no user library means pass is a no-op', () {
+    test('no user library means pass is a no-op', () async {
       // Component with only core lib — no crash.
       final comp = Component(libraries: [coreLib])
         ..setMainMethodAndMode(null, true);
-      final context = makePassContext();
-      StringEncryptPass().run(comp, context);
+      await StringEncryptPass().run(comp, target);
 
       expect(comp.libraries.length, equals(1));
     });
 
-    test(r'helper _obfDecode$ is injected into first user library', () {
+    test(r'helper _obfDecode$ is injected into first user library', () async {
       final proc = Procedure(
         Name('fn'),
         ProcedureKind.Method,
@@ -155,15 +151,13 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final context = makePassContext();
-      StringEncryptPass().run(component, context);
+      await StringEncryptPass().run(component, target);
 
       final helperNames = userLib.procedures.map((p) => p.name.text).toList();
       expect(helperNames, contains(r'_obfDecode$'));
     });
 
-    test('dart: library strings are not encrypted', () {
-      // Add a string literal to a procedure in the core lib.
+    test('dart: library strings are not encrypted', () async {
       final coreProc = Procedure(
         Name('coreHelper'),
         ProcedureKind.Method,
@@ -174,7 +168,6 @@ void main() {
       );
       coreLib.addProcedure(coreProc);
 
-      // Also add a user proc so the pass has something to inject into.
       final userProc = Procedure(
         Name('userFn'),
         ProcedureKind.Method,
@@ -186,16 +179,14 @@ void main() {
       userLib.addProcedure(userProc);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final context = makePassContext();
-      StringEncryptPass().run(component, context);
+      await StringEncryptPass().run(component, target);
 
-      // The core proc body should still be a StringLiteral.
       final coreBody = coreProc.function.body! as Block;
       final coreRet = coreBody.statements.first as ReturnStatement;
       expect(coreRet.expression, isA<StringLiteral>());
     });
 
-    test('uses per-string keys instead of one fixed key', () {
+    test('uses per-string keys instead of one fixed key', () async {
       final proc = Procedure(
         Name('keys'),
         ProcedureKind.Method,
@@ -210,8 +201,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final context = makePassContext();
-      StringEncryptPass().run(component, context);
+      await StringEncryptPass().run(component, target);
 
       final body = proc.function.body! as Block;
       final firstExpr = body.statements[0] as ExpressionStatement;

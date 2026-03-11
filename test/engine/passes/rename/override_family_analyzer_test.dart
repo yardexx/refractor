@@ -1,6 +1,10 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/passes/rename/override_family/override_family_analysis.dart';
+import 'package:refractor/src/engine/passes/rename/declaration_collector.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
+import 'package:refractor/src/engine/passes/rename/override_family/class_relation_index.dart';
+import 'package:refractor/src/engine/passes/rename/override_family/override_families.dart';
 import 'package:refractor/src/engine/passes/rename/override_family/override_family_analyzer.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:test/test.dart';
 
 import '../../../helpers/kernel_helpers.dart';
@@ -10,17 +14,28 @@ void main() {
     late Library coreLib;
     late Library userLib;
     late OverrideFamilyAnalyzer analyzer;
+    late ObfuscationTarget target;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
       userLib = makeUserLibrary();
       analyzer = OverrideFamilyAnalyzer();
+      target = makeObfuscationTarget();
     });
 
-    OverrideFamilyAnalysis runAnalysis() {
-      final context = makePassContext();
-      final component = makeComponent(coreLib: coreLib, userLib: userLib);
-      return analyzer.analyze(component, context);
+    OverrideFamilies runAnalysis({
+      List<Library>? libraries,
+      RenamePassOptions options = const RenamePassOptions(),
+    }) {
+      final component = Component(
+        libraries: libraries ?? [coreLib, userLib],
+      )..setMainMethodAndMode(null, true);
+      final declarations = DeclarationCollector(target, options)
+        ..collect(component);
+      final hierarchy = ClassRelationIndex.build(
+        declarations.classScopes.map((c) => c.node),
+      );
+      return analyzer.analyze(declarations.classScopes, hierarchy);
     }
 
     test('base + derived: same-name methods in same family', () {
@@ -50,9 +65,10 @@ void main() {
 
       final analysis = runAnalysis();
 
+      expect(analysis.familyOf[baseMethod], isNotNull);
       expect(
         analysis.familyOf[baseMethod],
-        equals(analysis.familyOf[derivedMethod]),
+        same(analysis.familyOf[derivedMethod]),
       );
     });
 
@@ -85,7 +101,7 @@ void main() {
 
       expect(
         analysis.familyOf[ifaceMethod],
-        equals(analysis.familyOf[implMethod]),
+        same(analysis.familyOf[implMethod]),
       );
     });
 
@@ -118,7 +134,7 @@ void main() {
 
       expect(
         analysis.familyOf[mixinMethod],
-        equals(analysis.familyOf[userMethod]),
+        same(analysis.familyOf[userMethod]),
       );
     });
 
@@ -147,7 +163,7 @@ void main() {
 
       expect(
         analysis.familyOf[methodA],
-        isNot(equals(analysis.familyOf[methodB])),
+        isNot(same(analysis.familyOf[methodB])),
       );
     });
 
@@ -173,13 +189,10 @@ void main() {
 
       final analysis = runAnalysis();
 
-      // Both should have family IDs but different ones.
-      expect(analysis.familyOf[staticMethod], isNotNull);
+      // Instance method is in a family, static is not (handled as singleton).
       expect(analysis.familyOf[instanceMethod], isNotNull);
-      expect(
-        analysis.familyOf[staticMethod],
-        isNot(equals(analysis.familyOf[instanceMethod])),
-      );
+      // Static members are singletons — not tracked in familyOf.
+      expect(analysis.familyOf[staticMethod], isNull);
     });
 
     test('unnamed constructor is excluded', () {
@@ -251,20 +264,17 @@ void main() {
       derived.addProcedure(derivedMethod);
       libB.addClass(derived);
 
-      final context = makePassContext();
-      final component = Component(libraries: [coreLib, libA, libB])
-        ..setMainMethodAndMode(null, true);
-      final analysis = analyzer.analyze(component, context);
+      final analysis = runAnalysis(libraries: [coreLib, libA, libB]);
 
       expect(analysis.familyOf[baseMethod], isNotNull);
       expect(analysis.familyOf[derivedMethod], isNotNull);
       expect(
         analysis.familyOf[baseMethod],
-        isNot(equals(analysis.familyOf[derivedMethod])),
+        isNot(same(analysis.familyOf[derivedMethod])),
       );
     });
 
-    test('sibling implementers of external interface share family', () {
+    test('sibling implementers of external interface are excluded', () {
       final extUri = Uri.parse('package:external_pkg/api.dart');
       final extLib = Library(extUri, fileUri: extUri);
       final iface = Class(name: 'Api', fileUri: extUri);
@@ -305,14 +315,13 @@ void main() {
       classB.addProcedure(runB);
       userLib.addClass(classB);
 
-      final context = makePassContext();
-      final component = Component(libraries: [coreLib, userLib, extLib])
-        ..setMainMethodAndMode(null, true);
-      final analysis = analyzer.analyze(component, context);
+      final analysis = runAnalysis(
+        libraries: [coreLib, userLib, extLib],
+      );
 
-      expect(analysis.familyOf[runA], isNotNull);
-      expect(analysis.familyOf[runB], isNotNull);
-      expect(analysis.familyOf[runA], equals(analysis.familyOf[runB]));
+      // Methods overriding an external interface must not be renamed.
+      expect(analysis.familyOf[runA], isNull);
+      expect(analysis.familyOf[runB], isNull);
     });
   });
 }
