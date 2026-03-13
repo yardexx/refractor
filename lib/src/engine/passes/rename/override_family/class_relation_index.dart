@@ -8,8 +8,8 @@ class ClassRelationIndex {
   ClassRelationIndex._({
     required Map<Class, Set<Class>> allSupertypes,
     required Map<Class, Set<Class>> allSubtypes,
-  })  : _allSupertypes = allSupertypes,
-        _allSubtypes = allSubtypes;
+  }) : _allSupertypes = allSupertypes,
+       _allSubtypes = allSubtypes;
 
   factory ClassRelationIndex.build(Iterable<Class> classScope) {
     final scope = classScope.toSet();

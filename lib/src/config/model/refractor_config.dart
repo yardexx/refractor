@@ -62,8 +62,9 @@ final class RefractorConfig {
   final List<PassConfig> passes;
 
   /// Library exclude patterns as [Glob] objects.
-  late final List<Glob> excludePatterns =
-      refractor.exclude.map(Glob.new).toList();
+  late final List<Glob> excludePatterns = refractor.exclude
+      .map(Glob.new)
+      .toList();
 
   /// Build a list of [Pass] instances from the configured passes.
   ///
