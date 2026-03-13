@@ -115,7 +115,7 @@ class RenameTransformer extends PassTransformer {
     if (newName != null) node.name = newName;
     final target = node.interfaceTarget;
     _updateNamedArguments(node.arguments, target.function);
-      return super.visitInstanceInvocation(node);
+    return super.visitInstanceInvocation(node);
   }
 
   @override
@@ -152,6 +152,6 @@ class RenameTransformer extends PassTransformer {
     if (newName != null) node.name = newName;
     final target = node.interfaceTarget;
     _updateNamedArguments(node.arguments, target.function);
-      return super.visitSuperMethodInvocation(node);
+    return super.visitSuperMethodInvocation(node);
   }
 }

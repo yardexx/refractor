@@ -33,8 +33,9 @@ class ObfuscationTarget {
       // distinguish user code from third-party dependencies, so we
       // skip all package: libraries to avoid breaking deps.
       if (projectPackageName == null) return false;
-      final packageName =
-          uri.pathSegments.isEmpty ? null : uri.pathSegments.first;
+      final packageName = uri.pathSegments.isEmpty
+          ? null
+          : uri.pathSegments.first;
       return packageName == projectPackageName;
     }
 

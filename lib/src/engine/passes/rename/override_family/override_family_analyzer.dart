@@ -52,10 +52,10 @@ class OverrideFamilyAnalyzer {
       for (final member in cs.instanceMembers) {
         final name = memberNameText(member);
         if (name.isEmpty) continue;
-        final scope =
-            name.startsWith('_') ? member.enclosingLibrary.importUri : null;
-        (groups[(name, scope)] ??= <_ClassMemberPair>[])
-            .add((member, cs.node));
+        final scope = name.startsWith('_')
+            ? member.enclosingLibrary.importUri
+            : null;
+        (groups[(name, scope)] ??= <_ClassMemberPair>[]).add((member, cs.node));
       }
     }
     return groups;

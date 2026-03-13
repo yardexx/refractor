@@ -160,38 +160,40 @@ void main() {
       expect(field.name.text, equals(getter.name.text));
     });
 
-    test('InstanceGet.name is updated when interfaceTarget is renamed',
-        () async {
-      final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
-      final field = Field.mutable(
-        Name('data'),
-        fileUri: userLib.fileUri,
-      );
-      cls.addField(field);
+    test(
+      'InstanceGet.name is updated when interfaceTarget is renamed',
+      () async {
+        final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
+        final field = Field.mutable(
+          Name('data'),
+          fileUri: userLib.fileUri,
+        );
+        cls.addField(field);
 
-      final thisVar = VariableDeclaration('this');
-      final instanceGet = InstanceGet(
-        InstanceAccessKind.Instance,
-        VariableGet(thisVar),
-        Name('data'),
-        resultType: const DynamicType(),
-        interfaceTarget: field,
-      );
-      final body = ReturnStatement(instanceGet);
-      final reader = Procedure(
-        Name('read'),
-        ProcedureKind.Method,
-        FunctionNode(body),
-        fileUri: userLib.fileUri,
-      );
-      cls.addProcedure(reader);
-      userLib.addClass(cls);
+        final thisVar = VariableDeclaration('this');
+        final instanceGet = InstanceGet(
+          InstanceAccessKind.Instance,
+          VariableGet(thisVar),
+          Name('data'),
+          resultType: const DynamicType(),
+          interfaceTarget: field,
+        );
+        final body = ReturnStatement(instanceGet);
+        final reader = Procedure(
+          Name('read'),
+          ProcedureKind.Method,
+          FunctionNode(body),
+          fileUri: userLib.fileUri,
+        );
+        cls.addProcedure(reader);
+        userLib.addClass(cls);
 
-      await runPass();
+        await runPass();
 
-      expect(instanceGet.name.text, equals(field.name.text));
-      expect(instanceGet.name.text, isNot('data'));
-    });
+        expect(instanceGet.name.text, equals(field.name.text));
+        expect(instanceGet.name.text, isNot('data'));
+      },
+    );
 
     test('symbolMap records original to obfuscated mappings', () async {
       final cls = Class(name: 'Tracker', fileUri: userLib.fileUri);
@@ -304,31 +306,33 @@ void main() {
       expect(staticGet.target, same(field));
     });
 
-    test('ConstructorInvocation still resolves after constructor rename',
-        () async {
-      final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
-      final ctor = Constructor(
-        FunctionNode(EmptyStatement()),
-        name: Name('build'),
-        fileUri: userLib.fileUri,
-      );
-      cls.addConstructor(ctor);
-      userLib.addClass(cls);
+    test(
+      'ConstructorInvocation still resolves after constructor rename',
+      () async {
+        final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
+        final ctor = Constructor(
+          FunctionNode(EmptyStatement()),
+          name: Name('build'),
+          fileUri: userLib.fileUri,
+        );
+        cls.addConstructor(ctor);
+        userLib.addClass(cls);
 
-      final invocation = ConstructorInvocation(ctor, Arguments.empty());
-      final wrapper = Procedure(
-        Name('factory'),
-        ProcedureKind.Method,
-        FunctionNode(ReturnStatement(invocation)),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(wrapper);
+        final invocation = ConstructorInvocation(ctor, Arguments.empty());
+        final wrapper = Procedure(
+          Name('factory'),
+          ProcedureKind.Method,
+          FunctionNode(ReturnStatement(invocation)),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(wrapper);
 
-      await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass(const RenamePassOptions(preserveMain: false));
 
-      expect(ctor.name.text, isNot('build'));
-      expect(invocation.target, same(ctor));
-    });
+        expect(ctor.name.text, isNot('build'));
+        expect(invocation.target, same(ctor));
+      },
+    );
 
     test('SuperInitializer still resolves after constructor rename', () async {
       final baseClass = Class(name: 'Base', fileUri: userLib.fileUri);
@@ -364,31 +368,33 @@ void main() {
       expect(superInit.target, same(baseCtor));
     });
 
-    test('RedirectingInitializer still resolves after constructor rename',
-        () async {
-      final cls = Class(name: 'Config', fileUri: userLib.fileUri);
-      final primaryCtor = Constructor(
-        FunctionNode(EmptyStatement()),
-        name: Name('primary'),
-        fileUri: userLib.fileUri,
-      );
-      final redirect = RedirectingInitializer(primaryCtor, Arguments.empty());
-      final secondaryCtor = Constructor(
-        FunctionNode(EmptyStatement()),
-        name: Name('secondary'),
-        fileUri: userLib.fileUri,
-        initializers: [redirect],
-      );
-      cls
-        ..addConstructor(primaryCtor)
-        ..addConstructor(secondaryCtor);
-      userLib.addClass(cls);
+    test(
+      'RedirectingInitializer still resolves after constructor rename',
+      () async {
+        final cls = Class(name: 'Config', fileUri: userLib.fileUri);
+        final primaryCtor = Constructor(
+          FunctionNode(EmptyStatement()),
+          name: Name('primary'),
+          fileUri: userLib.fileUri,
+        );
+        final redirect = RedirectingInitializer(primaryCtor, Arguments.empty());
+        final secondaryCtor = Constructor(
+          FunctionNode(EmptyStatement()),
+          name: Name('secondary'),
+          fileUri: userLib.fileUri,
+          initializers: [redirect],
+        );
+        cls
+          ..addConstructor(primaryCtor)
+          ..addConstructor(secondaryCtor);
+        userLib.addClass(cls);
 
-      await runPass();
+        await runPass();
 
-      expect(primaryCtor.name.text, isNot('primary'));
-      expect(redirect.target, same(primaryCtor));
-    });
+        expect(primaryCtor.name.text, isNot('primary'));
+        expect(redirect.target, same(primaryCtor));
+      },
+    );
 
     test('StaticSet still resolves after field rename', () async {
       final field = Field.mutable(
@@ -413,32 +419,34 @@ void main() {
       expect(staticSet.target, same(field));
     });
 
-    test('round-trip serialization succeeds after constructor rename',
-        () async {
-      final cls = Class(name: 'Service', fileUri: userLib.fileUri);
-      final ctor = Constructor(
-        FunctionNode(EmptyStatement()),
-        name: Name('create'),
-        fileUri: userLib.fileUri,
-      );
-      cls.addConstructor(ctor);
-      userLib.addClass(cls);
+    test(
+      'round-trip serialization succeeds after constructor rename',
+      () async {
+        final cls = Class(name: 'Service', fileUri: userLib.fileUri);
+        final ctor = Constructor(
+          FunctionNode(EmptyStatement()),
+          name: Name('create'),
+          fileUri: userLib.fileUri,
+        );
+        cls.addConstructor(ctor);
+        userLib.addClass(cls);
 
-      await runPass();
+        await runPass();
 
-      final bytes = writeComponentToBytes(component);
-      expect(bytes, isNotEmpty);
+        final bytes = writeComponentToBytes(component);
+        expect(bytes, isNotEmpty);
 
-      final loaded = loadComponentFromBytes(bytes);
-      final loadedLib = loaded.libraries.firstWhere(
-        (l) => l.importUri.scheme == 'package',
-      );
-      final loadedCls = loadedLib.classes.firstWhere(
-        (c) => c.constructors.isNotEmpty,
-      );
-      final loadedCtor = loadedCls.constructors.first;
-      expect(loadedCtor.name.text, isNot('create'));
-    });
+        final loaded = loadComponentFromBytes(bytes);
+        final loadedLib = loaded.libraries.firstWhere(
+          (l) => l.importUri.scheme == 'package',
+        );
+        final loadedCls = loadedLib.classes.firstWhere(
+          (c) => c.constructors.isNotEmpty,
+        );
+        final loadedCtor = loadedCls.constructors.first;
+        expect(loadedCtor.name.text, isNot('create'));
+      },
+    );
 
     test('renames local variables and parameters', () async {
       final local = VariableDeclaration(
@@ -469,64 +477,68 @@ void main() {
 
     // --- Tier 1 tests ---
 
-    test('members of base and derived class get the SAME obfuscated name',
-        () async {
-      final baseClass = Class(name: 'Animal', fileUri: userLib.fileUri);
-      final baseMethod = Procedure(
-        Name('speak'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      baseClass.addProcedure(baseMethod);
-      userLib.addClass(baseClass);
+    test(
+      'members of base and derived class get the SAME obfuscated name',
+      () async {
+        final baseClass = Class(name: 'Animal', fileUri: userLib.fileUri);
+        final baseMethod = Procedure(
+          Name('speak'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        baseClass.addProcedure(baseMethod);
+        userLib.addClass(baseClass);
 
-      final derivedClass = Class(
-        name: 'Dog',
-        fileUri: userLib.fileUri,
-        supertype: baseClass.asThisSupertype,
-      );
-      final derivedMethod = Procedure(
-        Name('speak'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      derivedClass.addProcedure(derivedMethod);
-      userLib.addClass(derivedClass);
+        final derivedClass = Class(
+          name: 'Dog',
+          fileUri: userLib.fileUri,
+          supertype: baseClass.asThisSupertype,
+        );
+        final derivedMethod = Procedure(
+          Name('speak'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        derivedClass.addProcedure(derivedMethod);
+        userLib.addClass(derivedClass);
 
-      await runPass();
+        await runPass();
 
-      expect(baseMethod.name.text, equals(derivedMethod.name.text));
-      expect(baseMethod.name.text, isNot('speak'));
-    });
+        expect(baseMethod.name.text, equals(derivedMethod.name.text));
+        expect(baseMethod.name.text, isNot('speak'));
+      },
+    );
 
-    test('members of two unrelated classes get DIFFERENT obfuscated names',
-        () async {
-      final classA = Class(name: 'Foo', fileUri: userLib.fileUri);
-      final methodA = Procedure(
-        Name('doWork'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      classA.addProcedure(methodA);
-      userLib.addClass(classA);
+    test(
+      'members of two unrelated classes get DIFFERENT obfuscated names',
+      () async {
+        final classA = Class(name: 'Foo', fileUri: userLib.fileUri);
+        final methodA = Procedure(
+          Name('doWork'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        classA.addProcedure(methodA);
+        userLib.addClass(classA);
 
-      final classB = Class(name: 'Bar', fileUri: userLib.fileUri);
-      final methodB = Procedure(
-        Name('compute'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      classB.addProcedure(methodB);
-      userLib.addClass(classB);
+        final classB = Class(name: 'Bar', fileUri: userLib.fileUri);
+        final methodB = Procedure(
+          Name('compute'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        classB.addProcedure(methodB);
+        userLib.addClass(classB);
 
-      await runPass();
+        await runPass();
 
-      expect(methodA.name.text, isNot(equals(methodB.name.text)));
-    });
+        expect(methodA.name.text, isNot(equals(methodB.name.text)));
+      },
+    );
 
     test('fixed seed produces stable output across two runs', () async {
       Future<String> runWithSeed(int seed) async {
@@ -599,17 +611,17 @@ void main() {
 
     test('method overriding SDK supertype is NOT renamed', () async {
       // Simulate Object declaring toString().
-      final objectClass = coreLib.classes.firstWhere(
-        (c) => c.name == 'Object',
-      );
-      objectClass.addProcedure(
-        Procedure(
-          Name('toString'),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: coreLib.fileUri,
-        ),
-      );
+      final objectClass =
+          coreLib.classes.firstWhere(
+            (c) => c.name == 'Object',
+          )..addProcedure(
+            Procedure(
+              Name('toString'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: coreLib.fileUri,
+            ),
+          );
 
       final cls = Class(
         name: 'MyService',
@@ -636,54 +648,56 @@ void main() {
       expect(cls.name, isNot('MyService'));
     });
 
-    test('method overriding external package interface is NOT renamed',
-        () async {
-      final extUri = Uri.parse('package:flutter/widgets.dart');
-      final extLib = Library(extUri, fileUri: extUri);
-      final widget = Class(name: 'StatelessWidget', fileUri: extUri);
-      widget.addProcedure(
-        Procedure(
+    test(
+      'method overriding external package interface is NOT renamed',
+      () async {
+        final extUri = Uri.parse('package:flutter/widgets.dart');
+        final extLib = Library(extUri, fileUri: extUri);
+        final widget = Class(name: 'StatelessWidget', fileUri: extUri)
+          ..addProcedure(
+            Procedure(
+              Name('build'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: extUri,
+            ),
+          );
+        extLib.addClass(widget);
+
+        final cls = Class(
+          name: 'MyWidget',
+          fileUri: userLib.fileUri,
+          supertype: widget.asThisSupertype,
+        );
+        final buildOverride = Procedure(
           Name('build'),
           ProcedureKind.Method,
           FunctionNode(EmptyStatement()),
-          fileUri: extUri,
-        ),
-      );
-      extLib.addClass(widget);
+          fileUri: userLib.fileUri,
+        );
+        final userOnly = Procedure(
+          Name('doWork'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        cls
+          ..addProcedure(buildOverride)
+          ..addProcedure(userOnly);
+        userLib.addClass(cls);
 
-      final cls = Class(
-        name: 'MyWidget',
-        fileUri: userLib.fileUri,
-        supertype: widget.asThisSupertype,
-      );
-      final buildOverride = Procedure(
-        Name('build'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      final userOnly = Procedure(
-        Name('doWork'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      cls
-        ..addProcedure(buildOverride)
-        ..addProcedure(userOnly);
-      userLib.addClass(cls);
+        component = Component(libraries: [coreLib, userLib, extLib])
+          ..setMainMethodAndMode(null, true);
+        await RenamePass().run(component, target);
 
-      component = Component(libraries: [coreLib, userLib, extLib])
-        ..setMainMethodAndMode(null, true);
-      await RenamePass().run(component, target);
-
-      expect(
-        buildOverride.name.text,
-        equals('build'),
-        reason: 'Renaming an external interface override breaks TFA',
-      );
-      expect(userOnly.name.text, isNot('doWork'));
-    });
+        expect(
+          buildOverride.name.text,
+          equals('build'),
+          reason: 'Renaming an external interface override breaks TFA',
+        );
+        expect(userOnly.name.text, isNot('doWork'));
+      },
+    );
 
     test('user-only method on class with SDK supertype IS renamed', () async {
       final objectClass = coreLib.classes.firstWhere(
@@ -713,43 +727,50 @@ void main() {
       );
     });
 
-    test('InstanceInvocation call site stays consistent after rename',
-        () async {
-      final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
-      final method = Procedure(
-        Name('process'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      cls.addProcedure(method);
+    test(
+      'InstanceInvocation call site stays consistent after rename',
+      () async {
+        final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
+        final method = Procedure(
+          Name('process'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        cls.addProcedure(method);
 
-      final receiver = VariableDeclaration('svc');
-      final call = InstanceInvocation(
-        InstanceAccessKind.Instance,
-        VariableGet(receiver),
-        Name('process'),
-        Arguments.empty(),
-        interfaceTarget: method,
-        functionType: FunctionType([], const VoidType(), Nullability.nonNullable),
-      );
-      final caller = Procedure(
-        Name('main'),
-        ProcedureKind.Method,
-        FunctionNode(ExpressionStatement(call)),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addClass(cls);
-      userLib.addProcedure(caller);
+        final receiver = VariableDeclaration('svc');
+        final call = InstanceInvocation(
+          InstanceAccessKind.Instance,
+          VariableGet(receiver),
+          Name('process'),
+          Arguments.empty(),
+          interfaceTarget: method,
+          functionType: FunctionType(
+            [],
+            const VoidType(),
+            Nullability.nonNullable,
+          ),
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(ExpressionStatement(call)),
+          fileUri: userLib.fileUri,
+        );
+        userLib
+          ..addClass(cls)
+          ..addProcedure(caller);
 
-      await runPass();
+        await runPass();
 
-      // Call site name must match the renamed method — otherwise TFA
-      // cannot trace the call and may remove the method body.
-      expect(call.name.text, equals(method.name.text));
-      expect(call.interfaceTarget, same(method));
-      expect(method.name.text, isNot('process'));
-    });
+        // Call site name must match the renamed method — otherwise TFA
+        // cannot trace the call and may remove the method body.
+        expect(call.name.text, equals(method.name.text));
+        expect(call.interfaceTarget, same(method));
+        expect(method.name.text, isNot('process'));
+      },
+    );
 
     test('static members are NOT in override families', () async {
       final baseClass = Class(name: 'Base', fileUri: userLib.fileUri);

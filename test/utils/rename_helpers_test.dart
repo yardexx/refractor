@@ -41,19 +41,20 @@ void main() {
   });
 
   group('hasEntryPointPragma', () {
-    test('returns true when annotations contain a pragma ConstantExpression',
-        () {
-      final coreUri = Uri.parse('dart:core');
-      final pragmaClass = Class(name: 'pragma', fileUri: coreUri);
-      final lib = Library(coreUri, fileUri: coreUri);
-      lib.addClass(pragmaClass);
+    test(
+      'returns true when annotations contain a pragma ConstantExpression',
+      () {
+        final coreUri = Uri.parse('dart:core');
+        final pragmaClass = Class(name: 'pragma', fileUri: coreUri);
+        final _ = Library(coreUri, fileUri: coreUri)..addClass(pragmaClass);
 
-      final annotation = ConstantExpression(
-        InstanceConstant(pragmaClass.reference, [], {}),
-      );
+        final annotation = ConstantExpression(
+          InstanceConstant(pragmaClass.reference, [], {}),
+        );
 
-      expect(hasEntryPointPragma([annotation]), isTrue);
-    });
+        expect(hasEntryPointPragma([annotation]), isTrue);
+      },
+    );
 
     test('returns false for empty annotation list', () {
       expect(hasEntryPointPragma([]), isFalse);
@@ -65,8 +66,7 @@ void main() {
         fileUri: Uri.parse('dart:core'),
       );
       final coreUri = Uri.parse('dart:core');
-      final lib = Library(coreUri, fileUri: coreUri);
-      lib.addClass(otherClass);
+      final _ = Library(coreUri, fileUri: coreUri)..addClass(otherClass);
 
       final annotation = ConstantExpression(
         InstanceConstant(otherClass.reference, [], {}),

@@ -24,15 +24,17 @@ void main() {
     });
 
     test('multiple passes store independently', () {
-      results.add('rename', 42);
-      results.add('encrypt', 'secret');
+      results
+        ..add('rename', 42)
+        ..add('encrypt', 'secret');
       expect(results.get<int>('rename'), equals(42));
       expect(results.get<String>('encrypt'), equals('secret'));
     });
 
     test('later add overwrites earlier value', () {
-      results.add('rename', 'first');
-      results.add('rename', 'second');
+      results
+        ..add('rename', 'first')
+        ..add('rename', 'second');
       expect(results.get<String>('rename'), equals('second'));
     });
   });

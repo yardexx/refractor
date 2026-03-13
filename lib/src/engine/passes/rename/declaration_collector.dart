@@ -88,12 +88,14 @@ class DeclarationCollector extends RecursiveVisitor {
       constructors.add(ctor);
     }
 
-    classScopes.add(ClassScope(
-      node: node,
-      instanceMembers: instanceMembers,
-      staticMembers: staticMembers,
-      constructors: constructors,
-    ));
+    classScopes.add(
+      ClassScope(
+        node: node,
+        instanceMembers: instanceMembers,
+        staticMembers: staticMembers,
+        constructors: constructors,
+      ),
+    );
 
     super.visitClass(node);
   }

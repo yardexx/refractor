@@ -31,23 +31,27 @@ void main() {
       expect(ds.find('a'), equals('a'));
     });
 
-    test('transitivity: union(a,b) + union(b,c) implies find(a) == find(c)',
-        () {
-      ds.union('a', 'b');
-      ds.union('b', 'c');
-      expect(ds.find('a'), equals(ds.find('c')));
-    });
+    test(
+      'transitivity: union(a,b) + union(b,c) implies find(a) == find(c)',
+      () {
+        ds
+          ..union('a', 'b')
+          ..union('b', 'c');
+        expect(ds.find('a'), equals(ds.find('c')));
+      },
+    );
 
     test('disjoint sets stay separate', () {
-      ds.union('a', 'b');
-      ds.union('x', 'y');
+      ds
+        ..union('a', 'b')
+        ..union('x', 'y');
       expect(ds.find('a'), isNot(equals(ds.find('x'))));
     });
 
     test('works with int type', () {
-      final intDs = DisjointSet<int>();
-      intDs.union(1, 2);
-      intDs.union(2, 3);
+      final intDs = DisjointSet<int>()
+        ..union(1, 2)
+        ..union(2, 3);
       expect(intDs.find(1), equals(intDs.find(3)));
       expect(intDs.find(4), equals(4));
     });
