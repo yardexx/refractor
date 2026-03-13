@@ -14,6 +14,13 @@ class RenameTransformer extends PassTransformer {
   /// Used to match [NamedExpression]s at call sites to renamed parameters.
   late final Map<VariableDeclaration, String> _originalVarNames;
 
+  /// Maps the original [Name] of a member to its obfuscated [Name].
+  ///
+  /// Built before any mutations so that dynamic call sites
+  /// ([DynamicGet], [DynamicSet], [DynamicInvocation]) can look up
+  /// the new name even though they have no `interfaceTarget`.
+  late final Map<Name, Name> _nameMapping;
+
   /// Applies the mapping to [component]: transforms the AST and
   /// unbinds canonical names for renamed user libraries.
   void apply(Component component) {
@@ -21,6 +28,11 @@ class RenameTransformer extends PassTransformer {
     _originalVarNames = {
       for (final entry in mapping.variables.entries)
         entry.key: entry.key.name ?? '',
+    };
+
+    // Build Name → Name lookup from member declarations (before mutation).
+    _nameMapping = {
+      for (final entry in mapping.members.entries) entry.key.name: entry.value,
     };
 
     component.transformChildren(this);
@@ -93,7 +105,7 @@ class RenameTransformer extends PassTransformer {
     return super.visitStaticInvocation(node);
   }
 
-  // ---- Call site renames ----
+  // ---- Call site renames (statically resolved) ----
 
   @override
   TreeNode visitInstanceGet(InstanceGet node) {
@@ -115,7 +127,7 @@ class RenameTransformer extends PassTransformer {
     if (newName != null) node.name = newName;
     final target = node.interfaceTarget;
     _updateNamedArguments(node.arguments, target.function);
-      return super.visitInstanceInvocation(node);
+    return super.visitInstanceInvocation(node);
   }
 
   @override
@@ -152,6 +164,56 @@ class RenameTransformer extends PassTransformer {
     if (newName != null) node.name = newName;
     final target = node.interfaceTarget;
     _updateNamedArguments(node.arguments, target.function);
-      return super.visitSuperMethodInvocation(node);
+    return super.visitSuperMethodInvocation(node);
+  }
+
+  // ---- Call site renames (abstract super — mixin declarations) ----
+
+  @override
+  TreeNode visitAbstractSuperPropertyGet(AbstractSuperPropertyGet node) {
+    final newName = mapping.members[node.interfaceTarget];
+    if (newName != null) node.name = newName;
+    return super.visitAbstractSuperPropertyGet(node);
+  }
+
+  @override
+  TreeNode visitAbstractSuperPropertySet(AbstractSuperPropertySet node) {
+    final newName = mapping.members[node.interfaceTarget];
+    if (newName != null) node.name = newName;
+    return super.visitAbstractSuperPropertySet(node);
+  }
+
+  @override
+  TreeNode visitAbstractSuperMethodInvocation(
+    AbstractSuperMethodInvocation node,
+  ) {
+    final newName = mapping.members[node.interfaceTarget];
+    if (newName != null) node.name = newName;
+    final target = node.interfaceTarget;
+    _updateNamedArguments(node.arguments, target.function);
+    return super.visitAbstractSuperMethodInvocation(node);
+  }
+
+  // ---- Call site renames (dynamic dispatch) ----
+
+  @override
+  TreeNode visitDynamicGet(DynamicGet node) {
+    final newName = _nameMapping[node.name];
+    if (newName != null) node.name = newName;
+    return super.visitDynamicGet(node);
+  }
+
+  @override
+  TreeNode visitDynamicSet(DynamicSet node) {
+    final newName = _nameMapping[node.name];
+    if (newName != null) node.name = newName;
+    return super.visitDynamicSet(node);
+  }
+
+  @override
+  TreeNode visitDynamicInvocation(DynamicInvocation node) {
+    final newName = _nameMapping[node.name];
+    if (newName != null) node.name = newName;
+    return super.visitDynamicInvocation(node);
   }
 }

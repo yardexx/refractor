@@ -103,11 +103,13 @@ class RefractorEngine {
 
           _logger?.detail('Build complete: ${request.output}');
 
-          return Result.ok(BuildResult(
-            outputPath: request.output,
-            symbolTable: symbolTable,
-            passesRun: enabledPasses.map((p) => p.name).toList(),
-          ));
+          return Result.ok(
+            BuildResult(
+              outputPath: request.output,
+              symbolTable: symbolTable,
+              passesRun: enabledPasses.map((p) => p.name).toList(),
+            ),
+          );
 
         case Error(:final error):
           return Result.error(error);

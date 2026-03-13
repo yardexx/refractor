@@ -176,17 +176,17 @@ void main() {
 
     test('skips instance members that override external supertypes', () {
       // Add toString() to the dart:core Object class.
-      final objectClass = coreLib.classes.firstWhere(
-        (c) => c.name == 'Object',
-      );
-      objectClass.addProcedure(
-        Procedure(
-          Name('toString'),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: coreLib.fileUri,
-        ),
-      );
+      final objectClass =
+          coreLib.classes.firstWhere(
+            (c) => c.name == 'Object',
+          )..addProcedure(
+            Procedure(
+              Name('toString'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: coreLib.fileUri,
+            ),
+          );
 
       // User class extends Object (via supertype) and overrides toString.
       final cls = Class(

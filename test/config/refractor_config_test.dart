@@ -106,7 +106,10 @@ passes:
       expect(passes.length, 1);
       final stringPass = passes[0] as StringEncryptPass;
       expect(stringPass.excludePatterns, hasLength(2));
-      expect(stringPass.excludePatterns[0].hasMatch('https://api.test'), isTrue);
+      expect(
+        stringPass.excludePatterns[0].hasMatch('https://api.test'),
+        isTrue,
+      );
       expect(stringPass.excludePatterns[1].hasMatch('SECRET_KEY'), isTrue);
     });
   });
