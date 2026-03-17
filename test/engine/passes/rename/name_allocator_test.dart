@@ -225,9 +225,9 @@ void main() {
 
       final result = allocator.allocate(scope, names);
 
-      expect(result.symbolMap['foo'], 'a');
-      expect(result.symbolMap['MyClass'], 'B');
-      expect(result.symbolMap['myVar'], 'c');
+      expect(result.symbolMap['a'], 'foo');
+      expect(result.symbolMap['B'], 'MyClass');
+      expect(result.symbolMap['c'], 'myVar');
     });
 
     test('allocates singleton members', () {
@@ -256,7 +256,7 @@ void main() {
       final result = allocator.allocate(scope, names);
 
       expect(result.members[topLevel]!.text, 'q');
-      expect(result.symbolMap['topFn'], 'q');
+      expect(result.symbolMap['q'], 'topFn');
     });
   });
 }

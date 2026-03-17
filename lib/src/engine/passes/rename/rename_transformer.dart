@@ -31,9 +31,23 @@ class RenameTransformer extends PassTransformer {
     };
 
     // Build Name → Name lookup from member declarations (before mutation).
-    _nameMapping = {
-      for (final entry in mapping.members.entries) entry.key.name: entry.value,
-    };
+    // Exclude ambiguous entries where the same original Name maps to
+    // different obfuscated Names (e.g. unrelated classes both define `foo`
+    // but get different obfuscated names).
+    final ambiguous = <Name>{};
+    final candidates = <Name, Name>{};
+    for (final entry in mapping.members.entries) {
+      final original = entry.key.name;
+      final obfuscated = entry.value;
+      final existing = candidates[original];
+      if (existing == null) {
+        candidates[original] = obfuscated;
+      } else if (existing != obfuscated) {
+        ambiguous.add(original);
+      }
+    }
+    ambiguous.forEach(candidates.remove);
+    _nameMapping = candidates;
 
     component.transformChildren(this);
     for (final lib in component.libraries) {

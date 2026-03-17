@@ -195,14 +195,14 @@ void main() {
       },
     );
 
-    test('symbolMap records original to obfuscated mappings', () async {
+    test('symbolMap records obfuscated to original mappings', () async {
       final cls = Class(name: 'Tracker', fileUri: userLib.fileUri);
       userLib.addClass(cls);
 
       final mapping = await runPass();
 
       expect(mapping.symbolMap, isNotEmpty);
-      expect(mapping.symbolMap['Tracker'], equals(cls.name));
+      expect(mapping.symbolMap[cls.name], equals('Tracker'));
     });
 
     test('renames named constructor', () async {

@@ -29,7 +29,7 @@ class NameAllocator {
         members[member] = name;
         final original = memberNameText(member);
         if (original.isNotEmpty) {
-          symbolMap[original] = name.text;
+          symbolMap[name.text] = original;
         }
       }
     }
@@ -44,7 +44,7 @@ class NameAllocator {
       final name = Name(isPrivate ? '_$rawName' : rawName, lib);
       members[member] = name;
       if (originalName.isNotEmpty) {
-        symbolMap[originalName] = name.text;
+        symbolMap[name.text] = originalName;
       }
     }
 
@@ -52,7 +52,7 @@ class NameAllocator {
     final classes = <Class, String>{};
     for (final entry in names.classNames.entries) {
       classes[entry.key] = entry.value;
-      symbolMap[entry.key.name] = entry.value;
+      symbolMap[entry.value] = entry.key.name;
     }
 
     // Variables.
@@ -61,7 +61,7 @@ class NameAllocator {
       variables[entry.key] = entry.value;
       final originalName = entry.key.name;
       if (originalName != null && originalName.isNotEmpty) {
-        symbolMap[originalName] = entry.value;
+        symbolMap[entry.value] = originalName;
       }
     }
 

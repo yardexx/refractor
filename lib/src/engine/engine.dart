@@ -72,8 +72,9 @@ class RefractorEngine {
           final symbolTable = SymbolTable();
           final mapping = value.get<RenameMapping>('rename');
           if (mapping != null) {
+            // symbolMap is keyed obfuscated → original.
             for (final entry in mapping.symbolMap.entries) {
-              symbolTable.record(entry.key, entry.value);
+              symbolTable.record(entry.value, entry.key);
             }
           }
 
