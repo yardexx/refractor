@@ -46,7 +46,7 @@ void main() {
       () {
         final coreUri = Uri.parse('dart:core');
         final pragmaClass = Class(name: 'pragma', fileUri: coreUri);
-        Library(coreUri, fileUri: coreUri).addClass(pragmaClass);
+        final _ = Library(coreUri, fileUri: coreUri)..addClass(pragmaClass);
 
         final annotation = ConstantExpression(
           InstanceConstant(pragmaClass.reference, [], {}),
@@ -66,7 +66,7 @@ void main() {
         fileUri: Uri.parse('dart:core'),
       );
       final coreUri = Uri.parse('dart:core');
-      Library(coreUri, fileUri: coreUri).addClass(otherClass);
+      final _ = Library(coreUri, fileUri: coreUri)..addClass(otherClass);
 
       final annotation = ConstantExpression(
         InstanceConstant(otherClass.reference, [], {}),

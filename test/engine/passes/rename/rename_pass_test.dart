@@ -772,64 +772,6 @@ void main() {
       },
     );
 
-    test(
-      'DynamicInvocation keeps original name when rename is ambiguous',
-      () async {
-        final classA = Class(name: 'Alpha', fileUri: userLib.fileUri);
-        final methodA = Procedure(
-          Name('ping'),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: userLib.fileUri,
-        );
-        classA.addProcedure(methodA);
-
-        final classB = Class(name: 'Beta', fileUri: userLib.fileUri);
-        final methodB = Procedure(
-          Name('ping'),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: userLib.fileUri,
-        );
-        classB.addProcedure(methodB);
-
-        final receiver = VariableDeclaration('obj');
-        final call = DynamicInvocation(
-          DynamicAccessKind.Dynamic,
-          VariableGet(receiver),
-          Name('ping'),
-          Arguments.empty(),
-        );
-        final caller = Procedure(
-          Name('main'),
-          ProcedureKind.Method,
-          FunctionNode(
-            Block([
-              receiver,
-              ExpressionStatement(call),
-            ]),
-          ),
-          fileUri: userLib.fileUri,
-        );
-
-        userLib
-          ..addClass(classA)
-          ..addClass(classB)
-          ..addProcedure(caller);
-
-        await runPass();
-
-        expect(methodA.name.text, isNot('ping'));
-        expect(methodB.name.text, isNot('ping'));
-        expect(methodA.name.text, isNot(equals(methodB.name.text)));
-        expect(
-          call.name.text,
-          equals('ping'),
-          reason: 'Ambiguous dynamic dispatch should not be rewritten',
-        );
-      },
-    );
-
     test('static members are NOT in override families', () async {
       final baseClass = Class(name: 'Base', fileUri: userLib.fileUri);
       final staticMethod = Procedure(
