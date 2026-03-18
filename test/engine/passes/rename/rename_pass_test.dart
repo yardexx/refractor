@@ -772,6 +772,108 @@ void main() {
       },
     );
 
+    test(
+      'DynamicInvocation stays consistent when unrelated members share a name',
+      () async {
+        final firstClass = Class(name: 'First', fileUri: userLib.fileUri);
+        final firstMethod = Procedure(
+          Name('foo'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        firstClass.addProcedure(firstMethod);
+
+        final secondClass = Class(name: 'Second', fileUri: userLib.fileUri);
+        final secondMethod = Procedure(
+          Name('foo'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        secondClass.addProcedure(secondMethod);
+
+        final receiver = VariableDeclaration('value');
+        final call = DynamicInvocation(
+          DynamicAccessKind.Dynamic,
+          VariableGet(receiver),
+          Name('foo'),
+          Arguments.empty(),
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            ExpressionStatement(call),
+            positionalParameters: [receiver],
+            requiredParameterCount: 1,
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib
+          ..addClass(firstClass)
+          ..addClass(secondClass)
+          ..addProcedure(caller);
+
+        await runPass();
+
+        expect(firstMethod.name.text, equals(secondMethod.name.text));
+        expect(call.name.text, equals(firstMethod.name.text));
+        expect(call.name.text, isNot('foo'));
+      },
+    );
+
+    test(
+      'FunctionInvocation through variable tear-off updates named arguments',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final callee = Procedure(
+          Name('configure'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        userLib.addProcedure(callee);
+
+        final tearOff = VariableDeclaration(
+          'callback',
+          initializer: StaticTearOff(callee),
+        );
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          VariableGet(tearOff),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              tearOff,
+              ExpressionStatement(call),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, equals(namedParam.name));
+      },
+    );
+
     test('static members are NOT in override families', () async {
       final baseClass = Class(name: 'Base', fileUri: userLib.fileUri);
       final staticMethod = Procedure(

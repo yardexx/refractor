@@ -48,7 +48,9 @@ class RenamePass extends Pass<RenameMapping> {
       final generator = _generator ?? _defaultGenerator();
       final names = await generator.generateNames(slots);
 
-      final mapping = NameMaterializer().materialize(names);
+      final mapping = _normalizeDynamicDispatchNames(
+        NameMaterializer().materialize(names),
+      );
 
       RenameTransformer(mapping: mapping, target: target).apply(component);
 
@@ -63,5 +65,79 @@ class RenamePass extends Pass<RenameMapping> {
       NamingStrategy.shuffled => ShuffledGenerator(seed: options.seed),
       NamingStrategy.sequential => SequentialGenerator(),
     };
+  }
+
+  RenameMapping _normalizeDynamicDispatchNames(RenameMapping mapping) {
+    final normalizedMembers = Map<Member, Name>.from(mapping.members);
+    final dynamicGroups = <Name, List<Member>>{};
+
+    for (final member in mapping.members.keys) {
+      if (!_isDynamicDispatchMember(member)) continue;
+      (dynamicGroups[member.name] ??= <Member>[]).add(member);
+    }
+
+    for (final group in dynamicGroups.values) {
+      final distinctNames = {
+        for (final member in group) normalizedMembers[member]!,
+      };
+      if (distinctNames.length <= 1) continue;
+
+      group.sort(_compareMembers);
+      final canonicalName = normalizedMembers[group.first]!;
+      for (final member in group.skip(1)) {
+        normalizedMembers[member] = canonicalName;
+      }
+    }
+
+    final symbolMap = <String, String>{};
+    for (final entry in normalizedMembers.entries) {
+      if (entry.key.name.text.isNotEmpty) {
+        symbolMap[entry.value.text] = entry.key.name.text;
+      }
+    }
+    for (final entry in mapping.classes.entries) {
+      if (entry.key.name.isNotEmpty) {
+        symbolMap[entry.value] = entry.key.name;
+      }
+    }
+    for (final entry in mapping.variables.entries) {
+      final originalName = entry.key.name;
+      if (originalName != null && originalName.isNotEmpty) {
+        symbolMap[entry.value] = originalName;
+      }
+    }
+
+    return RenameMapping(
+      members: normalizedMembers,
+      classes: mapping.classes,
+      variables: mapping.variables,
+      symbolMap: symbolMap,
+    );
+  }
+
+  bool _isDynamicDispatchMember(Member member) {
+    return switch (member) {
+      Procedure(isStatic: false) => true,
+      Field(isStatic: false) => true,
+      _ => false,
+    };
+  }
+
+  int _compareMembers(Member a, Member b) {
+    final libraryCompare = a.enclosingLibrary.importUri.toString().compareTo(
+      b.enclosingLibrary.importUri.toString(),
+    );
+    if (libraryCompare != 0) return libraryCompare;
+
+    final classCompare =
+        (a.enclosingClass?.name ?? '').compareTo(b.enclosingClass?.name ?? '');
+    if (classCompare != 0) return classCompare;
+
+    final kindCompare = a.runtimeType.toString().compareTo(
+      b.runtimeType.toString(),
+    );
+    if (kindCompare != 0) return kindCompare;
+
+    return a.name.text.compareTo(b.name.text);
   }
 }
