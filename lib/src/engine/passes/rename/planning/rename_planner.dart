@@ -16,6 +16,11 @@ class RenamePlanner extends RecursiveVisitor {
   final Map<Class, List<Member>> _instanceMembersByClass = {};
 
   RenamePlan plan(Component component) {
+    _classes.clear();
+    _singletonMembers.clear();
+    _variables.clear();
+    _instanceMembersByClass.clear();
+
     component.accept(this);
     final memberFamilies = _buildMemberFamilies();
     return RenamePlan(
@@ -150,6 +155,10 @@ class RenamePlanner extends RecursiveVisitor {
       return false;
     }
 
+    if (_isDynamicDispatchNamedParameter(variable, enclosingMember)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -172,6 +181,21 @@ class RenamePlanner extends RecursiveVisitor {
 
     return function.positionalParameters.contains(variable) ||
         function.namedParameters.contains(variable);
+  }
+
+  bool _isDynamicDispatchNamedParameter(
+    VariableDeclaration variable,
+    Member enclosingMember,
+  ) {
+    // Named arguments on instance members must keep their source labels.
+    // DynamicInvocation carries only the textual member name, so we can
+    // normalize `foo` -> `a` but we cannot soundly retarget `debug:` once the
+    // receiver's runtime type is unknown.
+    return switch (enclosingMember) {
+      Procedure(isStatic: false) =>
+        enclosingMember.function.namedParameters.contains(variable),
+      _ => false,
+    };
   }
 
   List<MemberFamily> _buildMemberFamilies() {

@@ -20,6 +20,7 @@ class RenameTransformer extends PassTransformer {
   /// ([DynamicGet], [DynamicSet], [DynamicInvocation]) can look up
   /// the new name even though they have no `interfaceTarget`.
   late final Map<Name, Name> _nameMapping;
+  late final Map<VariableDeclaration, Expression> _variableInitializers;
 
   /// Applies the mapping to [component]: transforms the AST and
   /// unbinds canonical names for renamed user libraries.
@@ -29,24 +30,19 @@ class RenameTransformer extends PassTransformer {
       for (final entry in mapping.variables.entries)
         entry.key: entry.key.name ?? '',
     };
+    _variableInitializers = {
+      for (final variable in mapping.variables.keys)
+        if (variable.initializer != null) variable: variable.initializer!,
+    };
 
-    // Build Name → Name lookup from member declarations (before mutation).
-    // Exclude ambiguous entries where the same original Name maps to
-    // different obfuscated Names (e.g. unrelated classes both define `foo`
-    // but get different obfuscated names).
-    final ambiguous = <Name>{};
+    // Build Name → Name lookup from instance-member declarations (before
+    // mutation). These names must remain stable for dynamic dispatch.
     final candidates = <Name, Name>{};
     for (final entry in mapping.members.entries) {
+      if (!_isDynamicDispatchMember(entry.key)) continue;
       final original = entry.key.name;
-      final obfuscated = entry.value;
-      final existing = candidates[original];
-      if (existing == null) {
-        candidates[original] = obfuscated;
-      } else if (existing != obfuscated) {
-        ambiguous.add(original);
-      }
+      candidates[original] = entry.value;
     }
-    ambiguous.forEach(candidates.remove);
     _nameMapping = candidates;
 
     component.transformChildren(this);
@@ -246,9 +242,93 @@ class RenameTransformer extends PassTransformer {
     return switch (receiver) {
       StaticTearOff() => receiver.target.function,
       InstanceTearOff() => receiver.interfaceTarget.function,
+      ConstructorTearOff() => receiver.function,
+      RedirectingFactoryTearOff() => receiver.target.function,
       FunctionExpression() => receiver.function,
       FunctionTearOff() => _functionTargetFromReceiver(receiver.receiver),
+      Instantiation() => _functionTargetFromReceiver(receiver.expression),
+      VariableGet() => _functionTargetFromVariable(
+        receiver.variable,
+        <VariableDeclaration>{},
+        <Field>{},
+      ),
+      StaticGet() => _functionTargetFromField(
+        receiver.target,
+        <VariableDeclaration>{},
+        <Field>{},
+      ),
       _ => null,
+    };
+  }
+
+  FunctionNode? _functionTargetFromVariable(
+    VariableDeclaration variable,
+    Set<VariableDeclaration> seenVariables,
+    Set<Field> seenFields,
+  ) {
+    if (!variable.isFinal && !variable.isConst) return null;
+    if (!seenVariables.add(variable)) return null;
+    final initializer = _variableInitializers[variable] ?? variable.initializer;
+    if (initializer == null) return null;
+    return _functionTargetFromAliasedReceiver(
+      initializer,
+      seenVariables,
+      seenFields,
+    );
+  }
+
+  FunctionNode? _functionTargetFromField(
+    Member member,
+    Set<VariableDeclaration> seenVariables,
+    Set<Field> seenFields,
+  ) {
+    if (member is! Field) return null;
+    if (!member.isFinal && !member.isConst) return null;
+    if (!seenFields.add(member)) return null;
+    final initializer = member.initializer;
+    if (initializer == null) return null;
+    return _functionTargetFromAliasedReceiver(
+      initializer,
+      seenVariables,
+      seenFields,
+    );
+  }
+
+  FunctionNode? _functionTargetFromAliasedReceiver(
+    Expression receiver,
+    Set<VariableDeclaration> seenVariables,
+    Set<Field> seenFields,
+  ) {
+    return switch (receiver) {
+      VariableGet() => _functionTargetFromVariable(
+        receiver.variable,
+        seenVariables,
+        seenFields,
+      ),
+      StaticGet() => _functionTargetFromField(
+        receiver.target,
+        seenVariables,
+        seenFields,
+      ),
+      FunctionTearOff() => _functionTargetFromAliasedReceiver(
+        receiver.receiver,
+        seenVariables,
+        seenFields,
+      ),
+      Instantiation() => _functionTargetFromAliasedReceiver(
+        receiver.expression,
+        seenVariables,
+        seenFields,
+      ),
+      _ => _functionTargetFromReceiver(receiver),
+    };
+  }
+
+  bool _isDynamicDispatchMember(Member member) {
+    return switch (member) {
+      Procedure(isStatic: false) => true,
+      Field(isStatic: false) => true,
+      _ => false,
     };
   }
 }

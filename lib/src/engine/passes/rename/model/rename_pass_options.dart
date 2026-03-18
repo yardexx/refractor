@@ -4,6 +4,11 @@ import 'package:refractor/src/engine/passes/rename/rename_pass.dart'
 /// Per-pass options for [RenamePass].
 ///
 /// No shared bag — the pass owns its options via constructor injection.
+///
+/// Current limitation: named parameters on non-static instance methods are
+/// intentionally left unobfuscated. Dynamic call sites do not carry an
+/// `interfaceTarget`, so the rename pass cannot soundly rewrite their
+/// argument labels.
 class RenamePassOptions {
   const RenamePassOptions({
     this.preserveMain = true,

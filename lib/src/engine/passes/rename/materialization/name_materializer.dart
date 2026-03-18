@@ -2,6 +2,7 @@ import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
 import 'package:refractor/src/engine/passes/rename/model/rename_plan.dart';
 import 'package:refractor/src/engine/passes/rename/model/rename_slot.dart';
+import 'package:refractor/src/utils/rename_helpers.dart';
 
 class NameMaterializer {
   RenameMapping materialize(Map<RenameSlot, String> assignedNames) {
@@ -9,6 +10,7 @@ class NameMaterializer {
     final classes = <Class, String>{};
     final variables = <VariableDeclaration, String>{};
     final symbolMap = <String, String>{};
+    final privateLegacyKeys = <String, Set<String>>{};
 
     for (final entry in assignedNames.entries) {
       final slot = entry.key;
@@ -24,7 +26,12 @@ class NameMaterializer {
             members[member] = name;
           }
           if (slot.originalName.isNotEmpty) {
-            symbolMap[name.text] = slot.originalName;
+            symbolMap[symbolKeyForName(name)] = slot.originalName;
+            if (name.library != null) {
+              (privateLegacyKeys[name.text] ??= <String>{}).add(
+                slot.originalName,
+              );
+            }
           }
         case RenameSlotKind.singletonMember:
           final member = slot.target as Member;
@@ -33,7 +40,12 @@ class NameMaterializer {
               : Name('_$rawName', slot.privacyScope);
           members[member] = name;
           if (slot.originalName.isNotEmpty) {
-            symbolMap[name.text] = slot.originalName;
+            symbolMap[symbolKeyForName(name)] = slot.originalName;
+            if (name.library != null) {
+              (privateLegacyKeys[name.text] ??= <String>{}).add(
+                slot.originalName,
+              );
+            }
           }
         case RenameSlotKind.classType:
           final cls = slot.target as Class;
@@ -47,6 +59,12 @@ class NameMaterializer {
           if (slot.originalName.isNotEmpty) {
             symbolMap[rawName] = slot.originalName;
           }
+      }
+    }
+
+    for (final entry in privateLegacyKeys.entries) {
+      if (entry.value.length == 1) {
+        symbolMap[entry.key] = entry.value.single;
       }
     }
 

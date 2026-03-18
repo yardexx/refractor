@@ -15,3 +15,9 @@ bool hasEntryPointPragma(List<Expression> annotations) {
   }
   return false;
 }
+
+String symbolKeyForName(Name name) {
+  final library = name.library;
+  if (library == null) return name.text;
+  return '${library.importUri}::${name.text}';
+}

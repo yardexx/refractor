@@ -106,6 +106,61 @@ void main() {
       expect((annotation.constant as StringConstant).value, equals('keep_me'));
     });
 
+    test(
+      'non-const expression in class annotation is NOT replaced',
+      () async {
+        final cls = Class(name: 'Annotated', fileUri: userLib.fileUri)
+          ..addAnnotation(StringLiteral('keep_expr'));
+        userLib.addClass(cls);
+
+        component = makeComponent(coreLib: coreLib, userLib: userLib);
+        await StringEncryptPass().run(component, target);
+
+        final annotation = cls.annotations.first;
+        expect(annotation, isA<StringLiteral>());
+        expect((annotation as StringLiteral).value, equals('keep_expr'));
+      },
+    );
+
+    test('string literal in field annotation is NOT replaced', () async {
+      final field = Field.mutable(
+        Name('flag'),
+        fileUri: userLib.fileUri,
+      )..addAnnotation(ConstantExpression(StringConstant('keep_field')));
+      userLib.addField(field);
+
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      await StringEncryptPass().run(component, target);
+
+      final annotation = field.annotations.first as ConstantExpression;
+      expect(annotation.constant, isA<StringConstant>());
+      expect(
+        (annotation.constant as StringConstant).value,
+        equals('keep_field'),
+      );
+    });
+
+    test('string literal in constructor annotation is NOT replaced', () async {
+      final cls = Class(name: 'Factory', fileUri: userLib.fileUri);
+      final constructor = Constructor(
+        FunctionNode(EmptyStatement()),
+        name: Name(''),
+        fileUri: userLib.fileUri,
+      )..addAnnotation(ConstantExpression(StringConstant('keep_ctor')));
+      cls.addConstructor(constructor);
+      userLib.addClass(cls);
+
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      await StringEncryptPass().run(component, target);
+
+      final annotation = constructor.annotations.first as ConstantExpression;
+      expect(annotation.constant, isA<StringConstant>());
+      expect(
+        (annotation.constant as StringConstant).value,
+        equals('keep_ctor'),
+      );
+    });
+
     test('stringExcludePatterns exempts matching strings', () async {
       final proc = Procedure(
         Name('exempt'),
@@ -156,6 +211,37 @@ void main() {
       final helperNames = userLib.procedures.map((p) => p.name.text).toList();
       expect(helperNames, contains(r'_obfDecode$'));
     });
+
+    test(
+      r'helper injection avoids collisions with existing _obfDecode$',
+      () async {
+        userLib.addProcedure(
+          Procedure(
+            Name(r'_obfDecode$', userLib),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+            isStatic: true,
+          ),
+        );
+        final proc = Procedure(
+          Name('fn'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([ReturnStatement(StringLiteral('test'))]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(proc);
+
+        component = makeComponent(coreLib: coreLib, userLib: userLib);
+        await StringEncryptPass().run(component, target);
+
+        final helperNames = userLib.procedures.map((p) => p.name.text).toList();
+        expect(helperNames, contains(r'_obfDecode$'));
+        expect(helperNames, contains(r'_obfDecode$1'));
+      },
+    );
 
     test('dart: library strings are not encrypted', () async {
       final coreProc = Procedure(
