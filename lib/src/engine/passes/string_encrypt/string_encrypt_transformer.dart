@@ -26,9 +26,7 @@ class StringEncryptTransformer extends PassTransformer {
   void _transformAnnotations(List<Expression> annotations) {
     _annotationDepth++;
     try {
-      for (var i = 0; i < annotations.length; i++) {
-        annotations[i] = annotations[i].accept(this) as Expression;
-      }
+      transformAnnotationList(annotations);
     } finally {
       _annotationDepth--;
     }
@@ -37,9 +35,7 @@ class StringEncryptTransformer extends PassTransformer {
   @override
   TreeNode visitClass(Class node) {
     _transformAnnotations(node.annotations);
-    // Transform the rest of the class normally.
-    node.transformChildren(this);
-    return node;
+    return transformClassWithoutAnnotations(node);
   }
 
   @override
@@ -49,29 +45,19 @@ class StringEncryptTransformer extends PassTransformer {
 
     _transformAnnotations(node.annotations);
 
-    // Transform function body normally.
-    node.function = node.function.accept(this) as FunctionNode;
-    return node;
+    return transformProcedureWithoutAnnotations(node);
   }
 
   @override
   TreeNode visitField(Field node) {
     _transformAnnotations(node.annotations);
-    node.type = visitDartType(node.type);
-    if (node.initializer != null) {
-      node.initializer = node.initializer!.accept(this) as Expression;
-      node.initializer!.parent = node;
-    }
-    return node;
+    return transformFieldWithoutAnnotations(node);
   }
 
   @override
   TreeNode visitConstructor(Constructor node) {
     _transformAnnotations(node.annotations);
-    transformList(node.initializers, node);
-    node.function = node.function.accept(this) as FunctionNode;
-    node.function.parent = node;
-    return node;
+    return transformConstructorWithoutAnnotations(node);
   }
 
   @override

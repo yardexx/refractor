@@ -90,6 +90,25 @@ lazy: 42
 caught: Invalid argument (value): Must be >= 0: -1
 ''';
 
+const _exampleExpectedLines = <String>[
+  'app=KernelEdgeCases@0.1.0',
+  'mode=active',
+  'override=Hello World!',
+  'sdkOverride=FancyRenderer(prefix: Hello)',
+  'dynamic=Hello dynamic!',
+  'dynamicField=dynamic-message',
+  'construction=Payload(ctor) | Redirect(factory) | Redirect(9)',
+  'locals=LOCAL',
+  'excluded=entry:entry! | EntryPointPayload(payload) | EntryPointPayload(constructor)',
+  'sourceOnly=top-level-function-alias,generic-top-level-alias,constructor-tear-off-alias,redirecting-factory-tear-off-alias,instantiated-factory-tear-off-alias,instance-method-tear-off-alias,final-static-field-alias,final-static-factory-alias,final-static-instantiated-factory-alias,mutable-function-alias',
+  'secret=renderer-secret|vault-token|[audit] Hello mix!',
+  'enum=idle,active,done',
+  'interpolation=interpolated:Hello done!',
+  'unusedCase=unused:shadow',
+  'unused=15',
+  '[VERBOSE] All arguments: --verbose',
+];
+
 void main() {
   late Directory tempDir;
 
@@ -132,6 +151,17 @@ passes:
         expect(output, equals(_expectedOutput.trim()));
       },
     );
+
+    test('example app: obfuscated binary builds and runs', () async {
+      final output = await _buildAndRunExampleApp(
+        tempDir: tempDir,
+        arguments: const ['--verbose'],
+      );
+
+      for (final line in _exampleExpectedLines) {
+        expect(output, contains(line));
+      }
+    });
   });
 }
 
@@ -179,6 +209,53 @@ Future<String> _compileObfuscateRun({
   if (processResult.exitCode != 0) {
     fail(
       'Binary exited with ${processResult.exitCode}:\n'
+      'stdout: ${processResult.stdout}\n'
+      'stderr: ${processResult.stderr}',
+    );
+  }
+
+  return (processResult.stdout as String).trim();
+}
+
+Future<String> _buildAndRunExampleApp({
+  required Directory tempDir,
+  required List<String> arguments,
+}) async {
+  final repoRoot = Directory.current.path;
+  final exampleRoot = '$repoRoot/example';
+  final configYaml = File('$exampleRoot/refractor.yaml').readAsStringSync();
+  final config = RefractorConfig.fromYaml(configYaml);
+
+  final outputPath = '${tempDir.path}/example.exe';
+
+  final engine = RefractorEngine(
+    compiler: DartCompiler(),
+    kernelIO: FileKernelIO(),
+  );
+
+  final result = await engine.run(
+    config: config,
+    request: BuildRequest(
+      input: '$exampleRoot/bin/app.dart',
+      output: outputPath,
+      target: Target.exe,
+      workDirectory: tempDir.path,
+      projectRootUri: Uri.directory('$exampleRoot/'),
+      projectPackageName: 'app',
+    ),
+  );
+
+  switch (result) {
+    case Ok():
+      break;
+    case Error(:final error):
+      fail('Example engine build failed: $error');
+  }
+
+  final processResult = Process.runSync(outputPath, arguments);
+  if (processResult.exitCode != 0) {
+    fail(
+      'Example binary exited with ${processResult.exitCode}:\n'
       'stdout: ${processResult.stdout}\n'
       'stderr: ${processResult.stderr}',
     );

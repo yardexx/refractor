@@ -989,6 +989,41 @@ void main() {
     );
 
     test(
+      'selector shared with excluded library still renames when no dynamic use',
+      () async {
+        final otherUri = Uri.parse('package:other_pkg/other.dart');
+        final otherLib = Library(otherUri, fileUri: otherUri);
+        final externalClass = Class(name: 'External', fileUri: otherUri)
+          ..addProcedure(
+            Procedure(
+              Name('map'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: otherUri,
+            ),
+          );
+        otherLib.addClass(externalClass);
+
+        final localClass = Class(name: 'Local', fileUri: userLib.fileUri);
+        final localMethod = Procedure(
+          Name('map'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        localClass.addProcedure(localMethod);
+        userLib.addClass(localClass);
+
+        component = Component(libraries: [coreLib, userLib, otherLib])
+          ..setMainMethodAndMode(null, true);
+        final result = await RenamePass().run(component, target);
+
+        expect(result, isA<Ok<RenameMapping>>());
+        expect(localMethod.name.text, isNot('map'));
+      },
+    );
+
+    test(
       'FunctionInvocation through variable tear-off updates named arguments',
       () async {
         final namedParam = VariableDeclaration('debug');
@@ -1286,6 +1321,140 @@ void main() {
           'callback',
           initializer: Instantiation(
             StaticTearOff(genericHelper),
+            [
+              InterfaceType(intClass, Nullability.nonNullable),
+            ],
+          ),
+          isFinal: true,
+        );
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          VariableGet(tearOff),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              tearOff,
+              ExpressionStatement(call),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, equals(namedParam.name));
+      },
+    );
+
+    test(
+      'FunctionInvocation through cyclic final static aliases keeps '
+      'original named argument',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final callee = Procedure(
+          Name('configure'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        userLib.addProcedure(callee);
+
+        final firstAlias = Field.mutable(
+          Name('first'),
+          initializer: NullLiteral(),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        )..isFinal = true;
+        final secondAlias = Field.mutable(
+          Name('second'),
+          initializer: StaticGet(firstAlias),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        )..isFinal = true;
+        firstAlias.initializer = StaticGet(secondAlias);
+        userLib
+          ..addField(firstAlias)
+          ..addField(secondAlias);
+
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          StaticGet(firstAlias),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(ExpressionStatement(call)),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, 'debug');
+      },
+    );
+
+    test(
+      'FunctionInvocation through instantiated redirecting factory tear-off '
+      'updates named arguments',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final typeParameter = TypeParameter('T');
+        final intClass = coreLib.classes.firstWhere((c) => c.name == 'int');
+        final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
+        final targetConstructor = Constructor(
+          FunctionNode(EmptyStatement()),
+          name: Name('create'),
+          fileUri: userLib.fileUri,
+        );
+        final redirectingFactory = Procedure(
+          Name('factory'),
+          ProcedureKind.Factory,
+          FunctionNode(
+              EmptyStatement(),
+              typeParameters: [typeParameter],
+              namedParameters: [namedParam],
+            )
+            ..redirectingFactoryTarget = RedirectingFactoryTarget(
+              targetConstructor,
+              const <DartType>[],
+            ),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        cls
+          ..addConstructor(targetConstructor)
+          ..addProcedure(redirectingFactory);
+        userLib.addClass(cls);
+
+        final tearOff = VariableDeclaration(
+          'factory',
+          initializer: Instantiation(
+            RedirectingFactoryTearOff(redirectingFactory),
             [
               InterfaceType(intClass, Nullability.nonNullable),
             ],

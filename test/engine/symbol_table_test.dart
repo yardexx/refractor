@@ -32,6 +32,16 @@ void main() {
       expect(table.obfuscated('_secret'), '_a');
     });
 
+    test('falls back to scoped private key when no bare key exists', () {
+      final table = SymbolTable()
+        ..record('_secret', 'package:refractor/src/app.dart::_a');
+
+      expect(
+        table.obfuscated('_secret'),
+        'package:refractor/src/app.dart::_a',
+      );
+    });
+
     test('exports pretty-printed JSON', () {
       final table = SymbolTable()..record('MyClass', r'_$0');
 

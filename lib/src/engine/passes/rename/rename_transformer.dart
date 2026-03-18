@@ -247,25 +247,81 @@ class RenameTransformer extends PassTransformer {
       FunctionExpression() => receiver.function,
       FunctionTearOff() => _functionTargetFromReceiver(receiver.receiver),
       Instantiation() => _functionTargetFromReceiver(receiver.expression),
-      VariableGet() => _functionTargetFromVariable(receiver.variable),
-      StaticGet() => _functionTargetFromField(receiver.target),
+      VariableGet() => _functionTargetFromVariable(
+        receiver.variable,
+        <VariableDeclaration>{},
+        <Field>{},
+      ),
+      StaticGet() => _functionTargetFromField(
+        receiver.target,
+        <VariableDeclaration>{},
+        <Field>{},
+      ),
       _ => null,
     };
   }
 
-  FunctionNode? _functionTargetFromVariable(VariableDeclaration variable) {
+  FunctionNode? _functionTargetFromVariable(
+    VariableDeclaration variable,
+    Set<VariableDeclaration> seenVariables,
+    Set<Field> seenFields,
+  ) {
     if (!variable.isFinal && !variable.isConst) return null;
+    if (!seenVariables.add(variable)) return null;
     final initializer = _variableInitializers[variable] ?? variable.initializer;
     if (initializer == null) return null;
-    return _functionTargetFromReceiver(initializer);
+    return _functionTargetFromAliasedReceiver(
+      initializer,
+      seenVariables,
+      seenFields,
+    );
   }
 
-  FunctionNode? _functionTargetFromField(Member member) {
+  FunctionNode? _functionTargetFromField(
+    Member member,
+    Set<VariableDeclaration> seenVariables,
+    Set<Field> seenFields,
+  ) {
     if (member is! Field) return null;
     if (!member.isFinal && !member.isConst) return null;
+    if (!seenFields.add(member)) return null;
     final initializer = member.initializer;
     if (initializer == null) return null;
-    return _functionTargetFromReceiver(initializer);
+    return _functionTargetFromAliasedReceiver(
+      initializer,
+      seenVariables,
+      seenFields,
+    );
+  }
+
+  FunctionNode? _functionTargetFromAliasedReceiver(
+    Expression receiver,
+    Set<VariableDeclaration> seenVariables,
+    Set<Field> seenFields,
+  ) {
+    return switch (receiver) {
+      VariableGet() => _functionTargetFromVariable(
+        receiver.variable,
+        seenVariables,
+        seenFields,
+      ),
+      StaticGet() => _functionTargetFromField(
+        receiver.target,
+        seenVariables,
+        seenFields,
+      ),
+      FunctionTearOff() => _functionTargetFromAliasedReceiver(
+        receiver.receiver,
+        seenVariables,
+        seenFields,
+      ),
+      Instantiation() => _functionTargetFromAliasedReceiver(
+        receiver.expression,
+        seenVariables,
+        seenFields,
+      ),
+      _ => _functionTargetFromReceiver(receiver),
+    };
   }
 
   bool _isDynamicDispatchMember(Member member) {

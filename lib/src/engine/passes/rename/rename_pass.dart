@@ -79,6 +79,7 @@ class RenamePass extends Pass<RenameMapping> {
   ) {
     final normalizedMembers = Map<Member, Name>.from(mapping.members);
     final dynamicGroups = <Name, List<Member>>{};
+    final usedDynamicSelectors = _collectUsedDynamicSelectors(component);
 
     for (final library in component.libraries) {
       for (final cls in library.classes) {
@@ -91,7 +92,9 @@ class RenamePass extends Pass<RenameMapping> {
 
     final privateLegacyKeys = <String, Set<String>>{};
 
-    for (final group in dynamicGroups.values) {
+    for (final entry in dynamicGroups.entries) {
+      if (!usedDynamicSelectors.contains(entry.key)) continue;
+      final group = entry.value;
       final renamed = [
         for (final member in group)
           if (normalizedMembers.containsKey(member)) member,
@@ -154,6 +157,12 @@ class RenamePass extends Pass<RenameMapping> {
     );
   }
 
+  Set<Name> _collectUsedDynamicSelectors(Component component) {
+    final collector = _DynamicSelectorCollector();
+    component.accept(collector);
+    return collector.names;
+  }
+
   bool _isDynamicDispatchMember(Member member) {
     return switch (member) {
       Procedure(isStatic: false) => true,
@@ -183,5 +192,27 @@ class RenamePass extends Pass<RenameMapping> {
     if (kindCompare != 0) return kindCompare;
 
     return a.name.text.compareTo(b.name.text);
+  }
+}
+
+class _DynamicSelectorCollector extends RecursiveVisitor {
+  final Set<Name> names = <Name>{};
+
+  @override
+  void visitDynamicGet(DynamicGet node) {
+    names.add(node.name);
+    super.visitDynamicGet(node);
+  }
+
+  @override
+  void visitDynamicSet(DynamicSet node) {
+    names.add(node.name);
+    super.visitDynamicSet(node);
+  }
+
+  @override
+  void visitDynamicInvocation(DynamicInvocation node) {
+    names.add(node.name);
+    super.visitDynamicInvocation(node);
   }
 }

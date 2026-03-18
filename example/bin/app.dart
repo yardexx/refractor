@@ -1,4 +1,5 @@
 import 'package:args/args.dart';
+import 'package:app/main.dart';
 
 const String version = '0.0.1';
 
@@ -24,7 +25,7 @@ void printUsage(ArgParser argParser) {
   print(argParser.usage);
 }
 
-void main(List<String> arguments) {
+Future<void> main(List<String> arguments) async {
   final ArgParser argParser = buildParser();
   try {
     final ArgResults results = argParser.parse(arguments);
@@ -43,10 +44,16 @@ void main(List<String> arguments) {
       verbose = true;
     }
 
-    // Act on the arguments provided.
-    print('Positional arguments: ${results.rest}');
+    final lines = await runExampleApp(verbose: verbose);
+    for (final line in lines) {
+      print(line);
+    }
+
+    if (results.rest.isNotEmpty) {
+      print('Positional arguments: ${results.rest.join(', ')}');
+    }
     if (verbose) {
-      print('[VERBOSE] All arguments: ${results.arguments}');
+      print('[VERBOSE] All arguments: ${results.arguments.join(' ')}');
     }
   } on FormatException catch (e) {
     // Print usage information if an invalid argument was provided.
