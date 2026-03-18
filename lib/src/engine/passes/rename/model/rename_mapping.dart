@@ -23,7 +23,9 @@ class RenameMapping {
   /// Variable → obfuscated name string.
   final Map<VariableDeclaration, String> variables;
 
-  /// Serializable form: original name → obfuscated name.
+  /// Serializable form: obfuscated name → original name.
+  /// Keyed by obfuscated name (unique) to avoid silent overwrites when
+  /// multiple original names share the same text in different scopes.
   /// Built during allocation so it's available even after the
   /// component is discarded.
   final Map<String, String> symbolMap;
