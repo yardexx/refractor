@@ -32,9 +32,12 @@ Future<List<String>> runExampleApp({bool verbose = false}) async {
     'dynamic=${callRenderDynamically(renderer)}',
     'dynamicField=${mutateMessageDynamically(holder)}',
     'construction=${exerciseDirectConstruction()}',
+    'tearOffs=${exerciseTearOffs()}',
+    'instanceTearOff=${exerciseInstanceTearOff(renderer)}',
+    'fieldAliases=${exerciseFieldBackedAliases()}',
+    'mutableAlias=${exerciseMutableAlias()}',
     'locals=${exerciseLocalInvocation()}',
     'excluded=${exerciseExcludedMembers()}',
-    'sourceOnly=${describeSourceOnlyCases()}',
     'secret=${app.secretSummary(renderer)}',
     'enum=${summarizeEnumValues()}',
   ];
@@ -107,20 +110,50 @@ String exerciseDirectConstruction() {
   ].join(' | ');
 }
 
-String describeSourceOnlyCases() {
-  buildSourceOnlyCases();
-  return const [
-    'top-level-function-alias',
-    'generic-top-level-alias',
-    'constructor-tear-off-alias',
-    'redirecting-factory-tear-off-alias',
-    'instantiated-factory-tear-off-alias',
-    'instance-method-tear-off-alias',
-    'final-static-field-alias',
-    'final-static-factory-alias',
-    'final-static-instantiated-factory-alias',
-    'mutable-function-alias',
-  ].join(',');
+String exerciseTearOffs() {
+  final topAlias = topLevelNamed;
+  final genericAlias = genericEcho<int>;
+  final ctorAlias = Payload.named;
+  final factoryAlias = RedirectPayload<String>.redirect;
+  final instantiatedFactoryAlias = RedirectPayload<int>.redirect;
+
+  final top = topAlias(value: 'alias', debug: true);
+  final genericValue = genericAlias(value: 7, debug: true);
+  final payload = ctorAlias(value: 'ctor', debug: true);
+  final redirected = factoryAlias(value: 'factory', debug: true);
+  final redirectedInt = instantiatedFactoryAlias(value: 9, debug: true);
+
+  return [
+    top,
+    '$genericValue',
+    payload.describe(),
+    redirected.describe(),
+    redirectedInt.describe(),
+  ].join(' | ');
+}
+
+String exerciseInstanceTearOff(FancyRenderer renderer) {
+  final instanceAlias = renderer.render;
+  return instanceAlias(label: 'instance', excited: true);
+}
+
+String exerciseFieldBackedAliases() {
+  final top = AliasHub.finalTopLevelAlias(value: 'field-alias', debug: true);
+  final redirected = AliasHub.finalFactoryAlias(
+    value: 'field-factory',
+    debug: true,
+  );
+  final instantiated = AliasHub.finalInstantiatedFactoryAlias(
+    value: 12,
+    debug: true,
+  );
+  return '$top | ${redirected.describe()} | ${instantiated.describe()}';
+}
+
+String exerciseMutableAlias() {
+  String Function({required String value, bool debug}) callback = topLevelNamed;
+  callback = alternateTopLevelNamed;
+  return callback(value: 'mutable', debug: true);
 }
 
 String exerciseExcludedMembers() {
@@ -255,38 +288,6 @@ class AliasHub {
 
   static final RedirectPayload<int> Function({required int value, bool debug})
   finalInstantiatedFactoryAlias = RedirectPayload<int>.redirect;
-}
-
-void buildSourceOnlyCases() {
-  final renderer = FancyRenderer(prefix: 'SourceOnly');
-  final topAlias = topLevelNamed;
-  final genericAlias = genericEcho<int>;
-  final ctorAlias = Payload.named;
-  final factoryAlias = RedirectPayload<String>.redirect;
-  final instantiatedFactoryAlias = RedirectPayload<int>.redirect;
-  final instanceAlias = renderer.render;
-  final staticAlias = AliasHub.finalTopLevelAlias;
-  final genericFieldAlias = AliasHub.finalGenericAlias;
-  final staticFactoryAlias = AliasHub.finalFactoryAlias;
-  final staticInstantiatedFactoryAlias = AliasHub.finalInstantiatedFactoryAlias;
-
-  String Function({required String value, bool debug}) mutableAlias =
-      topLevelNamed;
-  mutableAlias = alternateTopLevelNamed;
-
-  if (DateTime.now().microsecondsSinceEpoch == 0) {
-    topAlias(value: 'alias', debug: true);
-    genericAlias(value: 7, debug: true);
-    ctorAlias(value: 'ctor', debug: true);
-    factoryAlias(value: 'factory', debug: true);
-    instantiatedFactoryAlias(value: 9, debug: true);
-    instanceAlias(label: 'instance', excited: true);
-    staticAlias(value: 'field', debug: true);
-    genericFieldAlias(value: 8, debug: true);
-    staticFactoryAlias(value: 'field-factory', debug: true);
-    staticInstantiatedFactoryAlias(value: 12, debug: true);
-    mutableAlias(value: 'mutable', debug: true);
-  }
 }
 
 class Payload {

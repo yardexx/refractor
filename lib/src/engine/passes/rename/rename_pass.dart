@@ -53,7 +53,7 @@ class RenamePass extends Pass<RenameMapping> {
       final generator = _generator ?? _defaultGenerator();
       final names = await generator.generateNames(slots);
 
-      final mapping = _normalizeDynamicDispatchNames(
+      final mapping = _normalizeRenameSafety(
         component,
         NameMaterializer().materialize(names),
       );
@@ -73,11 +73,19 @@ class RenamePass extends Pass<RenameMapping> {
     };
   }
 
-  RenameMapping _normalizeDynamicDispatchNames(
+  RenameMapping _normalizeRenameSafety(
     Component component,
     RenameMapping mapping,
   ) {
     final normalizedMembers = Map<Member, Name>.from(mapping.members);
+    final normalizedVariables = Map<VariableDeclaration, String>.from(
+      mapping.variables,
+    );
+    _preserveFirstClassCallableSurfaces(
+      component,
+      normalizedMembers,
+      normalizedVariables,
+    );
     final dynamicGroups = <Name, List<Member>>{};
     final usedDynamicSelectors = _collectUsedDynamicSelectors(component);
 
@@ -138,9 +146,11 @@ class RenamePass extends Pass<RenameMapping> {
       }
     }
     for (final entry in mapping.variables.entries) {
+      final obfuscatedName = normalizedVariables[entry.key];
+      if (obfuscatedName == null) continue;
       final originalName = entry.key.name;
       if (originalName != null && originalName.isNotEmpty) {
-        symbolMap[entry.value] = originalName;
+        symbolMap[obfuscatedName] = originalName;
       }
     }
     for (final entry in privateLegacyKeys.entries) {
@@ -152,9 +162,48 @@ class RenamePass extends Pass<RenameMapping> {
     return RenameMapping(
       members: normalizedMembers,
       classes: mapping.classes,
-      variables: mapping.variables,
+      variables: normalizedVariables,
       symbolMap: symbolMap,
     );
+  }
+
+  void _preserveFirstClassCallableSurfaces(
+    Component component,
+    Map<Member, Name> normalizedMembers,
+    Map<VariableDeclaration, String> normalizedVariables,
+  ) {
+    final collector = _CallableSurfaceCollector();
+    component.accept(collector);
+
+    for (final member in collector.members) {
+      final originalName = member.name;
+      final renamedName = normalizedMembers[member];
+      if (renamedName == null || _sameName(originalName, renamedName)) {
+        continue;
+      }
+
+      normalizedMembers[member] = originalName;
+
+      final function = switch (member) {
+        Procedure() => member.function,
+        Constructor() => member.function,
+        _ => null,
+      };
+      if (function == null) continue;
+
+      for (final parameter in [
+        ...function.positionalParameters,
+        ...function.namedParameters,
+      ]) {
+        final originalParameterName = parameter.name;
+        if (originalParameterName == null || originalParameterName.isEmpty) {
+          continue;
+        }
+        if (normalizedVariables.containsKey(parameter)) {
+          normalizedVariables[parameter] = originalParameterName;
+        }
+      }
+    }
   }
 
   Set<Name> _collectUsedDynamicSelectors(Component component) {
@@ -214,5 +263,54 @@ class _DynamicSelectorCollector extends RecursiveVisitor {
   void visitDynamicInvocation(DynamicInvocation node) {
     names.add(node.name);
     super.visitDynamicInvocation(node);
+  }
+}
+
+class _CallableSurfaceCollector extends RecursiveVisitor {
+  final Set<Member> members = <Member>{};
+
+  @override
+  void visitStaticTearOff(StaticTearOff node) {
+    members.add(node.target);
+    super.visitStaticTearOff(node);
+  }
+
+  @override
+  void visitConstructorTearOff(ConstructorTearOff node) {
+    members.add(node.target);
+    super.visitConstructorTearOff(node);
+  }
+
+  @override
+  void visitRedirectingFactoryTearOff(RedirectingFactoryTearOff node) {
+    members.add(node.target);
+    super.visitRedirectingFactoryTearOff(node);
+  }
+
+  @override
+  void visitInstanceTearOff(InstanceTearOff node) {
+    members.add(node.interfaceTarget);
+    super.visitInstanceTearOff(node);
+  }
+
+  @override
+  void visitConstantExpression(ConstantExpression node) {
+    _visitConstant(node.constant);
+    super.visitConstantExpression(node);
+  }
+
+  void _visitConstant(Constant constant) {
+    switch (constant) {
+      case StaticTearOffConstant():
+        members.add(constant.target);
+      case ConstructorTearOffConstant():
+        members.add(constant.target);
+      case RedirectingFactoryTearOffConstant():
+        members.add(constant.target);
+      case InstantiationConstant():
+        _visitConstant(constant.tearOffConstant);
+      default:
+        break;
+    }
   }
 }

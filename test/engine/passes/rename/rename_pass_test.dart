@@ -1024,7 +1024,8 @@ void main() {
     );
 
     test(
-      'FunctionInvocation through variable tear-off updates named arguments',
+      'FunctionInvocation through variable tear-off preserves callable '
+      'surface',
       () async {
         final namedParam = VariableDeclaration('debug');
         final callee = Procedure(
@@ -1070,8 +1071,9 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
-        expect(namedParam.name, isNot('debug'));
-        expect(call.arguments.named.single.name, equals(namedParam.name));
+        expect(callee.name.text, equals('configure'));
+        expect(namedParam.name, equals('debug'));
+        expect(call.arguments.named.single.name, equals('debug'));
       },
     );
 
@@ -1122,7 +1124,8 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
-        expect(namedParam.name, isNot('debug'));
+        expect(callee.name.text, equals('configure'));
+        expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, 'debug');
       },
     );
@@ -1173,14 +1176,15 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
-        expect(namedParam.name, isNot('debug'));
+        expect(callee.name.text, equals('configure'));
+        expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, 'debug');
       },
     );
 
     test(
-      'FunctionInvocation through final constructor tear-off updates '
-      'named arguments',
+      'FunctionInvocation through final constructor tear-off preserves '
+      'callable surface',
       () async {
         final namedParam = VariableDeclaration('debug');
         final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
@@ -1226,14 +1230,15 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
-        expect(namedParam.name, isNot('debug'));
-        expect(call.arguments.named.single.name, equals(namedParam.name));
+        expect(constructor.name.text, equals('create'));
+        expect(namedParam.name, equals('debug'));
+        expect(call.arguments.named.single.name, equals('debug'));
       },
     );
 
     test(
-      'FunctionInvocation through final redirecting factory tear-off updates '
-      'named arguments',
+      'FunctionInvocation through final redirecting factory tear-off preserves '
+      'callable surface',
       () async {
         final namedParam = VariableDeclaration('debug');
         final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
@@ -1292,14 +1297,15 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
-        expect(namedParam.name, isNot('debug'));
-        expect(call.arguments.named.single.name, equals(namedParam.name));
+        expect(redirectingFactory.name.text, equals('factory'));
+        expect(namedParam.name, equals('debug'));
+        expect(call.arguments.named.single.name, equals('debug'));
       },
     );
 
     test(
-      'FunctionInvocation through instantiated generic tear-off updates '
-      'named arguments',
+      'FunctionInvocation through instantiated generic tear-off preserves '
+      'callable surface',
       () async {
         final namedParam = VariableDeclaration('debug');
         final typeParameter = TypeParameter('T');
@@ -1353,8 +1359,9 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
-        expect(namedParam.name, isNot('debug'));
-        expect(call.arguments.named.single.name, equals(namedParam.name));
+        expect(genericHelper.name.text, equals('helper'));
+        expect(namedParam.name, equals('debug'));
+        expect(call.arguments.named.single.name, equals('debug'));
       },
     );
 
@@ -1413,6 +1420,7 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
+        expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, isNot('debug'));
         expect(call.arguments.named.single.name, 'debug');
       },
@@ -1420,7 +1428,7 @@ void main() {
 
     test(
       'FunctionInvocation through instantiated redirecting factory tear-off '
-      'updates named arguments',
+      'preserves callable surface',
       () async {
         final namedParam = VariableDeclaration('debug');
         final typeParameter = TypeParameter('T');
@@ -1487,8 +1495,69 @@ void main() {
 
         await runPass(const RenamePassOptions(preserveMain: false));
 
-        expect(namedParam.name, isNot('debug'));
-        expect(call.arguments.named.single.name, equals(namedParam.name));
+        expect(redirectingFactory.name.text, equals('factory'));
+        expect(namedParam.name, equals('debug'));
+        expect(call.arguments.named.single.name, equals('debug'));
+      },
+    );
+
+    test(
+      'InstanceTearOff preserves callable surface for instance methods',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
+        final method = Procedure(
+          Name('configure'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+        );
+        cls.addProcedure(method);
+        userLib.addClass(cls);
+
+        final receiver = VariableDeclaration('widget');
+        final tearOff = VariableDeclaration(
+          'callback',
+          initializer: InstanceTearOff(
+            InstanceAccessKind.Instance,
+            VariableGet(receiver),
+            Name('configure'),
+            resultType: const DynamicType(),
+            interfaceTarget: method,
+          ),
+          isFinal: true,
+        );
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          VariableGet(tearOff),
+          Arguments(
+            [],
+            named: [NamedExpression('debug', BoolLiteral(true))],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              receiver,
+              tearOff,
+              ExpressionStatement(call),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(method.name.text, equals('configure'));
+        expect(namedParam.name, equals('debug'));
+        expect(call.arguments.named.single.name, equals('debug'));
       },
     );
 
