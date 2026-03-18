@@ -1,3 +1,6 @@
+// Too strict
+// ignore_for_file: lines_longer_than_80_chars
+
 @TestOn('vm')
 @Timeout(Duration(minutes: 2))
 library;
