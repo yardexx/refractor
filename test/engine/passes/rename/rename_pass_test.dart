@@ -842,6 +842,163 @@ void main() {
         final tearOff = VariableDeclaration(
           'callback',
           initializer: StaticTearOff(callee),
+          isFinal: true,
+        );
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          VariableGet(tearOff),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              tearOff,
+              ExpressionStatement(call),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, equals(namedParam.name));
+      },
+    );
+
+    test(
+      'FunctionInvocation through mutable variable alias keeps '
+      'original named argument',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final callee = Procedure(
+          Name('configure'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        userLib.addProcedure(callee);
+
+        final tearOff = VariableDeclaration(
+          'callback',
+          initializer: StaticTearOff(callee),
+        );
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          VariableGet(tearOff),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              tearOff,
+              ExpressionStatement(call),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, 'debug');
+      },
+    );
+
+    test(
+      'FunctionInvocation through mutable static field alias keeps '
+      'original named argument',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final callee = Procedure(
+          Name('configure'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        userLib.addProcedure(callee);
+
+        final callbackField = Field.mutable(
+          Name('callback'),
+          initializer: StaticTearOff(callee),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        userLib.addField(callbackField);
+
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          StaticGet(callbackField),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(ExpressionStatement(call)),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, 'debug');
+      },
+    );
+
+    test(
+      'FunctionInvocation through final constructor tear-off updates '
+      'named arguments',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
+        final constructor = Constructor(
+          FunctionNode(
+            EmptyStatement(),
+            namedParameters: [namedParam],
+          ),
+          name: Name('create'),
+          fileUri: userLib.fileUri,
+        );
+        cls.addConstructor(constructor);
+        userLib.addClass(cls);
+
+        final tearOff = VariableDeclaration(
+          'factory',
+          initializer: ConstructorTearOff(constructor),
+          isFinal: true,
         );
         final call = FunctionInvocation(
           FunctionAccessKind.FunctionType,

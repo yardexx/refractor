@@ -252,6 +252,7 @@ class RenameTransformer extends PassTransformer {
   }
 
   FunctionNode? _functionTargetFromVariable(VariableDeclaration variable) {
+    if (!variable.isFinal && !variable.isConst) return null;
     final initializer = _variableInitializers[variable] ?? variable.initializer;
     if (initializer == null) return null;
     return _functionTargetFromReceiver(initializer);
@@ -259,6 +260,7 @@ class RenameTransformer extends PassTransformer {
 
   FunctionNode? _functionTargetFromField(Member member) {
     if (member is! Field) return null;
+    if (!member.isFinal && !member.isConst) return null;
     final initializer = member.initializer;
     if (initializer == null) return null;
     return _functionTargetFromReceiver(initializer);
