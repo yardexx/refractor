@@ -23,14 +23,20 @@ class StringEncryptTransformer extends PassTransformer {
 
   bool get _inConstContext => _constDepth > 0 || _annotationDepth > 0;
 
+  void _transformAnnotations(List<Expression> annotations) {
+    _annotationDepth++;
+    try {
+      for (var i = 0; i < annotations.length; i++) {
+        annotations[i] = annotations[i].accept(this) as Expression;
+      }
+    } finally {
+      _annotationDepth--;
+    }
+  }
+
   @override
   TreeNode visitClass(Class node) {
-    // Skip annotation processing on class annotations to avoid encrypting them.
-    _annotationDepth++;
-    for (var i = 0; i < node.annotations.length; i++) {
-      node.annotations[i] = node.annotations[i].accept(this) as Expression;
-    }
-    _annotationDepth--;
+    _transformAnnotations(node.annotations);
     // Transform the rest of the class normally.
     node.transformChildren(this);
     return node;
@@ -41,15 +47,24 @@ class StringEncryptTransformer extends PassTransformer {
     // Skip the helper procedure itself.
     if (node == decodeProcedure) return node;
 
-    // Don't encrypt annotation arguments.
-    _annotationDepth++;
-    for (var i = 0; i < node.annotations.length; i++) {
-      node.annotations[i] = node.annotations[i].accept(this) as Expression;
-    }
-    _annotationDepth--;
+    _transformAnnotations(node.annotations);
 
     // Transform function body normally.
     node.function = node.function.accept(this) as FunctionNode;
+    return node;
+  }
+
+  @override
+  TreeNode visitField(Field node) {
+    _transformAnnotations(node.annotations);
+    node.transformChildren(this);
+    return node;
+  }
+
+  @override
+  TreeNode visitConstructor(Constructor node) {
+    _transformAnnotations(node.annotations);
+    node.transformChildren(this);
     return node;
   }
 

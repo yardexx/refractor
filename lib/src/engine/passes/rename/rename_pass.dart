@@ -11,6 +11,7 @@ import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
 import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
 import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
+import 'package:refractor/src/utils/rename_helpers.dart';
 import 'package:refractor/src/utils/result.dart';
 
 /// Obfuscation pass that renames user-defined identifiers.
@@ -92,7 +93,7 @@ class RenamePass extends Pass<RenameMapping> {
     final symbolMap = <String, String>{};
     for (final entry in normalizedMembers.entries) {
       if (entry.key.name.text.isNotEmpty) {
-        symbolMap[entry.value.text] = entry.key.name.text;
+        symbolMap[symbolKeyForName(entry.value)] = entry.key.name.text;
       }
     }
     for (final entry in mapping.classes.entries) {

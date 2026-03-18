@@ -19,7 +19,7 @@ class StringEncryptPass extends Pass<void> {
     this.excludePatterns = const [],
   });
 
-  static const String _helperName = r'_obfDecode$';
+  static const String _helperBaseName = r'_obfDecode$';
 
   final int xorKey;
   final List<RegExp> excludePatterns;
@@ -177,7 +177,7 @@ class StringEncryptPass extends Pass<void> {
     // Create the procedure.
     // Private names (starting with _) require a library reference.
     final procedure = Procedure(
-      Name(_helperName, lib),
+      Name(_freshHelperName(lib), lib),
       ProcedureKind.Method,
       functionNode,
       fileUri: lib.fileUri,
@@ -189,6 +189,23 @@ class StringEncryptPass extends Pass<void> {
   }
 
   List<int> encode(String s) => encodeWithKey(s, xorKey);
+
+  String _freshHelperName(Library lib) {
+    final usedNames = <String>{
+      for (final procedure in lib.procedures) procedure.name.text,
+      for (final field in lib.fields) field.name.text,
+    };
+
+    if (!usedNames.contains(_helperBaseName)) {
+      return _helperBaseName;
+    }
+
+    var suffix = 1;
+    while (usedNames.contains('$_helperBaseName$suffix')) {
+      suffix++;
+    }
+    return '$_helperBaseName$suffix';
+  }
 
   static List<int> encodeWithKey(String s, int key) {
     return utf8.encode(s).map((b) => b ^ key).toList();

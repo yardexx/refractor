@@ -46,7 +46,36 @@ void main() {
 
       expect(mapping.members[member]!.text, '_b');
       expect(mapping.members[member]!.library, same(userLib));
-      expect(mapping.symbolMap['_b'], '_secret');
+      expect(mapping.symbolMap['${userLib.importUri}::_b'], '_secret');
+    });
+
+    test('keeps private symbol-map entries distinct across libraries', () {
+      final otherLib = makeUserLibrary('src/other.dart');
+      final first = Procedure(
+        Name('_secret', userLib),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      final second = Procedure(
+        Name('_secret', otherLib),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: otherLib.fileUri,
+      );
+      userLib.addProcedure(first);
+      otherLib.addProcedure(second);
+
+      final firstSlot = RenameSlot.singletonMember(first, '_secret');
+      final secondSlot = RenameSlot.singletonMember(second, '_secret');
+      final mapping = NameMaterializer().materialize({
+        firstSlot: 'a',
+        secondSlot: 'a',
+      });
+
+      expect(mapping.symbolMap['${userLib.importUri}::_a'], '_secret');
+      expect(mapping.symbolMap['${otherLib.importUri}::_a'], '_secret');
+      expect(mapping.symbolMap, hasLength(2));
     });
 
     test('materializes class and variable names into symbol map', () {
