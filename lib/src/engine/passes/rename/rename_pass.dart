@@ -129,8 +129,9 @@ class RenamePass extends Pass<RenameMapping> {
     );
     if (libraryCompare != 0) return libraryCompare;
 
-    final classCompare =
-        (a.enclosingClass?.name ?? '').compareTo(b.enclosingClass?.name ?? '');
+    final classCompare = (a.enclosingClass?.name ?? '').compareTo(
+      b.enclosingClass?.name ?? '',
+    );
     if (classCompare != 0) return classCompare;
 
     final kindCompare = a.runtimeType.toString().compareTo(
