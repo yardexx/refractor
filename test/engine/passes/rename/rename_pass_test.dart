@@ -1262,6 +1262,67 @@ void main() {
       },
     );
 
+    test(
+      'FunctionInvocation through instantiated generic tear-off updates '
+      'named arguments',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final typeParameter = TypeParameter('T');
+        final intClass = coreLib.classes.firstWhere((c) => c.name == 'int');
+        final genericHelper = Procedure(
+          Name('helper'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            typeParameters: [typeParameter],
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        userLib.addProcedure(genericHelper);
+
+        final tearOff = VariableDeclaration(
+          'callback',
+          initializer: Instantiation(
+            StaticTearOff(genericHelper),
+            [
+              InterfaceType(intClass, Nullability.nonNullable),
+            ],
+          ),
+          isFinal: true,
+        );
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          VariableGet(tearOff),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              tearOff,
+              ExpressionStatement(call),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, equals(namedParam.name));
+      },
+    );
+
     test('static members are NOT in override families', () async {
       final baseClass = Class(name: 'Base', fileUri: userLib.fileUri);
       final staticMethod = Procedure(

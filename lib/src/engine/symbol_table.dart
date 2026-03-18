@@ -20,10 +20,13 @@ class SymbolTable {
 
   /// Look up the obfuscated name for an [original] name (reverse lookup).
   String? obfuscated(String original) {
+    String? scopedMatch;
     for (final entry in _map.entries) {
-      if (entry.value == original) return entry.key;
+      if (entry.value != original) continue;
+      if (!entry.key.contains('::')) return entry.key;
+      scopedMatch ??= entry.key;
     }
-    return null;
+    return scopedMatch;
   }
 
   /// Export as a JSON-encodable map (obfuscated -> original).

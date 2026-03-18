@@ -24,6 +24,14 @@ void main() {
       expect(table.obfuscated('missing'), isNull);
     });
 
+    test('prefers bare private key for reverse lookups when available', () {
+      final table = SymbolTable()
+        ..record('_secret', 'package:refractor/src/app.dart::_a')
+        ..record('_secret', '_a');
+
+      expect(table.obfuscated('_secret'), '_a');
+    });
+
     test('exports pretty-printed JSON', () {
       final table = SymbolTable()..record('MyClass', r'_$0');
 
