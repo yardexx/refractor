@@ -57,14 +57,20 @@ class StringEncryptTransformer extends PassTransformer {
   @override
   TreeNode visitField(Field node) {
     _transformAnnotations(node.annotations);
-    node.transformChildren(this);
+    node.type = visitDartType(node.type);
+    if (node.initializer != null) {
+      node.initializer = node.initializer!.accept(this) as Expression;
+      node.initializer!.parent = node;
+    }
     return node;
   }
 
   @override
   TreeNode visitConstructor(Constructor node) {
     _transformAnnotations(node.annotations);
-    node.transformChildren(this);
+    transformList(node.initializers, node);
+    node.function = node.function.accept(this) as FunctionNode;
+    node.function.parent = node;
     return node;
   }
 

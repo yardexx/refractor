@@ -933,6 +933,62 @@ void main() {
     );
 
     test(
+      'DynamicInvocation stays unchanged when selector exists in '
+      'excluded library',
+      () async {
+        final otherUri = Uri.parse('package:other_pkg/other.dart');
+        final otherLib = Library(otherUri, fileUri: otherUri);
+        final externalClass = Class(name: 'External', fileUri: otherUri);
+        final externalMethod = Procedure(
+          Name('foo'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: otherUri,
+        );
+        externalClass.addProcedure(externalMethod);
+        otherLib.addClass(externalClass);
+
+        final localClass = Class(name: 'Local', fileUri: userLib.fileUri);
+        final localMethod = Procedure(
+          Name('foo'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        localClass.addProcedure(localMethod);
+        userLib.addClass(localClass);
+
+        final receiver = VariableDeclaration('value');
+        final call = DynamicInvocation(
+          DynamicAccessKind.Dynamic,
+          VariableGet(receiver),
+          Name('foo'),
+          Arguments.empty(),
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            ExpressionStatement(call),
+            positionalParameters: [receiver],
+            requiredParameterCount: 1,
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        component = Component(libraries: [coreLib, userLib, otherLib])
+          ..setMainMethodAndMode(null, true);
+        final result = await RenamePass().run(component, target);
+
+        expect(result, isA<Ok<RenameMapping>>());
+        expect(externalMethod.name.text, 'foo');
+        expect(localMethod.name.text, 'foo');
+        expect(call.name.text, 'foo');
+      },
+    );
+
+    test(
       'FunctionInvocation through variable tear-off updates named arguments',
       () async {
         final namedParam = VariableDeclaration('debug');

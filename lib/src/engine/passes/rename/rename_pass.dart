@@ -8,7 +8,6 @@ import 'package:refractor/src/engine/passes/rename/name_generator/shuffled_gener
 import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_slot_builder.dart';
 import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
-import 'package:refractor/src/engine/policy/obfuscation_policy.dart';
 import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
 import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
@@ -56,7 +55,6 @@ class RenamePass extends Pass<RenameMapping> {
 
       final mapping = _normalizeDynamicDispatchNames(
         component,
-        policy,
         NameMaterializer().materialize(names),
       );
 
@@ -77,16 +75,13 @@ class RenamePass extends Pass<RenameMapping> {
 
   RenameMapping _normalizeDynamicDispatchNames(
     Component component,
-    ObfuscationPolicy policy,
     RenameMapping mapping,
   ) {
     final normalizedMembers = Map<Member, Name>.from(mapping.members);
     final dynamicGroups = <Name, List<Member>>{};
 
     for (final library in component.libraries) {
-      if (policy.policyForLibrary(library).isRenameExcluded) continue;
       for (final cls in library.classes) {
-        if (policy.policyForClass(cls).isRenameExcluded) continue;
         for (final member in [...cls.procedures, ...cls.fields]) {
           if (!_isDynamicDispatchMember(member)) continue;
           (dynamicGroups[member.name] ??= <Member>[]).add(member);
