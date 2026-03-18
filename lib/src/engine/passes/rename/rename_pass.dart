@@ -8,6 +8,7 @@ import 'package:refractor/src/engine/passes/rename/name_generator/shuffled_gener
 import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_slot_builder.dart';
 import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
+import 'package:refractor/src/engine/policy/obfuscation_policy.dart';
 import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
 import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
@@ -15,6 +16,10 @@ import 'package:refractor/src/utils/rename_helpers.dart';
 import 'package:refractor/src/utils/result.dart';
 
 /// Obfuscation pass that renames user-defined identifiers.
+///
+/// Safety note: named parameters on non-static instance methods are preserved.
+/// Kernel dynamic invocations do not have enough target information to rewrite
+/// those labels soundly once the receiver type becomes `dynamic`.
 ///
 /// Dumb orchestrator wiring three phases:
 ///   1. Collect — gather all declarations to rename.
@@ -50,6 +55,8 @@ class RenamePass extends Pass<RenameMapping> {
       final names = await generator.generateNames(slots);
 
       final mapping = _normalizeDynamicDispatchNames(
+        component,
+        policy,
         NameMaterializer().materialize(names),
       );
 
@@ -68,32 +75,63 @@ class RenamePass extends Pass<RenameMapping> {
     };
   }
 
-  RenameMapping _normalizeDynamicDispatchNames(RenameMapping mapping) {
+  RenameMapping _normalizeDynamicDispatchNames(
+    Component component,
+    ObfuscationPolicy policy,
+    RenameMapping mapping,
+  ) {
     final normalizedMembers = Map<Member, Name>.from(mapping.members);
     final dynamicGroups = <Name, List<Member>>{};
 
-    for (final member in mapping.members.keys) {
-      if (!_isDynamicDispatchMember(member)) continue;
-      (dynamicGroups[member.name] ??= <Member>[]).add(member);
+    for (final library in component.libraries) {
+      if (policy.policyForLibrary(library).isRenameExcluded) continue;
+      for (final cls in library.classes) {
+        if (policy.policyForClass(cls).isRenameExcluded) continue;
+        for (final member in [...cls.procedures, ...cls.fields]) {
+          if (!_isDynamicDispatchMember(member)) continue;
+          (dynamicGroups[member.name] ??= <Member>[]).add(member);
+        }
+      }
     }
 
+    final privateLegacyKeys = <String, Set<String>>{};
+
     for (final group in dynamicGroups.values) {
+      final renamed = [
+        for (final member in group)
+          if (normalizedMembers.containsKey(member)) member,
+      ];
+      if (renamed.isEmpty) continue;
+
+      if (renamed.length != group.length) {
+        for (final member in renamed) {
+          normalizedMembers[member] = member.name;
+        }
+        continue;
+      }
+
       final distinctNames = {
-        for (final member in group) normalizedMembers[member]!,
+        for (final member in renamed) normalizedMembers[member]!,
       };
       if (distinctNames.length <= 1) continue;
 
-      group.sort(_compareMembers);
-      final canonicalName = normalizedMembers[group.first]!;
-      for (final member in group.skip(1)) {
+      renamed.sort(_compareMembers);
+      final canonicalName = normalizedMembers[renamed.first]!;
+      for (final member in renamed.skip(1)) {
         normalizedMembers[member] = canonicalName;
       }
     }
 
     final symbolMap = <String, String>{};
     for (final entry in normalizedMembers.entries) {
-      if (entry.key.name.text.isNotEmpty) {
+      if (entry.key.name.text.isNotEmpty &&
+          !_sameName(entry.key.name, entry.value)) {
         symbolMap[symbolKeyForName(entry.value)] = entry.key.name.text;
+        if (entry.value.library != null) {
+          (privateLegacyKeys[entry.value.text] ??= <String>{}).add(
+            entry.key.name.text,
+          );
+        }
       }
     }
     for (final entry in mapping.classes.entries) {
@@ -105,6 +143,11 @@ class RenamePass extends Pass<RenameMapping> {
       final originalName = entry.key.name;
       if (originalName != null && originalName.isNotEmpty) {
         symbolMap[entry.value] = originalName;
+      }
+    }
+    for (final entry in privateLegacyKeys.entries) {
+      if (entry.value.length == 1) {
+        symbolMap[entry.key] = entry.value.single;
       }
     }
 
@@ -122,6 +165,10 @@ class RenamePass extends Pass<RenameMapping> {
       Field(isStatic: false) => true,
       _ => false,
     };
+  }
+
+  bool _sameName(Name a, Name b) {
+    return a.text == b.text && identical(a.library, b.library);
   }
 
   int _compareMembers(Member a, Member b) {

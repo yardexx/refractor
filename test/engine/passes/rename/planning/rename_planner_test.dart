@@ -126,6 +126,67 @@ void main() {
       expect(plan.variables, contains(otherParam));
     });
 
+    test(
+      'excludes named parameters of instance members from variable planning',
+      () {
+        final namedParam = VariableDeclaration('debug');
+        final positionalParam = VariableDeclaration('count');
+        final localValue = VariableDeclaration('localValue');
+        final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
+        final method = Procedure(
+          Name('configure'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([localValue]),
+            positionalParameters: [positionalParam],
+            requiredParameterCount: 1,
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+        );
+        cls.addProcedure(method);
+        userLib.addClass(cls);
+
+        final component = makeComponent(coreLib: coreLib, userLib: userLib);
+        final plan = makePlanner(component).plan(component);
+
+        expect(plan.variables, isNot(contains(namedParam)));
+        expect(plan.variables, contains(positionalParam));
+        expect(plan.variables, contains(localValue));
+      },
+    );
+
+    test('can be reused without leaking prior planning state', () {
+      final firstClass = Class(name: 'First', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('first'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+            isStatic: true,
+          ),
+        );
+      userLib.addClass(firstClass);
+
+      final component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final planner = makePlanner(component);
+
+      final firstPlan = planner.plan(component);
+      final secondPlan = planner.plan(component);
+
+      expect(secondPlan.classes, hasLength(firstPlan.classes.length));
+      expect(
+        secondPlan.singletonMembers,
+        hasLength(firstPlan.singletonMembers.length),
+      );
+      expect(secondPlan.variables, hasLength(firstPlan.variables.length));
+      expect(
+        secondPlan.memberFamilies,
+        hasLength(firstPlan.memberFamilies.length),
+      );
+    });
+
     test('keeps private member families scoped by library', () {
       final libA = makeUserLibrary('src/a.dart');
       final libB = makeUserLibrary();

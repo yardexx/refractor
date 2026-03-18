@@ -243,6 +243,7 @@ class RenameTransformer extends PassTransformer {
       StaticTearOff() => receiver.target.function,
       InstanceTearOff() => receiver.interfaceTarget.function,
       ConstructorTearOff() => receiver.function,
+      RedirectingFactoryTearOff() => receiver.target.function,
       FunctionExpression() => receiver.function,
       FunctionTearOff() => _functionTargetFromReceiver(receiver.receiver),
       VariableGet() => _functionTargetFromVariable(receiver.variable),

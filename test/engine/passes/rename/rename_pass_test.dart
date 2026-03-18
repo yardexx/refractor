@@ -824,6 +824,115 @@ void main() {
     );
 
     test(
+      'DynamicInvocation keeps named parameters stable on instance methods',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
+        final method = Procedure(
+          Name('configure'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            namedParameters: [namedParam],
+          ),
+          fileUri: userLib.fileUri,
+        );
+        cls.addProcedure(method);
+
+        final receiver = VariableDeclaration('value');
+        final call = DynamicInvocation(
+          DynamicAccessKind.Dynamic,
+          VariableGet(receiver),
+          Name('configure'),
+          Arguments(
+            [],
+            named: [NamedExpression('debug', BoolLiteral(true))],
+          ),
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            ExpressionStatement(call),
+            positionalParameters: [receiver],
+            requiredParameterCount: 1,
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib
+          ..addClass(cls)
+          ..addProcedure(caller);
+
+        await runPass();
+
+        expect(method.name.text, isNot('configure'));
+        expect(call.name.text, equals(method.name.text));
+        expect(namedParam.name, 'debug');
+        expect(call.arguments.named.single.name, 'debug');
+      },
+    );
+
+    test(
+      'DynamicInvocation stays unchanged when same selector is '
+      'excluded elsewhere',
+      () async {
+        final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
+        coreLib.addClass(pragmaClass);
+
+        final firstClass = Class(name: 'First', fileUri: userLib.fileUri);
+        final keptMethod =
+            Procedure(
+              Name('foo'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: userLib.fileUri,
+            )..addAnnotation(
+              ConstantExpression(
+                InstanceConstant(pragmaClass.reference, [], {}),
+              ),
+            );
+        firstClass.addProcedure(keptMethod);
+
+        final secondClass = Class(name: 'Second', fileUri: userLib.fileUri);
+        final renamedMethod = Procedure(
+          Name('foo'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        secondClass.addProcedure(renamedMethod);
+
+        final receiver = VariableDeclaration('value');
+        final call = DynamicInvocation(
+          DynamicAccessKind.Dynamic,
+          VariableGet(receiver),
+          Name('foo'),
+          Arguments.empty(),
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            ExpressionStatement(call),
+            positionalParameters: [receiver],
+            requiredParameterCount: 1,
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib
+          ..addClass(firstClass)
+          ..addClass(secondClass)
+          ..addProcedure(caller);
+
+        await runPass();
+
+        expect(keptMethod.name.text, 'foo');
+        expect(renamedMethod.name.text, 'foo');
+        expect(call.name.text, 'foo');
+      },
+    );
+
+    test(
       'FunctionInvocation through variable tear-off updates named arguments',
       () async {
         final namedParam = VariableDeclaration('debug');
@@ -998,6 +1107,72 @@ void main() {
         final tearOff = VariableDeclaration(
           'factory',
           initializer: ConstructorTearOff(constructor),
+          isFinal: true,
+        );
+        final call = FunctionInvocation(
+          FunctionAccessKind.FunctionType,
+          VariableGet(tearOff),
+          Arguments(
+            [],
+            named: [
+              NamedExpression('debug', BoolLiteral(true)),
+            ],
+          ),
+          functionType: null,
+        );
+        final caller = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([
+              tearOff,
+              ExpressionStatement(call),
+            ]),
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(caller);
+
+        await runPass(const RenamePassOptions(preserveMain: false));
+
+        expect(namedParam.name, isNot('debug'));
+        expect(call.arguments.named.single.name, equals(namedParam.name));
+      },
+    );
+
+    test(
+      'FunctionInvocation through final redirecting factory tear-off updates '
+      'named arguments',
+      () async {
+        final namedParam = VariableDeclaration('debug');
+        final cls = Class(name: 'Widget', fileUri: userLib.fileUri);
+        final targetConstructor = Constructor(
+          FunctionNode(EmptyStatement()),
+          name: Name('create'),
+          fileUri: userLib.fileUri,
+        );
+        final redirectingFactory = Procedure(
+          Name('factory'),
+          ProcedureKind.Factory,
+          FunctionNode(
+              EmptyStatement(),
+              namedParameters: [namedParam],
+            )
+            ..redirectingFactoryTarget = RedirectingFactoryTarget(
+              targetConstructor,
+              const <DartType>[],
+            ),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        );
+        cls
+          ..addConstructor(targetConstructor)
+          ..addProcedure(redirectingFactory);
+        userLib.addClass(cls);
+
+        final tearOff = VariableDeclaration(
+          'factory',
+          initializer: RedirectingFactoryTearOff(redirectingFactory),
           isFinal: true,
         );
         final call = FunctionInvocation(
