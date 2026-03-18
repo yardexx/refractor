@@ -1,12 +1,14 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/passes/rename/materialization/name_materializer.dart';
 import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
 import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
-import 'package:refractor/src/engine/passes/rename/name_allocator.dart';
 import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart';
 import 'package:refractor/src/engine/passes/rename/name_generator/sequential_generator.dart';
 import 'package:refractor/src/engine/passes/rename/name_generator/shuffled_generator.dart';
-import 'package:refractor/src/engine/passes/rename/rename_collector.dart';
+import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart';
+import 'package:refractor/src/engine/passes/rename/planning/rename_slot_builder.dart';
 import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
+import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
 import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
 import 'package:refractor/src/utils/result.dart';
@@ -35,17 +37,19 @@ class RenamePass extends Pass<RenameMapping> {
     ObfuscationTarget target,
   ) async {
     try {
-      // 1. Collect.
-      final scope = RenameCollector().collect(component, target, options);
+      final policy = ObfuscationPolicyResolver().resolve(
+        component,
+        target,
+        renameOptions: options,
+      );
+      final plan = RenamePlanner(policy: policy).plan(component);
+      final slots = RenameSlotBuilder().build(plan);
 
-      // 2. Generate names.
       final generator = _generator ?? _defaultGenerator();
-      final names = await generator.generate(scope);
+      final names = await generator.generateNames(slots);
 
-      // 3. Allocate (wire names into kernel Name objects).
-      final mapping = NameAllocator().allocate(scope, names);
+      final mapping = NameMaterializer().materialize(names);
 
-      // 4. Apply.
       RenameTransformer(mapping: mapping, target: target).apply(component);
 
       return Result.ok(mapping);

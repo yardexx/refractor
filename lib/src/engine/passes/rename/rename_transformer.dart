@@ -119,6 +119,21 @@ class RenameTransformer extends PassTransformer {
     return super.visitStaticInvocation(node);
   }
 
+  @override
+  TreeNode visitFunctionInvocation(FunctionInvocation node) {
+    final target = _functionTargetFromReceiver(node.receiver);
+    if (target != null) {
+      _updateNamedArguments(node.arguments, target);
+    }
+    return super.visitFunctionInvocation(node);
+  }
+
+  @override
+  TreeNode visitLocalFunctionInvocation(LocalFunctionInvocation node) {
+    _updateNamedArguments(node.arguments, node.localFunction.function);
+    return super.visitLocalFunctionInvocation(node);
+  }
+
   // ---- Call site renames (statically resolved) ----
 
   @override
@@ -179,5 +194,61 @@ class RenameTransformer extends PassTransformer {
     final target = node.interfaceTarget;
     _updateNamedArguments(node.arguments, target.function);
     return super.visitSuperMethodInvocation(node);
+  }
+
+  @override
+  TreeNode visitAbstractSuperPropertyGet(AbstractSuperPropertyGet node) {
+    final newName = mapping.members[node.interfaceTarget];
+    if (newName != null) node.name = newName;
+    return super.visitAbstractSuperPropertyGet(node);
+  }
+
+  @override
+  TreeNode visitAbstractSuperPropertySet(AbstractSuperPropertySet node) {
+    final newName = mapping.members[node.interfaceTarget];
+    if (newName != null) node.name = newName;
+    return super.visitAbstractSuperPropertySet(node);
+  }
+
+  @override
+  TreeNode visitAbstractSuperMethodInvocation(
+    AbstractSuperMethodInvocation node,
+  ) {
+    final newName = mapping.members[node.interfaceTarget];
+    if (newName != null) node.name = newName;
+    final target = node.interfaceTarget;
+    _updateNamedArguments(node.arguments, target.function);
+    return super.visitAbstractSuperMethodInvocation(node);
+  }
+
+  @override
+  TreeNode visitDynamicGet(DynamicGet node) {
+    final newName = _nameMapping[node.name];
+    if (newName != null) node.name = newName;
+    return super.visitDynamicGet(node);
+  }
+
+  @override
+  TreeNode visitDynamicSet(DynamicSet node) {
+    final newName = _nameMapping[node.name];
+    if (newName != null) node.name = newName;
+    return super.visitDynamicSet(node);
+  }
+
+  @override
+  TreeNode visitDynamicInvocation(DynamicInvocation node) {
+    final newName = _nameMapping[node.name];
+    if (newName != null) node.name = newName;
+    return super.visitDynamicInvocation(node);
+  }
+
+  FunctionNode? _functionTargetFromReceiver(Expression receiver) {
+    return switch (receiver) {
+      StaticTearOff() => receiver.target.function,
+      InstanceTearOff() => receiver.interfaceTarget.function,
+      FunctionExpression() => receiver.function,
+      FunctionTearOff() => _functionTargetFromReceiver(receiver.receiver),
+      _ => null,
+    };
   }
 }
