@@ -93,6 +93,95 @@ lazy: 42
 caught: Invalid argument (value): Must be >= 0: -1
 ''';
 
+const _callableAliasProgram = r'''
+String topLevelNamed({required String value, bool debug = false}) {
+  return debug ? 'top:$value' : value;
+}
+
+String alternateTopLevelNamed({required String value, bool debug = false}) {
+  return 'alt:$value';
+}
+
+T genericEcho<T>({required T value, bool debug = false}) => value;
+
+class Payload {
+  final String value;
+
+  Payload.named({required this.value, bool debug = false});
+
+  String describe() => 'Payload($value)';
+}
+
+class RedirectPayload<T> {
+  final T value;
+
+  RedirectPayload.named({required this.value, bool debug = false});
+
+  factory RedirectPayload.redirect({required T value, bool debug}) =
+      RedirectPayload<T>.named;
+
+  String describe() => 'Redirect($value)';
+}
+
+class Renderer {
+  final String prefix;
+
+  Renderer(this.prefix);
+
+  String render({required String label, bool excited = false}) {
+    final suffix = excited ? '!' : '';
+    return '$prefix $label$suffix';
+  }
+}
+
+class AliasHub {
+  static final String Function({required String value, bool debug})
+      finalTopLevelAlias = topLevelNamed;
+
+  static final RedirectPayload<String> Function({
+    required String value,
+    bool debug,
+  }) finalFactoryAlias = RedirectPayload<String>.redirect;
+}
+
+void main() {
+  final renderer = Renderer('Hello');
+  final topAlias = topLevelNamed;
+  final genericAlias = genericEcho<int>;
+  final ctorAlias = Payload.named;
+  final factoryAlias = RedirectPayload<String>.redirect;
+  final instantiatedFactoryAlias = RedirectPayload<int>.redirect;
+  final instanceAlias = renderer.render;
+  final staticAlias = AliasHub.finalTopLevelAlias;
+  final staticFactoryAlias = AliasHub.finalFactoryAlias;
+  String Function({required String value, bool debug}) mutableAlias =
+      topLevelNamed;
+  mutableAlias = alternateTopLevelNamed;
+
+  print(topAlias(value: 'alias', debug: true));
+  print(genericAlias(value: 7, debug: true));
+  print(ctorAlias(value: 'ctor', debug: true).describe());
+  print(factoryAlias(value: 'factory', debug: true).describe());
+  print(instantiatedFactoryAlias(value: 9, debug: true).describe());
+  print(instanceAlias(label: 'instance', excited: true));
+  print(staticAlias(value: 'field', debug: true));
+  print(staticFactoryAlias(value: 'field-factory', debug: true).describe());
+  print(mutableAlias(value: 'mutable', debug: true));
+}
+''';
+
+const _callableAliasExpectedOutput = '''
+top:alias
+7
+Payload(ctor)
+Redirect(factory)
+Redirect(9)
+Hello instance!
+top:field
+Redirect(field-factory)
+alt:mutable
+''';
+
 const _exampleExpectedLines = <String>[
   'app=KernelEdgeCases@0.1.0',
   'mode=active',
@@ -101,9 +190,12 @@ const _exampleExpectedLines = <String>[
   'dynamic=Hello dynamic!',
   'dynamicField=dynamic-message',
   'construction=Payload(ctor) | Redirect(factory) | Redirect(9)',
+  'tearOffs=top:alias | 7 | Payload(ctor) | Redirect(factory) | Redirect(9)',
+  'instanceTearOff=Hello instance!',
+  'fieldAliases=top:field-alias | Redirect(field-factory) | Redirect(12)',
+  'mutableAlias=alt:mutable',
   'locals=LOCAL',
   'excluded=entry:entry! | EntryPointPayload(payload) | EntryPointPayload(constructor)',
-  'sourceOnly=top-level-function-alias,generic-top-level-alias,constructor-tear-off-alias,redirecting-factory-tear-off-alias,instantiated-factory-tear-off-alias,instance-method-tear-off-alias,final-static-field-alias,final-static-factory-alias,final-static-instantiated-factory-alias,mutable-function-alias',
   'secret=renderer-secret|vault-token|[audit] Hello mix!',
   'enum=idle,active,done',
   'interpolation=interpolated:Hello done!',
@@ -155,6 +247,20 @@ passes:
       },
     );
 
+    test('rename pass: callable aliases survive obfuscated AOT', () async {
+      final output = await _compileObfuscateRun(
+        tempDir: tempDir,
+        source: _callableAliasProgram,
+        configYaml: '''
+refractor:
+  verbose: false
+passes:
+  rename: true
+''',
+      );
+      expect(output, equals(_callableAliasExpectedOutput.trim()));
+    });
+
     test('example app: obfuscated binary builds and runs', () async {
       final output = await _buildAndRunExampleApp(
         tempDir: tempDir,
@@ -173,11 +279,12 @@ passes:
 Future<String> _compileObfuscateRun({
   required Directory tempDir,
   required String configYaml,
+  String source = _testProgram,
 }) async {
   final sourcePath = '${tempDir.path}/main.dart';
   final exePath = '${tempDir.path}/main.exe';
 
-  File(sourcePath).writeAsStringSync(_testProgram);
+  File(sourcePath).writeAsStringSync(source);
 
   // Parse config.
   final config = RefractorConfig.fromYaml(configYaml);
