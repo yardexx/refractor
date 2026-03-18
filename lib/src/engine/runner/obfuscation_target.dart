@@ -1,22 +1,20 @@
+import 'package:glob/glob.dart';
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/name_generator.dart';
-import 'package:refractor/src/engine/runner/pass_options.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
 
-/// Shared mutable context passed to every obfuscation pass.
-class PassContext {
-  PassContext({
-    required this.symbolTable,
-    required this.nameGenerator,
-    required this.options,
+/// Read-only shared context: "which libraries should I transform?"
+///
+/// Every pass receives the same target. This is a property of the project
+/// being obfuscated, not of any individual pass.
+class ObfuscationTarget {
+  ObfuscationTarget({
     required this.projectRootUri,
-    required this.projectPackageName,
+    this.projectPackageName,
+    this.excludePatterns = const [],
   });
-  final SymbolTable symbolTable;
-  final NameGenerator nameGenerator;
-  final PassOptions options;
+
   final Uri projectRootUri;
   final String? projectPackageName;
+  final List<Glob> excludePatterns;
 
   /// Returns true if [library] belongs to user code that should be obfuscated.
   bool shouldObfuscateLibrary(Library library) {
@@ -25,7 +23,7 @@ class PassContext {
     if (uri.scheme == 'dart') return false;
 
     final uriText = uri.toString();
-    for (final glob in options.excludeLibraryUriPatterns) {
+    for (final glob in excludePatterns) {
       if (glob.matches(uriText)) return false;
       if (glob.matches(uri.path)) return false;
     }

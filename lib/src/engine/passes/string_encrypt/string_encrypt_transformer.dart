@@ -8,11 +8,13 @@ class StringEncryptTransformer extends PassTransformer {
   StringEncryptTransformer({
     required this.decodeProcedure,
     required this.random,
-    required super.context,
+    required super.target,
+    this.excludePatterns = const [],
   });
 
   final Procedure decodeProcedure;
   final Random random;
+  final List<RegExp> excludePatterns;
   int count = 0;
 
   // Track whether we're inside a const context or annotation.
@@ -64,7 +66,7 @@ class StringEncryptTransformer extends PassTransformer {
   @override
   TreeNode visitStringLiteral(StringLiteral node) {
     if (_inConstContext) return node;
-    for (final pattern in context.options.stringExcludePatterns) {
+    for (final pattern in excludePatterns) {
       if (pattern.hasMatch(node.value)) return node;
     }
 

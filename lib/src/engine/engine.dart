@@ -2,6 +2,8 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass_runner.dart';
 import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:refractor/src/utils/result.dart';
@@ -40,56 +42,83 @@ class RefractorEngine {
   final KernelIO kernelIO;
   final Logger? _logger;
 
-  Result<BuildResult> run({
+  Future<Result<BuildResult>> run({
     required RefractorConfig config,
     required BuildRequest request,
-  }) => runCatching(() {
-    // 1. Compile source → kernel.
-    _logger?.detail('Compiling ${request.input} to kernel...');
-    final dillPath = '${request.workDirectory}/app.dill';
-    compiler.compileToKernel(request.input, dillPath);
+  }) async {
+    try {
+      // 1. Compile source → kernel.
+      _logger?.detail('Compiling ${request.input} to kernel...');
+      final dillPath = '${request.workDirectory}/app.dill';
+      compiler.compileToKernel(request.input, dillPath);
 
-    // 2. Load & obfuscate.
-    _logger?.detail('Running obfuscation passes...');
-    final enabledPasses = config.buildPasses();
-    final component = kernelIO.load(dillPath);
-    final runner = PassRunner(passes: enabledPasses);
-    final (obfuscated, symbolTable) = runner.run(
-      component,
-      config.toOptions(),
-      projectRootUri: request.projectRootUri,
-      projectPackageName: request.projectPackageName,
-    );
+      // 2. Load & obfuscate.
+      _logger?.detail('Running obfuscation passes...');
+      final enabledPasses = config.buildPasses();
+      final component = kernelIO.load(dillPath);
 
-    // 3. Write obfuscated kernel.
-    _logger?.detail('Writing obfuscated kernel...');
-    final obfuscatedDillPath = '${request.workDirectory}/app.obfuscated.dill';
-    kernelIO.write(obfuscated, obfuscatedDillPath);
+      final obfuscationTarget = ObfuscationTarget(
+        projectRootUri: request.projectRootUri,
+        projectPackageName: request.projectPackageName,
+        excludePatterns: config.excludePatterns,
+      );
 
-    // 4. Compile to target (or write directly for kernel target).
-    switch (request.target) {
-      case Target.exe:
-      case Target.aot:
-      case Target.jit:
-        _logger?.detail('Compiling to target ${request.target}...');
-        compiler.compileToTarget(
-          obfuscatedDillPath,
-          request.output,
-          request.target,
-        );
-      case Target.kernel:
-        _logger?.detail('Writing obfuscated kernel to ${request.output}...');
-        kernelIO.write(obfuscated, request.output);
+      final runner = PassRunner(passes: enabledPasses, logger: _logger);
+      final runResult = await runner.run(component, obfuscationTarget);
+
+      switch (runResult) {
+        case Ok(:final value):
+          // Extract symbol table from rename pass results.
+          final symbolTable = SymbolTable();
+          final mapping = value.get<RenameMapping>('rename');
+          if (mapping != null) {
+            // symbolMap is keyed obfuscated → original.
+            for (final entry in mapping.symbolMap.entries) {
+              symbolTable.record(entry.value, entry.key);
+            }
+          }
+
+          // 3. Write obfuscated kernel.
+          _logger?.detail('Writing obfuscated kernel...');
+          final obfuscatedDillPath =
+              '${request.workDirectory}/app.obfuscated.dill';
+          kernelIO.write(component, obfuscatedDillPath);
+
+          // 4. Compile to target (or write directly for kernel target).
+          switch (request.target) {
+            case Target.exe:
+            case Target.aot:
+            case Target.jit:
+              _logger?.detail('Compiling to target ${request.target}...');
+              compiler.compileToTarget(
+                obfuscatedDillPath,
+                request.output,
+                request.target,
+              );
+            case Target.kernel:
+              _logger?.detail(
+                'Writing obfuscated kernel to ${request.output}...',
+              );
+              kernelIO.write(component, request.output);
+          }
+
+          _logger?.detail('Build complete: ${request.output}');
+
+          return Result.ok(
+            BuildResult(
+              outputPath: request.output,
+              symbolTable: symbolTable,
+              passesRun: enabledPasses.map((p) => p.name).toList(),
+            ),
+          );
+
+        case Error(:final error):
+          return Result.error(error);
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
     }
-
-    _logger?.detail('Build complete: ${request.output}');
-
-    return BuildResult(
-      outputPath: request.output,
-      symbolTable: symbolTable,
-      passesRun: enabledPasses.map((p) => p.name).toList(),
-    );
-  });
+  }
 }
 
 /// Result of an [RefractorEngine.run] invocation.

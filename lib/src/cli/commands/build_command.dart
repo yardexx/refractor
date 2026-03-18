@@ -70,7 +70,7 @@ class BuildCommand extends RefractorCommand {
       logger: logger,
     );
 
-    final result = engine.run(request: request, config: config);
+    final result = await engine.run(request: request, config: config);
 
     switch (result) {
       case Ok<BuildResult>():

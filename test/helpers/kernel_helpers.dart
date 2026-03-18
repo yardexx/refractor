@@ -1,11 +1,8 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/name_generator.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
-import 'package:refractor/src/engine/runner/pass_options.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 
 /// Creates a user library with a `package:refractor/...` URI so that
-/// [PassContext.shouldObfuscateLibrary] returns `true`.
+/// [ObfuscationTarget.shouldObfuscateLibrary] returns `true`.
 Library makeUserLibrary([String path = 'src/app.dart']) {
   final uri = Uri.parse('package:refractor/$path');
   return Library(uri, fileUri: uri);
@@ -114,15 +111,24 @@ Library makeDartCoreLibrary() {
   return lib;
 }
 
-/// Creates a [PassContext] with fresh [SymbolTable] and [NameGenerator].
-PassContext makePassContext([PassOptions? options]) {
-  return PassContext(
-    symbolTable: SymbolTable(),
-    nameGenerator: NameGenerator(),
-    options: options ?? const PassOptions(),
+/// Creates an [ObfuscationTarget] with defaults suitable for tests.
+ObfuscationTarget makeObfuscationTarget() {
+  return ObfuscationTarget(
     projectRootUri: Uri.directory('/virtual/project'),
     projectPackageName: 'refractor',
   );
+}
+
+/// Creates a [Procedure] with the given [name] and adds it to [cls].
+Procedure makeProcedure(String name, Class cls) {
+  final proc = Procedure(
+    Name(name),
+    ProcedureKind.Method,
+    FunctionNode(EmptyStatement()),
+    fileUri: cls.fileUri,
+  );
+  cls.addProcedure(proc);
+  return proc;
 }
 
 /// Bundles the given libraries into a [Component].

@@ -3,10 +3,10 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:refractor/src/config/converter/pass_config_converter.dart';
 import 'package:refractor/src/config/model/pass_config.dart';
 import 'package:refractor/src/config/model/refractor_settings.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
-import 'package:refractor/src/engine/runner/pass_options.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:yaml/yaml.dart';
 
@@ -61,30 +61,26 @@ final class RefractorConfig {
   final RefractorSettings refractor;
   final List<PassConfig> passes;
 
-  /// Convert this config to [PassOptions] for the obfuscation engine.
-  PassOptions toOptions() {
-    final renameConfig = passes.whereType<RenamePassConfig>().firstOrNull;
-    final stringConfig = passes
-        .whereType<StringEncryptPassConfig>()
-        .firstOrNull;
-    return PassOptions(
-      excludeLibraryUriPatterns: refractor.exclude.map(Glob.new).toList(),
-      preserveMain: renameConfig?.preserveMain ?? true,
-      stringExcludePatterns:
-          stringConfig?.excludePatterns.map(RegExp.new).toList() ?? const [],
-      verbose: refractor.verbose,
-    );
-  }
+  /// Library exclude patterns as [Glob] objects.
+  late final List<Glob> excludePatterns = refractor.exclude
+      .map(Glob.new)
+      .toList();
 
   /// Build a list of [Pass] instances from the configured passes.
   ///
-  /// Only enabled passes are included.
-  List<Pass> buildPasses() {
-    return passes.where((p) => p.enabled).map((p) {
+  /// Each pass is constructed with its own typed options.
+  List<Pass<dynamic>> buildPasses() {
+    return passes.where((p) => p.enabled).map<Pass<dynamic>>((p) {
       return switch (p) {
-        RenamePassConfig() => RenamePass(),
-        StringEncryptPassConfig(:final xorKey) => StringEncryptPass(
-          xorKey: xorKey,
+        RenamePassConfig() => RenamePass(
+          options: RenamePassOptions(
+            preserveMain: p.preserveMain,
+            seed: p.seed,
+          ),
+        ),
+        StringEncryptPassConfig() => StringEncryptPass(
+          xorKey: p.xorKey,
+          excludePatterns: p.excludePatterns.map(RegExp.new).toList(),
         ),
       };
     }).toList();
@@ -97,9 +93,9 @@ final class RefractorConfig {
 
   /// Build a pass list from a comma-separated list of pass names.
   ///
-  /// Throws [ArgumentError] if an unknown pass name is given.
-  static List<Pass> passesFromNames(List<String> names) {
-    final available = <String, Pass>{
+  /// Throws [ConfigException] if an unknown pass name is given.
+  static List<Pass<dynamic>> passesFromNames(List<String> names) {
+    final available = <String, Pass<dynamic>>{
       'rename': RenamePass(),
       'string_encrypt': StringEncryptPass(),
     };

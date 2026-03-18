@@ -5,5 +5,9 @@ analyzer:
     - "**/*.g.dart"
     - "test/fixtures/**"
   errors:
+    # Too strict
     todo: false
+    # Docs are planned for later
     public_member_api_docs: false
+    # Too strict
+    one_member_abstracts: false

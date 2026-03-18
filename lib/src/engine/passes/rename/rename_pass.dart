@@ -1,47 +1,67 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/passes/rename/materialization/name_materializer.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
+import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
+import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart';
+import 'package:refractor/src/engine/passes/rename/name_generator/sequential_generator.dart';
+import 'package:refractor/src/engine/passes/rename/name_generator/shuffled_generator.dart';
+import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart';
+import 'package:refractor/src/engine/passes/rename/planning/rename_slot_builder.dart';
 import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
-import 'package:refractor/src/engine/passes/rename/rename_visitor.dart';
+import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/engine/runner/pass.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
+import 'package:refractor/src/utils/result.dart';
 
-/// Obfuscation pass that renames user-defined identifiers (classes, methods,
-/// fields, variables) to short meaningless names like `_$0`, `_$1`, etc.
+/// Obfuscation pass that renames user-defined identifiers.
 ///
-/// Uses a two-phase approach:
-///   Phase 1 — collect all renameable nodes and assign obfuscated names.
-///   Phase 2 — apply the renames so all declarations and references are
-///             updated.
-///   Phase 3 — unbind canonical names for renamed user libraries so they can
-///             be recomputed correctly by BinaryPrinter.writeComponentFile.
-class RenamePass extends Pass {
+/// Dumb orchestrator wiring three phases:
+///   1. Collect — gather all declarations to rename.
+///   2. Generate + Allocate — produce an obfuscation map.
+///   3. Apply — mutate the AST and unbind canonical names.
+class RenamePass extends Pass<RenameMapping> {
+  RenamePass({
+    this.options = const RenamePassOptions(),
+    NameGenerator? generator,
+  }) : _generator = generator;
+
+  final RenamePassOptions options;
+  final NameGenerator? _generator;
+
   @override
   String get name => 'rename';
 
   @override
-  void run(Component component, PassContext context) {
-    // Phase 1: collect declarations and assign new names.
-    final collector = RenameVisitor(context: context);
-    component.accept(collector);
+  Future<Result<RenameMapping>> run(
+    Component component,
+    ObfuscationTarget target,
+  ) async {
+    try {
+      final policy = ObfuscationPolicyResolver().resolve(
+        component,
+        target,
+        renameOptions: options,
+      );
+      final plan = RenamePlanner(policy: policy).plan(component);
+      final slots = RenameSlotBuilder().build(plan);
 
-    // Phase 2: apply renames using a Transformer.
-    // Pass the identity-based maps so lookups work even after names are
-    // mutated.
-    final renamer = RenameTransformer(
-      classRenames: collector.classRenames,
-      memberRenames: collector.memberRenames,
-      variableRenames: collector.variableRenames,
-      context: context,
-    );
-    component.transformChildren(renamer);
+      final generator = _generator ?? _defaultGenerator();
+      final names = await generator.generateNames(slots);
 
-    // Phase 3: unbind canonical names for renamed user libraries so they can
-    // be recomputed correctly by BinaryPrinter.writeComponentFile.
-    // Without this, the old canonical name entries (pre-rename) would conflict
-    // with the new names.
-    for (final lib in component.libraries) {
-      if (context.shouldObfuscateLibrary(lib)) {
-        lib.reference.canonicalName?.unbindAll();
-      }
+      final mapping = NameMaterializer().materialize(names);
+
+      RenameTransformer(mapping: mapping, target: target).apply(component);
+
+      return Result.ok(mapping);
+    } on Exception catch (e) {
+      return Result.error(e);
     }
+  }
+
+  NameGenerator _defaultGenerator() {
+    return switch (options.namingStrategy) {
+      NamingStrategy.shuffled => ShuffledGenerator(seed: options.seed),
+      NamingStrategy.sequential => SequentialGenerator(),
+    };
   }
 }

@@ -1,24 +1,19 @@
 import 'package:glob/glob.dart';
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/name_generator.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
-import 'package:refractor/src/engine/runner/pass_options.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
+import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('PassContext.shouldObfuscateLibrary', () {
-    PassContext makeContext({
-      PassOptions? options,
+  group('ObfuscationTarget.shouldObfuscateLibrary', () {
+    ObfuscationTarget makeTarget({
       Uri? projectRootUri,
       String? projectPackageName = 'my_app',
+      List<Glob> excludePatterns = const [],
     }) {
-      return PassContext(
-        symbolTable: SymbolTable(),
-        nameGenerator: NameGenerator(),
-        options: options ?? const PassOptions(),
+      return ObfuscationTarget(
         projectRootUri: projectRootUri ?? Uri.file('/project/'),
         projectPackageName: projectPackageName,
+        excludePatterns: excludePatterns,
       );
     }
 
@@ -28,15 +23,17 @@ void main() {
     }
 
     test('never obfuscates dart: libraries', () {
-      final context = makeContext();
-
-      expect(context.shouldObfuscateLibrary(makeLibrary('dart:core')), isFalse);
+      final target = makeTarget();
+      expect(
+        target.shouldObfuscateLibrary(makeLibrary('dart:core')),
+        isFalse,
+      );
     });
 
     test('rejects non-project package libraries', () {
-      final context = makeContext();
+      final target = makeTarget();
       expect(
-        context.shouldObfuscateLibrary(
+        target.shouldObfuscateLibrary(
           makeLibrary('package:other_package/main.dart'),
         ),
         isFalse,
@@ -44,19 +41,17 @@ void main() {
     });
 
     test('obfuscates only files inside current project folder', () {
-      final context = makeContext(
-        projectRootUri: Uri.file('/project/'),
-      );
+      final target = makeTarget(projectRootUri: Uri.file('/project/'));
       final inProjectUri = Uri.file('/project/lib/main.dart');
 
       expect(
-        context.shouldObfuscateLibrary(
+        target.shouldObfuscateLibrary(
           makeLibrary(inProjectUri.toString()),
         ),
         isTrue,
       );
       expect(
-        context.shouldObfuscateLibrary(
+        target.shouldObfuscateLibrary(
           makeLibrary('file:///another/place/lib/main.dart'),
         ),
         isFalse,
@@ -64,14 +59,12 @@ void main() {
     });
 
     test('exclude patterns can block by import URI string', () {
-      final context = makeContext(
-        options: PassOptions(
-          excludeLibraryUriPatterns: [Glob('**/generated/**')],
-        ),
+      final target = makeTarget(
+        excludePatterns: [Glob('**/generated/**')],
       );
 
       expect(
-        context.shouldObfuscateLibrary(
+        target.shouldObfuscateLibrary(
           makeLibrary('package:my_app/generated/file.dart'),
         ),
         isFalse,
@@ -79,10 +72,9 @@ void main() {
     });
 
     test('rejects non-project file URIs by default', () {
-      final context = makeContext();
-
+      final target = makeTarget();
       expect(
-        context.shouldObfuscateLibrary(
+        target.shouldObfuscateLibrary(
           makeLibrary('file:///outside/project/main.dart'),
         ),
         isFalse,
@@ -90,9 +82,9 @@ void main() {
     });
 
     test('skips all package libraries when project package is unknown', () {
-      final context = makeContext(projectPackageName: null);
+      final target = makeTarget(projectPackageName: null);
       expect(
-        context.shouldObfuscateLibrary(
+        target.shouldObfuscateLibrary(
           makeLibrary('package:my_app/main.dart'),
         ),
         isFalse,

@@ -18,8 +18,8 @@ void main() {
       engine = RefractorEngine(compiler: compiler, kernelIO: kernelIo);
     });
 
-    test('runs compile -> load -> write -> target compile for exe', () {
-      final result = engine.run(
+    test('runs compile -> load -> write -> target compile for exe', () async {
+      final result = await engine.run(
         config: RefractorConfig(passes: []),
         request: BuildRequest(
           input: 'lib/main.dart',
@@ -59,8 +59,8 @@ void main() {
 
     test(
       'writes final kernel output and skips compileToTarget for kernel target',
-      () {
-        final result = engine.run(
+      () async {
+        final result = await engine.run(
           config: RefractorConfig(passes: []),
           request: BuildRequest(
             input: 'lib/main.dart',

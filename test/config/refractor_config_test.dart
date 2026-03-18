@@ -74,33 +74,25 @@ passes:
       expect(passes[0], isA<StringEncryptPass>());
       expect((passes[0] as StringEncryptPass).xorKey, 23);
     });
-  });
 
-  group('RefractorConfig.toOptions', () {
-    test('maps rename and global settings correctly', () {
-      final config = RefractorConfig(
-        refractor: const RefractorSettings(
-          exclude: ['**/*.g.dart'],
-          verbose: true,
-        ),
-        passes: [
-          RenamePassConfig(preserveMain: false),
-        ],
-      );
+    test('rename pass gets typed options from config', () {
+      final config = RefractorConfig.fromYaml('''
+passes:
+  rename:
+    preserve_main: false
+    seed: 42
+''');
 
-      final options = config.toOptions();
+      final passes = config.buildPasses();
 
-      expect(options.preserveMain, isFalse);
-      expect(options.verbose, isTrue);
-      expect(
-        options.excludeLibraryUriPatterns.single.matches(
-          'package:my_app/src/user.g.dart',
-        ),
-        isTrue,
-      );
+      expect(passes.length, 1);
+      expect(passes[0], isA<RenamePass>());
+      final renamePass = passes[0] as RenamePass;
+      expect(renamePass.options.preserveMain, isFalse);
+      expect(renamePass.options.seed, 42);
     });
 
-    test('maps string encryption exclude patterns to regex list', () {
+    test('string encrypt pass gets exclude patterns from config', () {
       final config = RefractorConfig.fromYaml('''
 passes:
   string_encrypt:
@@ -109,14 +101,33 @@ passes:
       - "SECRET"
 ''');
 
-      final options = config.toOptions();
+      final passes = config.buildPasses();
 
-      expect(options.stringExcludePatterns, hasLength(2));
+      expect(passes.length, 1);
+      final stringPass = passes[0] as StringEncryptPass;
+      expect(stringPass.excludePatterns, hasLength(2));
       expect(
-        options.stringExcludePatterns[0].hasMatch('https://api.test'),
+        stringPass.excludePatterns[0].hasMatch('https://api.test'),
         isTrue,
       );
-      expect(options.stringExcludePatterns[1].hasMatch('SECRET_KEY'), isTrue);
+      expect(stringPass.excludePatterns[1].hasMatch('SECRET_KEY'), isTrue);
+    });
+  });
+
+  group('RefractorConfig.excludePatterns', () {
+    test('maps exclude settings to Glob list', () {
+      final config = RefractorConfig(
+        refractor: const RefractorSettings(
+          exclude: ['**/*.g.dart'],
+        ),
+      );
+
+      final patterns = config.excludePatterns;
+      expect(patterns, hasLength(1));
+      expect(
+        patterns.single.matches('package:my_app/src/user.g.dart'),
+        isTrue,
+      );
     });
   });
 

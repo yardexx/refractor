@@ -9,10 +9,12 @@ final class RenamePassConfig extends PassConfig {
   RenamePassConfig({
     super.enabled,
     this.preserveMain = true,
+    this.seed,
   });
 
   factory RenamePassConfig.fromJson(Map<String, dynamic> json) =>
       _$RenamePassConfigFromJson(json);
 
   final bool preserveMain;
+  final int? seed;
 }
