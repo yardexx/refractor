@@ -1,12 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
 /// Tracks the mapping from original identifiers to their obfuscated names.
 /// Useful for generating a symbol map that can be used to deobfuscate stack
 /// traces.
 ///
-/// This class is pure (no dart:io). For file writing, see the
-/// `symbol_table_io.dart` extension in the IO layer.
+/// This class is pure (no `dart:io`). For file writing, see the IO-layer
+/// helpers in the CLI package.
 class SymbolTable {
   // obfuscated -> original
   final Map<String, String> _map = {};
@@ -25,12 +24,6 @@ class SymbolTable {
       if (entry.value == original) return entry.key;
     }
     return null;
-  }
-
-  void writeToFile(String path) {
-    final file = File(path);
-    file.parent.createSync(recursive: true);
-    file.writeAsStringSync(toJsonString());
   }
 
   /// Export as a JSON-encodable map (obfuscated -> original).

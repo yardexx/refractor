@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/cli/commands/refractor_command.dart';
+import 'package:refractor/src/cli/symbol_table_io.dart';
 import 'package:refractor/src/config/config_manager.dart';
 import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
@@ -75,7 +76,7 @@ class BuildCommand extends RefractorCommand {
     switch (result) {
       case Ok<BuildResult>():
         logger.detail('Writing output to ${result.value.outputPath}...');
-        result.value.symbolTable.writeToFile(config.symbolMapPath);
+        result.value.symbolTable.writeToPath(config.symbolMapPath);
         logger.success('Build complete: ${result.value.outputPath}');
       case Error<BuildResult>():
         throw BuildException('Build failed: ${result.error}');
