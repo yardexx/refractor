@@ -86,6 +86,28 @@ void main() {
         expect(ok.value.outputPath, 'build/out.dill');
       },
     );
+
+    test('passesRun reflects YAML pass order', () async {
+      final result = await engine.run(
+        config: RefractorConfig.fromYaml('''
+passes:
+  string_encrypt: true
+  rename: true
+'''),
+        request: BuildRequest(
+          input: 'lib/main.dart',
+          output: 'build/out',
+          target: Target.exe,
+          workDirectory: '.dart_tool/refractor',
+          projectRootUri: Uri(scheme: 'file', path: '/project/'),
+          projectPackageName: 'sample_app',
+        ),
+      );
+
+      expect(result, isA<Ok<BuildResult>>());
+      final ok = result as Ok<BuildResult>;
+      expect(ok.value.passesRun, ['string_encrypt', 'rename']);
+    });
   });
 }
 

@@ -1,6 +1,7 @@
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
+import 'package:refractor/src/engine/runner/pass_pipeline_builder.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:test/test.dart';
 
@@ -59,7 +60,7 @@ passes:
     });
   });
 
-  group('RefractorConfig.buildPasses', () {
+  group('PassPipelineBuilder', () {
     test('builds only enabled passes with concrete options', () {
       final config = RefractorConfig.fromYaml('''
 passes:
@@ -68,7 +69,7 @@ passes:
     xor_key: 23
 ''');
 
-      final passes = config.buildPasses();
+      final passes = PassPipelineBuilder().build(config.passes);
 
       expect(passes.length, 1);
       expect(passes[0], isA<StringEncryptPass>());
@@ -83,7 +84,7 @@ passes:
     seed: 42
 ''');
 
-      final passes = config.buildPasses();
+      final passes = PassPipelineBuilder().build(config.passes);
 
       expect(passes.length, 1);
       expect(passes[0], isA<RenamePass>());
@@ -101,7 +102,7 @@ passes:
       - "SECRET"
 ''');
 
-      final passes = config.buildPasses();
+      final passes = PassPipelineBuilder().build(config.passes);
 
       expect(passes.length, 1);
       final stringPass = passes[0] as StringEncryptPass;
@@ -111,6 +112,21 @@ passes:
         isTrue,
       );
       expect(stringPass.excludePatterns[1].hasMatch('SECRET_KEY'), isTrue);
+    });
+
+    test('preserves YAML pass order', () {
+      final config = RefractorConfig.fromYaml('''
+passes:
+  string_encrypt: true
+  rename: true
+''');
+
+      final passes = PassPipelineBuilder().build(config.passes);
+
+      expect(passes.map((pass) => pass.name).toList(), [
+        'string_encrypt',
+        'rename',
+      ]);
     });
   });
 
@@ -127,25 +143,6 @@ passes:
       expect(
         patterns.single.matches('package:my_app/src/user.g.dart'),
         isTrue,
-      );
-    });
-  });
-
-  group('RefractorConfig.passesFromNames', () {
-    test('creates passes from valid names', () {
-      final passes = RefractorConfig.passesFromNames([
-        'rename',
-        'string_encrypt',
-      ]);
-
-      expect(passes[0], isA<RenamePass>());
-      expect(passes[1], isA<StringEncryptPass>());
-    });
-
-    test('throws ConfigException for invalid names', () {
-      expect(
-        () => RefractorConfig.passesFromNames(['rename', 'bad']),
-        throwsA(isA<ConfigException>()),
       );
     });
   });

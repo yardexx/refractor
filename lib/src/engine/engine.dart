@@ -4,6 +4,7 @@ import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
 import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
 import 'package:refractor/src/engine/runner/obfuscation_target.dart';
+import 'package:refractor/src/engine/runner/pass_pipeline_builder.dart';
 import 'package:refractor/src/engine/runner/pass_runner.dart';
 import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:refractor/src/utils/result.dart';
@@ -20,6 +21,7 @@ class BuildRequest {
     required this.projectRootUri,
     required this.projectPackageName,
   });
+
   final String input;
   final String output;
   final Target target;
@@ -54,7 +56,7 @@ class RefractorEngine {
 
       // 2. Load & obfuscate.
       _logger?.detail('Running obfuscation passes...');
-      final enabledPasses = config.buildPasses();
+      final enabledPasses = PassPipelineBuilder().build(config.passes);
       final component = kernelIO.load(dillPath);
 
       final obfuscationTarget = ObfuscationTarget(
@@ -128,6 +130,7 @@ class BuildResult {
     required this.symbolTable,
     required this.passesRun,
   });
+
   final String outputPath;
   final SymbolTable symbolTable;
   final List<String> passesRun;
