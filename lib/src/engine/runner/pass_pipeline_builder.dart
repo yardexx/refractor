@@ -26,5 +26,4 @@ final class PassPipelineBuilder {
       excludePatterns: config.excludePatterns.map(RegExp.new).toList(),
     ),
   };
-
 }
