@@ -3,10 +3,6 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:refractor/src/config/converter/pass_config_converter.dart';
 import 'package:refractor/src/config/model/pass_config.dart';
 import 'package:refractor/src/config/model/refractor_settings.dart';
-import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
-import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
-import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
-import 'package:refractor/src/engine/runner/pass.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:yaml/yaml.dart';
 
@@ -66,45 +62,10 @@ final class RefractorConfig {
       .map(Glob.new)
       .toList();
 
-  /// Build a list of [Pass] instances from the configured passes.
-  ///
-  /// Each pass is constructed with its own typed options.
-  List<Pass<dynamic>> buildPasses() {
-    return passes.where((p) => p.enabled).map<Pass<dynamic>>((p) {
-      return switch (p) {
-        RenamePassConfig() => RenamePass(
-          options: RenamePassOptions(
-            preserveMain: p.preserveMain,
-            seed: p.seed,
-          ),
-        ),
-        StringEncryptPassConfig() => StringEncryptPass(
-          xorKey: p.xorKey,
-          excludePatterns: p.excludePatterns.map(RegExp.new).toList(),
-        ),
-      };
-    }).toList();
-  }
-
   /// Convenience getters for backward compatibility with pipeline/proxy code.
   bool get verbose => refractor.verbose;
 
   String get symbolMapPath => refractor.symbolMap;
-
-  /// Build a pass list from a comma-separated list of pass names.
-  ///
-  /// Throws [ConfigException] if an unknown pass name is given.
-  static List<Pass<dynamic>> passesFromNames(List<String> names) {
-    final available = <String, Pass<dynamic>>{
-      'rename': RenamePass(),
-      'string_encrypt': StringEncryptPass(),
-    };
-    return names.map((n) {
-      final pass = available[n.trim()];
-      if (pass == null) throw ConfigException('Unknown pass: "$n"');
-      return pass;
-    }).toList();
-  }
 }
 
 /// Recursively converts [YamlMap]/[YamlList] to plain Dart [Map]/[List].
