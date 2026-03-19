@@ -6,21 +6,18 @@ part of 'pass_config.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-RenamePassConfig _$RenamePassConfigFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate(
-  'RenamePassConfig',
-  json,
-  ($checkedConvert) {
-    final val = RenamePassConfig(
-      enabled: $checkedConvert('enabled', (v) => v as bool? ?? true),
-      preserveMain: $checkedConvert('preserve_main', (v) => v as bool? ?? true),
-      seed: $checkedConvert('seed', (v) => (v as num?)?.toInt()),
-    );
-    return val;
-  },
-  fieldKeyMap: const {'preserveMain': 'preserve_main'},
-);
+RenamePassConfig _$RenamePassConfigFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('RenamePassConfig', json, ($checkedConvert) {
+      final val = RenamePassConfig(
+        enabled: $checkedConvert('enabled', (v) => v as bool? ?? true),
+        preserveMain: $checkedConvert(
+          'preserve_main',
+          (v) => v as bool? ?? true,
+        ),
+        seed: $checkedConvert('seed', (v) => (v as num?)?.toInt()),
+      );
+      return val;
+    }, fieldKeyMap: const {'preserveMain': 'preserve_main'});
 
 StringEncryptPassConfig _$StringEncryptPassConfigFromJson(
   Map<String, dynamic> json,

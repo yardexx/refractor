@@ -20,13 +20,16 @@ class PassConfigListConverter
         _ => throw ConfigException('Invalid config for pass "$type": $value'),
       };
 
-      return switch (type) {
-        'rename' => RenamePassConfig.fromJson(map),
-        'string_encrypt' => StringEncryptPassConfig.fromJson(map),
-        _ => throw ConfigException('Unknown pass type: $type'),
-      };
+      return _parseBuiltInPassConfig(type, map);
     }).toList();
   }
+
+  PassConfig _parseBuiltInPassConfig(String name, Map<String, dynamic> json) =>
+      switch (name) {
+        'rename' => RenamePassConfig.fromJson(json),
+        'string_encrypt' => StringEncryptPassConfig.fromJson(json),
+        _ => throw ConfigException('Unknown pass type: $name'),
+      };
 
   @override
   Map<String, dynamic> toJson(List<PassConfig> object) =>
