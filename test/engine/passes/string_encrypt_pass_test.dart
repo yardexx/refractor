@@ -1,8 +1,9 @@
 import 'dart:convert';
 
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
+import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:test/test.dart';
 
 import '../../helpers/kernel_helpers.dart';
@@ -189,9 +190,11 @@ void main() {
       // Component with only core lib — no crash.
       final comp = Component(libraries: [coreLib])
         ..setMainMethodAndMode(null, true);
-      await StringEncryptPass().run(comp, target);
+      final result = await StringEncryptPass().run(comp, target);
 
       expect(comp.libraries.length, equals(1));
+      expect(result, isA<PassSucceeded>());
+      expect(result.report.isEmpty, isTrue);
     });
 
     test(r'helper _obfDecode$ is injected into first user library', () async {
@@ -298,6 +301,26 @@ void main() {
       final secondKey = secondCall.arguments.positional[1] as IntLiteral;
 
       expect(firstKey.value, isNot(equals(secondKey.value)));
+    });
+
+    test('returns report with encrypted string count', () async {
+      final proc = Procedure(
+        Name('counted'),
+        ProcedureKind.Method,
+        FunctionNode(
+          Block([ReturnStatement(StringLiteral('hello'))]),
+        ),
+        fileUri: userLib.fileUri,
+      );
+      userLib.addProcedure(proc);
+
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final result = await StringEncryptPass().run(component, target);
+
+      expect(result, isA<PassSucceeded>());
+      expect(result.report.passName, 'string_encrypt');
+      expect(result.report.metrics.single.key, 'strings_encrypted');
+      expect(result.report.metrics.single.value, 1);
     });
   });
 }

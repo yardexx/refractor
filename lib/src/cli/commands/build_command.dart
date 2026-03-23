@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
+import 'package:mason_logger/mason_logger.dart' show ExitCode;
 import 'package:refractor/src/cli/commands/refractor_command.dart';
 import 'package:refractor/src/cli/symbol_table_io.dart';
 import 'package:refractor/src/config/config_manager.dart';
@@ -8,7 +8,6 @@ import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/kernel/file_kernel_io.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
-import 'package:refractor/src/utils/result.dart';
 
 /// Full compile -> obfuscate -> final-compile pipeline command.
 ///
@@ -68,19 +67,20 @@ class BuildCommand extends RefractorCommand {
     final engine = RefractorEngine(
       compiler: DartCompiler(),
       kernelIO: FileKernelIO(),
-      logger: logger,
     );
 
-    final result = await engine.run(request: request, config: config);
-
-    switch (result) {
-      case Ok<BuildResult>():
-        logger.detail('Writing output to ${result.value.outputPath}...');
-        result.value.symbolTable.writeToPath(config.symbolMapPath);
-        logger.success('Build complete: ${result.value.outputPath}');
-      case Error<BuildResult>():
-        throw BuildException('Build failed: ${result.error}');
+    try {
+      final result = await engine.run(request: request, config: config);
+      logger.detail('Writing output to ${result.outputPath}...');
+      result.symbolTable.writeToPath(config.symbolMapPath);
+      logger.success('Build complete: ${result.outputPath}');
+      // TODO(jaroslav): Process and print pass reports via a dedicated
+      // reporting feature instead of inline command logic.
+      return result.failures.isEmpty
+          ? ExitCode.success.code
+          : ExitCode.software.code;
+    } on Exception catch (e) {
+      throw BuildException('Build failed: $e', cause: e);
     }
-    return ExitCode.success.code;
   }
 }

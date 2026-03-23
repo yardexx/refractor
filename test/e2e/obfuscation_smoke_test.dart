@@ -11,7 +11,6 @@ import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/kernel/file_kernel_io.dart';
-import 'package:refractor/src/utils/result.dart';
 import 'package:test/test.dart';
 
 /// Minimal Dart program that exercises diverse language features.
@@ -295,7 +294,7 @@ Future<String> _compileObfuscateRun({
     kernelIO: FileKernelIO(),
   );
 
-  final result = await engine.run(
+  await engine.run(
     config: config,
     request: BuildRequest(
       input: sourcePath,
@@ -306,13 +305,6 @@ Future<String> _compileObfuscateRun({
       projectPackageName: null,
     ),
   );
-
-  switch (result) {
-    case Ok():
-      break;
-    case Error(:final error):
-      fail('Engine failed: $error');
-  }
 
   // Run the compiled binary.
   final processResult = Process.runSync(exePath, []);
@@ -343,7 +335,7 @@ Future<String> _buildAndRunExampleApp({
     kernelIO: FileKernelIO(),
   );
 
-  final result = await engine.run(
+  await engine.run(
     config: config,
     request: BuildRequest(
       input: '$exampleRoot/bin/app.dart',
@@ -354,13 +346,6 @@ Future<String> _buildAndRunExampleApp({
       projectPackageName: 'app',
     ),
   );
-
-  switch (result) {
-    case Ok():
-      break;
-    case Error(:final error):
-      fail('Example engine build failed: $error');
-  }
 
   final processResult = Process.runSync(outputPath, arguments);
   if (processResult.exitCode != 0) {

@@ -1,19 +1,18 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
-import 'package:refractor/src/engine/runner/pass.dart';
-import 'package:refractor/src/engine/runner/pass_results.dart';
-import 'package:refractor/src/engine/runner/pass_runner.dart';
-import 'package:refractor/src/utils/result.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
+import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/pass_runner.dart';
 import 'package:test/test.dart';
 
-import '../../helpers/kernel_helpers.dart';
+import '../helpers/kernel_helpers.dart';
 
 /// A test pass that records when it was run.
-class _TrackingPass extends Pass<void> {
-  _TrackingPass(this.name);
+class _TrackingPass extends Pass {
+  _TrackingPass(this.name, {this.artifact});
 
   @override
   final String name;
+  final PassArtifact? artifact;
 
   bool wasRun = false;
   int runOrder = -1;
@@ -21,25 +20,28 @@ class _TrackingPass extends Pass<void> {
   static int _globalOrder = 0;
 
   @override
-  Future<Result<void>> run(
+  Future<PassResult> run(
     Component component,
     ObfuscationTarget target,
   ) async {
     wasRun = true;
     runOrder = _globalOrder++;
-    return const Result.ok(null);
+    return PassSucceeded(
+      artifact: artifact,
+      report: PassReport(passName: name),
+    );
   }
 
   static void resetOrder() => _globalOrder = 0;
 }
 
 /// A pass that mutates the component by adding a class to the first user lib.
-class _MutatingPass extends Pass<void> {
+class _MutatingPass extends Pass {
   @override
   String get name => 'mutating';
 
   @override
-  Future<Result<void>> run(
+  Future<PassResult> run(
     Component component,
     ObfuscationTarget target,
   ) async {
@@ -49,7 +51,27 @@ class _MutatingPass extends Pass<void> {
         break;
       }
     }
-    return const Result.ok(null);
+    return const PassSucceeded(
+      report: PassReport(passName: 'mutating'),
+    );
+  }
+}
+
+class _FailingPass extends Pass {
+  _FailingPass(this.name);
+
+  @override
+  final String name;
+
+  @override
+  Future<PassResult> run(
+    Component component,
+    ObfuscationTarget target,
+  ) async {
+    return PassFailed(
+      error: Exception('boom'),
+      report: PassReport(passName: name, message: 'boom'),
+    );
   }
 }
 
@@ -74,12 +96,17 @@ void main() {
       final runner = PassRunner(passes: [pass1, pass2, pass3]);
       final result = await runner.run(component, target);
 
-      expect(result, isA<Ok<PassResults>>());
+      expect(result, isA<PassResults>());
       expect(pass1.wasRun, isTrue);
       expect(pass2.wasRun, isTrue);
       expect(pass3.wasRun, isTrue);
       expect(pass1.runOrder, lessThan(pass2.runOrder));
       expect(pass2.runOrder, lessThan(pass3.runOrder));
+      expect(result.reports.map((report) => report.passName), [
+        'first',
+        'second',
+        'third',
+      ]);
     });
 
     test('empty pass list returns component unchanged', () async {
@@ -87,7 +114,7 @@ void main() {
       final libraryCount = component.libraries.length;
       final result = await runner.run(component, target);
 
-      expect(result, isA<Ok<PassResults>>());
+      expect(result, isA<PassResults>());
       expect(component.libraries, hasLength(libraryCount));
     });
 
@@ -109,5 +136,47 @@ void main() {
       // Tracker should have also run.
       expect(tracker.wasRun, isTrue);
     });
+
+    test('later passes still run after a failure', () async {
+      final failing = _FailingPass('failing');
+      final tracker = _TrackingPass('after');
+
+      final runner = PassRunner(passes: [failing, tracker]);
+      final result = await runner.run(component, target);
+
+      expect(tracker.wasRun, isTrue);
+      expect(result.failures, hasLength(1));
+      expect(result.failures.single.passName, 'failing');
+      expect(result.reports.map((report) => report.passName), [
+        'failing',
+        'after',
+      ]);
+    });
+
+    test(
+      'successful artifacts are collected after an earlier failure',
+      () async {
+      final failing = _FailingPass('failing');
+      final tracker = _TrackingPass(
+        'after',
+        artifact: const _TrackingArtifact('tracked'),
+      );
+
+      final runner = PassRunner(passes: [failing, tracker]);
+      final result = await runner.run(component, target);
+
+      expect(result.failures, hasLength(1));
+      expect(
+        result.artifact<_TrackingArtifact>('after')?.value,
+        'tracked',
+      );
+      },
+    );
   });
+}
+
+final class _TrackingArtifact extends PassArtifact {
+  const _TrackingArtifact(this.value);
+
+  final String value;
 }

@@ -1,7 +1,8 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
+import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/rename/materialization/name_materializer.dart';
-import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
-import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
+import 'package:refractor/src/engine/passes/rename/model.dart';
 import 'package:refractor/src/engine/passes/rename/name_generator/name_generator.dart';
 import 'package:refractor/src/engine/passes/rename/name_generator/sequential_generator.dart';
 import 'package:refractor/src/engine/passes/rename/name_generator/shuffled_generator.dart';
@@ -9,10 +10,7 @@ import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart'
 import 'package:refractor/src/engine/passes/rename/planning/rename_slot_builder.dart';
 import 'package:refractor/src/engine/passes/rename/rename_transformer.dart';
 import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
-import 'package:refractor/src/engine/runner/pass.dart';
 import 'package:refractor/src/utils/rename_helpers.dart';
-import 'package:refractor/src/utils/result.dart';
 
 /// Obfuscation pass that renames user-defined identifiers.
 ///
@@ -24,7 +22,7 @@ import 'package:refractor/src/utils/result.dart';
 ///   1. Collect — gather all declarations to rename.
 ///   2. Generate + Allocate — produce an obfuscation map.
 ///   3. Apply — mutate the AST and unbind canonical names.
-class RenamePass extends Pass<RenameMapping> {
+class RenamePass extends Pass {
   RenamePass({
     this.options = const RenamePassOptions(),
     NameGenerator? generator,
@@ -37,7 +35,7 @@ class RenamePass extends Pass<RenameMapping> {
   String get name => 'rename';
 
   @override
-  Future<Result<RenameMapping>> run(
+  Future<PassResult> run(
     Component component,
     ObfuscationTarget target,
   ) async {
@@ -60,9 +58,28 @@ class RenamePass extends Pass<RenameMapping> {
 
       RenameTransformer(mapping: mapping, target: target).apply(component);
 
-      return Result.ok(mapping);
-    } on Exception catch (e) {
-      return Result.error(e);
+      return PassSucceeded(
+        artifact: RenameArtifact(mapping: mapping),
+        report: PassReport(
+          passName: name,
+          metrics: [
+            PassMetric(key: 'classes', value: mapping.classes.length),
+            PassMetric(key: 'members', value: mapping.members.length),
+            PassMetric(key: 'variables', value: mapping.variables.length),
+          ],
+        ),
+      );
+    } on Object catch (error) {
+      final exception = error is Exception
+          ? error
+          : Exception(error.toString());
+      return PassFailed(
+        error: exception,
+        report: PassReport(
+          passName: name,
+          message: error.toString(),
+        ),
+      );
     }
   }
 

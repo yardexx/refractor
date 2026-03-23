@@ -1,5 +1,5 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
 
 /// Creates a user library with a `package:refractor/...` URI so that
 /// [ObfuscationTarget.shouldObfuscateLibrary] returns `true`.

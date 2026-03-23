@@ -1,7 +1,6 @@
 import 'package:refractor/src/config/model/refractor_config.dart';
-import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
-import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
-import 'package:refractor/src/engine/runner/pass_pipeline_builder.dart';
+import 'package:refractor/src/engine/passes.dart';
+import 'package:refractor/src/engine/pipeline_builder.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:test/test.dart';
 
@@ -69,7 +68,7 @@ passes:
     xor_key: 23
 ''');
 
-      final passes = PassPipelineBuilder().build(config.passes);
+      final passes = PipelineBuilder().build(config.passes);
 
       expect(passes.length, 1);
       expect(passes[0], isA<StringEncryptPass>());
@@ -84,7 +83,7 @@ passes:
     seed: 42
 ''');
 
-      final passes = PassPipelineBuilder().build(config.passes);
+      final passes = PipelineBuilder().build(config.passes);
 
       expect(passes.length, 1);
       expect(passes[0], isA<RenamePass>());
@@ -102,7 +101,7 @@ passes:
       - "SECRET"
 ''');
 
-      final passes = PassPipelineBuilder().build(config.passes);
+      final passes = PipelineBuilder().build(config.passes);
 
       expect(passes.length, 1);
       final stringPass = passes[0] as StringEncryptPass;
@@ -121,7 +120,7 @@ passes:
   rename: true
 ''');
 
-      final passes = PassPipelineBuilder().build(config.passes);
+      final passes = PipelineBuilder().build(config.passes);
 
       expect(passes.map((pass) => pass.name).toList(), [
         'string_encrypt',

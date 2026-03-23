@@ -1,9 +1,8 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/passes/rename/model/rename_mapping.dart';
-import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
+import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/passes/rename/model.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
-import 'package:refractor/src/utils/result.dart';
 import 'package:test/test.dart';
 
 import '../../../helpers/kernel_helpers.dart';
@@ -26,8 +25,8 @@ void main() {
     ]) async {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
       final result = await RenamePass(options: options).run(component, target);
-      expect(result, isA<Ok<RenameMapping>>());
-      return (result as Ok<RenameMapping>).value;
+      expect(result, isA<PassSucceeded>());
+      return ((result as PassSucceeded).artifact! as RenameArtifact).mapping;
     }
 
     test('renames class name in user library', () async {
@@ -203,6 +202,23 @@ void main() {
 
       expect(mapping.symbolMap, isNotEmpty);
       expect(mapping.symbolMap[cls.name], equals('Tracker'));
+    });
+
+    test('returns report metrics for renamed declarations', () async {
+      final cls = Class(name: 'Tracker', fileUri: userLib.fileUri);
+      userLib.addClass(cls);
+
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final result = await RenamePass().run(component, target);
+
+      expect(result, isA<PassSucceeded>());
+      expect(result.report.passName, 'rename');
+      expect(result.report.metrics.map((metric) => metric.key), [
+        'classes',
+        'members',
+        'variables',
+      ]);
+      expect(result.report.metrics.first.value, 1);
     });
 
     test('renames named constructor', () async {
@@ -981,7 +997,7 @@ void main() {
           ..setMainMethodAndMode(null, true);
         final result = await RenamePass().run(component, target);
 
-        expect(result, isA<Ok<RenameMapping>>());
+        expect(result, isA<PassSucceeded>());
         expect(externalMethod.name.text, 'foo');
         expect(localMethod.name.text, 'foo');
         expect(call.name.text, 'foo');
@@ -1018,7 +1034,7 @@ void main() {
           ..setMainMethodAndMode(null, true);
         final result = await RenamePass().run(component, target);
 
-        expect(result, isA<Ok<RenameMapping>>());
+        expect(result, isA<PassSucceeded>());
         expect(localMethod.name.text, isNot('map'));
       },
     );
