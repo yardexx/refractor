@@ -17,62 +17,16 @@ class StringEncryptTransformer extends PassTransformer {
   final List<RegExp> excludePatterns;
   int count = 0;
 
-  // Track whether we're inside a const context or annotation.
-  int _constDepth = 0;
-  int _annotationDepth = 0;
-
-  bool get _inConstContext => _constDepth > 0 || _annotationDepth > 0;
-
-  void _transformAnnotations(List<Expression> annotations) {
-    _annotationDepth++;
-    try {
-      transformAnnotationList(annotations);
-    } finally {
-      _annotationDepth--;
-    }
-  }
-
-  @override
-  TreeNode visitClass(Class node) {
-    _transformAnnotations(node.annotations);
-    return transformClassWithoutAnnotations(node);
-  }
-
   @override
   TreeNode visitProcedure(Procedure node) {
     // Skip the helper procedure itself.
     if (node == decodeProcedure) return node;
-
-    _transformAnnotations(node.annotations);
-
-    return transformProcedureWithoutAnnotations(node);
-  }
-
-  @override
-  TreeNode visitField(Field node) {
-    _transformAnnotations(node.annotations);
-    return transformFieldWithoutAnnotations(node);
-  }
-
-  @override
-  TreeNode visitConstructor(Constructor node) {
-    _transformAnnotations(node.annotations);
-    return transformConstructorWithoutAnnotations(node);
-  }
-
-  @override
-  TreeNode visitConstantExpression(ConstantExpression node) {
-    _constDepth++;
-    try {
-      return super.visitConstantExpression(node);
-    } finally {
-      _constDepth--;
-    }
+    return super.visitProcedure(node);
   }
 
   @override
   TreeNode visitStringLiteral(StringLiteral node) {
-    if (_inConstContext) return node;
+    if (inConstContext) return node;
     for (final pattern in excludePatterns) {
       if (pattern.hasMatch(node.value)) return node;
     }

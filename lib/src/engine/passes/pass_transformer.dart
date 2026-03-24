@@ -5,6 +5,10 @@ abstract class PassTransformer extends Transformer {
   PassTransformer({required this.target});
 
   final ObfuscationTarget target;
+  int _constDepth = 0;
+  int _annotationDepth = 0;
+
+  bool get inConstContext => _constDepth > 0 || _annotationDepth > 0;
 
   @override
   TreeNode visitLibrary(Library node) {
@@ -12,9 +16,48 @@ abstract class PassTransformer extends Transformer {
     return super.visitLibrary(node);
   }
 
+  @override
+  TreeNode visitClass(Class node) {
+    transformAnnotationList(node.annotations);
+    return transformClassWithoutAnnotations(node);
+  }
+
+  @override
+  TreeNode visitProcedure(Procedure node) {
+    transformAnnotationList(node.annotations);
+    return transformProcedureWithoutAnnotations(node);
+  }
+
+  @override
+  TreeNode visitField(Field node) {
+    transformAnnotationList(node.annotations);
+    return transformFieldWithoutAnnotations(node);
+  }
+
+  @override
+  TreeNode visitConstructor(Constructor node) {
+    transformAnnotationList(node.annotations);
+    return transformConstructorWithoutAnnotations(node);
+  }
+
+  @override
+  TreeNode visitConstantExpression(ConstantExpression node) {
+    _constDepth++;
+    try {
+      return super.visitConstantExpression(node);
+    } finally {
+      _constDepth--;
+    }
+  }
+
   void transformAnnotationList(List<Expression> annotations) {
-    for (var i = 0; i < annotations.length; i++) {
-      annotations[i] = transform(annotations[i]);
+    _annotationDepth++;
+    try {
+      for (var i = 0; i < annotations.length; i++) {
+        annotations[i] = transform(annotations[i]);
+      }
+    } finally {
+      _annotationDepth--;
     }
   }
 

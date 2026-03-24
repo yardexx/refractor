@@ -162,6 +162,26 @@ void main() {
       );
     });
 
+    test('string literal in procedure annotation is NOT replaced', () async {
+      final procedure = Procedure(
+        Name('annotatedProcedure'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      )..addAnnotation(StringLiteral('keep_proc_annotation'));
+      userLib.addProcedure(procedure);
+
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      await StringEncryptPass().run(component, target);
+
+      final annotation = procedure.annotations.first;
+      expect(annotation, isA<StringLiteral>());
+      expect(
+        (annotation as StringLiteral).value,
+        equals('keep_proc_annotation'),
+      );
+    });
+
     test('stringExcludePatterns exempts matching strings', () async {
       final proc = Procedure(
         Name('exempt'),
