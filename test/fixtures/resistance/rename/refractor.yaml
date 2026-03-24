@@ -1,0 +1,5 @@
+refractor:
+  verbose: false
+passes:
+  rename: true
+  string_encrypt: false
