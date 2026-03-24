@@ -156,20 +156,20 @@ void main() {
     test(
       'successful artifacts are collected after an earlier failure',
       () async {
-      final failing = _FailingPass('failing');
-      final tracker = _TrackingPass(
-        'after',
-        artifact: const _TrackingArtifact('tracked'),
-      );
+        final failing = _FailingPass('failing');
+        final tracker = _TrackingPass(
+          'after',
+          artifact: const _TrackingArtifact('tracked'),
+        );
 
-      final runner = PassRunner(passes: [failing, tracker]);
-      final result = await runner.run(component, target);
+        final runner = PassRunner(passes: [failing, tracker]);
+        final result = await runner.run(component, target);
 
-      expect(result.failures, hasLength(1));
-      expect(
-        result.artifact<_TrackingArtifact>('after')?.value,
-        'tracked',
-      );
+        expect(result.failures, hasLength(1));
+        expect(
+          result.artifact<_TrackingArtifact>('after')?.value,
+          'tracked',
+        );
       },
     );
   });

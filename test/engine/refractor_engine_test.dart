@@ -106,33 +106,33 @@ passes:
     test(
       'pass failure is reported and output generation is skipped',
       () async {
-      final userUri = Uri.parse('package:sample_app/main.dart');
-      kernelIo.component.libraries.add(Library(userUri, fileUri: userUri));
-      kernelIo.component.setMainMethodAndMode(null, true);
+        final userUri = Uri.parse('package:sample_app/main.dart');
+        kernelIo.component.libraries.add(Library(userUri, fileUri: userUri));
+        kernelIo.component.setMainMethodAndMode(null, true);
 
-      final result = await engine.run(
-        config: RefractorConfig.fromYaml('''
+        final result = await engine.run(
+          config: RefractorConfig.fromYaml('''
 passes:
   string_encrypt: true
 '''),
-        request: BuildRequest(
-          input: 'lib/main.dart',
-          output: 'build/out',
-          target: Target.exe,
-          workDirectory: '.dart_tool/refractor',
-          projectRootUri: Uri(scheme: 'file', path: '/project/'),
-          projectPackageName: 'sample_app',
-        ),
-      );
+          request: BuildRequest(
+            input: 'lib/main.dart',
+            output: 'build/out',
+            target: Target.exe,
+            workDirectory: '.dart_tool/refractor',
+            projectRootUri: Uri(scheme: 'file', path: '/project/'),
+            projectPackageName: 'sample_app',
+          ),
+        );
 
-      expect(result.failures, hasLength(1));
-      expect(result.failures.single.passName, 'string_encrypt');
-      expect(result.reports, hasLength(1));
-      expect(result.reports.single.passName, 'string_encrypt');
-      expect(result.reports.single.message, isNotNull);
-      expect(kernelIo.writeCalls, isEmpty);
-      expect(compiler.compileToTargetCalls, isEmpty);
-    },
+        expect(result.failures, hasLength(1));
+        expect(result.failures.single.passName, 'string_encrypt');
+        expect(result.reports, hasLength(1));
+        expect(result.reports.single.passName, 'string_encrypt');
+        expect(result.reports.single.message, isNotNull);
+        expect(kernelIo.writeCalls, isEmpty);
+        expect(compiler.compileToTargetCalls, isEmpty);
+      },
     );
   });
 }
