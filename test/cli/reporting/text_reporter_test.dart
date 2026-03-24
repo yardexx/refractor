@@ -1,3 +1,4 @@
+import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/cli/reporting/text_reporter.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/pass.dart';
@@ -6,7 +7,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('TextReporter', () {
-    final reporter = TextReporter();
+    final reporter = TextReporter(Logger());
 
     test('renders metrics in report order with human labels', () {
       final result = BuildResult(
