@@ -104,7 +104,7 @@ passes:
     });
 
     test(
-      'partial pass failure is reported while build still completes',
+      'pass failure is reported and output generation is skipped',
       () async {
       final userUri = Uri.parse('package:sample_app/main.dart');
       kernelIo.component.libraries.add(Library(userUri, fileUri: userUri));
@@ -130,8 +130,9 @@ passes:
       expect(result.reports, hasLength(1));
       expect(result.reports.single.passName, 'string_encrypt');
       expect(result.reports.single.message, isNotNull);
-      expect(compiler.compileToTargetCalls, hasLength(1));
-      },
+      expect(kernelIo.writeCalls, isEmpty);
+      expect(compiler.compileToTargetCalls, isEmpty);
+    },
     );
   });
 }

@@ -77,6 +77,19 @@ class RefractorEngine {
       }
     }
 
+    if (runResult.failures.isNotEmpty) {
+      _logger?.detail(
+        'Skipping output generation because one or more passes failed.',
+      );
+      return BuildResult(
+        outputPath: request.output,
+        symbolTable: symbolTable,
+        passesRun: enabledPasses.map((p) => p.name).toList(),
+        reports: runResult.reports,
+        failures: runResult.failures,
+      );
+    }
+
     // 3. Write obfuscated kernel.
     _logger?.detail('Writing obfuscated kernel...');
     final obfuscatedDillPath = '${request.workDirectory}/app.obfuscated.dill';

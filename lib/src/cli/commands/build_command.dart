@@ -71,14 +71,21 @@ class BuildCommand extends RefractorCommand {
 
     try {
       final result = await engine.run(request: request, config: config);
+      if (result.failures.isNotEmpty) {
+        logger.err('Build failed: one or more passes reported failure.');
+        // TODO(jaroslav): Process and print pass reports via a dedicated
+        //  reporting feature instead of inline command logic.
+        return ExitCode.software.code;
+      }
+
       logger.detail('Writing output to ${result.outputPath}...');
+      // TODO(jaroslav): Route symbol maps and other auxiliary outputs through
+      //  dedicated artifact-handling boundary once that feature lands.
       result.symbolTable.writeToPath(config.symbolMapPath);
       logger.success('Build complete: ${result.outputPath}');
       // TODO(jaroslav): Process and print pass reports via a dedicated
-      // reporting feature instead of inline command logic.
-      return result.failures.isEmpty
-          ? ExitCode.success.code
-          : ExitCode.software.code;
+      //  reporting feature instead of inline command logic.
+      return ExitCode.success.code;
     } on Exception catch (e) {
       throw BuildException('Build failed: $e', cause: e);
     }
