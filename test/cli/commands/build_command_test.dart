@@ -4,6 +4,10 @@ import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:refractor/src/cli/commands/build_command.dart';
+import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/engine.dart';
+import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:test/test.dart';
 
@@ -70,8 +74,94 @@ passes:
       expect(File('build/out.dill').existsSync(), isTrue);
       expect(File('build/out.dill').lengthSync(), greaterThan(0));
       expect(File('symbol_map.json').existsSync(), isTrue);
+      verify(
+        () => logger.info(any(that: contains('✅ Build report:'))),
+      ).called(1);
     });
+
+    test(
+      'emits rendered report and returns software code on failure',
+      () async {
+        runner = CommandRunner<int>('test', 'test')
+          ..addCommand(
+            _FakeBuildCommand(
+              logger: logger,
+              result: BuildResult(
+                outputPath: 'build/out.dill',
+                symbolTable: SymbolTable(),
+                passesRun: ['string_encrypt'],
+                reports: const [
+                  PassReport(
+                    passName: 'string_encrypt',
+                    message: 'boom',
+                  ),
+                ],
+                failures: [
+                  PassFailureRecord(
+                    passName: 'string_encrypt',
+                    error: Exception('kaboom'),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+        File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+        File('refractor.yaml').writeAsStringSync('''
+passes:
+  rename: false
+  string_encrypt: true
+''');
+        Directory('lib').createSync(recursive: true);
+        File(
+          'lib/main.dart',
+        ).writeAsStringSync('void main() { print("ok"); }\n');
+
+        final exitCode = await runner.run([
+          'build',
+          '--target',
+          'kernel',
+          '--input',
+          'lib/main.dart',
+          '--output',
+          'build',
+        ]);
+
+        expect(exitCode, ExitCode.software.code);
+        expect(File('symbol_map.json').existsSync(), isFalse);
+        verify(
+          () => logger.info(
+            any(
+              that: contains(
+                'Build report: 0 pass(es) succeeded, 1 pass(es) failed.',
+              ),
+            ),
+          ),
+        ).called(1);
+        verify(
+          () =>
+              logger.err('Build failed: one or more passes reported failure.'),
+        ).called(1);
+      },
+    );
   });
 }
 
 class _MockLogger extends Mock implements Logger {}
+
+class _FakeBuildCommand extends BuildCommand {
+  _FakeBuildCommand({
+    required this.result,
+    super.logger,
+  });
+
+  final BuildResult result;
+
+  @override
+  Future<BuildResult> runBuild({
+    required BuildRequest request,
+    required RefractorConfig config,
+  }) async {
+    return result;
+  }
+}
