@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart' show ExitCode;
 import 'package:refractor/src/cli/commands/refractor_command.dart';
+import 'package:refractor/src/cli/reporting/build_reporter.dart';
+import 'package:refractor/src/cli/reporting/text_reporter.dart';
 import 'package:refractor/src/cli/symbol_table_io.dart';
 import 'package:refractor/src/config/config_manager.dart';
+import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/kernel/file_kernel_io.dart';
@@ -15,7 +18,7 @@ import 'package:refractor/src/exceptions/refractor_exception.dart';
 ///
 /// Targets: exe, aot, jit, kernel (default: exe)
 class BuildCommand extends RefractorCommand {
-  BuildCommand({super.logger}) {
+  BuildCommand({super.logger, BuildReporter? reporter}) : _reporter = reporter {
     argParser
       ..addOption(
         'input',
@@ -38,11 +41,26 @@ class BuildCommand extends RefractorCommand {
       );
   }
 
+  final BuildReporter? _reporter;
+
   @override
   String get name => 'build';
 
   @override
   String get description => 'Compile, obfuscate, and build to a target format.';
+
+  BuildReporter get reporter => _reporter ?? TextReporter();
+
+  Future<BuildResult> runBuild({
+    required BuildRequest request,
+    required RefractorConfig config,
+  }) {
+    final engine = RefractorEngine(
+      compiler: DartCompiler(),
+      kernelIO: FileKernelIO(),
+    );
+    return engine.run(request: request, config: config);
+  }
 
   @override
   Future<int> run() async {
@@ -64,17 +82,12 @@ class BuildCommand extends RefractorCommand {
       projectPackageName: ws.packageName,
     );
 
-    final engine = RefractorEngine(
-      compiler: DartCompiler(),
-      kernelIO: FileKernelIO(),
-    );
-
     try {
-      final result = await engine.run(request: request, config: config);
+      final result = await runBuild(request: request, config: config);
+      logger.info(reporter.render(result));
+
       if (result.failures.isNotEmpty) {
         logger.err('Build failed: one or more passes reported failure.');
-        // TODO(jaroslav): Process and print pass reports via a dedicated
-        //  reporting feature instead of inline command logic.
         return ExitCode.software.code;
       }
 
@@ -83,8 +96,6 @@ class BuildCommand extends RefractorCommand {
       //  dedicated artifact-handling boundary once that feature lands.
       result.symbolTable.writeToPath(config.symbolMapPath);
       logger.success('Build complete: ${result.outputPath}');
-      // TODO(jaroslav): Process and print pass reports via a dedicated
-      //  reporting feature instead of inline command logic.
       return ExitCode.success.code;
     } on Exception catch (e) {
       throw BuildException('Build failed: $e', cause: e);
