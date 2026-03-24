@@ -5,7 +5,6 @@ pubspec.lock
 
 # Refractor shadow workspace
 .refractor/
-docs/
 
 # IDE
 .idea/
