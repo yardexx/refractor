@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/kernel/file_kernel_io.dart';
-import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:yaml/yaml.dart';
 
 class ResistanceFixture {
@@ -17,14 +17,6 @@ class ResistanceFixture {
     required this.config,
     required this.expectations,
   });
-
-  final String name;
-  final Directory fixtureDir;
-  final String sourcePath;
-  final String configPath;
-  final String expectationsPath;
-  final RefractorConfig config;
-  final ResistanceExpectations expectations;
 
   factory ResistanceFixture.load(String name) {
     final fixtureDir = Directory(
@@ -47,6 +39,14 @@ class ResistanceFixture {
       ),
     );
   }
+
+  final String name;
+  final Directory fixtureDir;
+  final String sourcePath;
+  final String configPath;
+  final String expectationsPath;
+  final RefractorConfig config;
+  final ResistanceExpectations expectations;
 }
 
 class ResistanceExpectations {
