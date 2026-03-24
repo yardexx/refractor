@@ -5,6 +5,7 @@ pubspec.lock
 
 # Refractor shadow workspace
 .refractor/
+docs/
 
 # IDE
 .idea/
@@ -18,4 +19,3 @@ Thumbs.db
 # Misc
 .cursorignore/
 .claude/
-CLAUDE.md
