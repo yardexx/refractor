@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
+import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_transformer.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
-import 'package:refractor/src/engine/runner/pass.dart';
-import 'package:refractor/src/utils/result.dart';
 
 /// Obfuscation pass that replaces plaintext [StringLiteral] nodes with a
 /// call to an injected decode helper, so strings are not visible in the binary.
@@ -13,7 +12,7 @@ import 'package:refractor/src/utils/result.dart';
 /// Encoding: XOR each UTF-8 byte with a fixed key (configurable, default 0x5A).
 /// At runtime, the injected `_obfDecode$` reverses this to recover the
 /// original string.
-class StringEncryptPass extends Pass<void> {
+class StringEncryptPass extends Pass {
   StringEncryptPass({
     this.xorKey = 0x5A,
     this.excludePatterns = const [],
@@ -28,35 +27,62 @@ class StringEncryptPass extends Pass<void> {
   String get name => 'string_encrypt';
 
   @override
-  Future<Result<void>> run(
+  Future<PassResult> run(
     Component component,
     ObfuscationTarget target,
   ) async {
-    // Find the first user library to inject our helper into.
-    Library? targetLib;
-    for (final lib in component.libraries) {
-      if (target.shouldObfuscateLibrary(lib)) {
-        targetLib = lib;
-        break;
+    try {
+      // Find the first user library to inject our helper into.
+      Library? targetLib;
+      for (final lib in component.libraries) {
+        if (target.shouldObfuscateLibrary(lib)) {
+          targetLib = lib;
+          break;
+        }
       }
+      if (targetLib == null) {
+        return PassSucceeded(
+          report: PassReport(passName: name),
+        );
+      }
+
+      // Inject the _obfDecode$ helper and get the procedure.
+      final decodeProcedure = _injectHelper(targetLib, component);
+
+      // Walk the component and replace string literals.
+      final transformer = StringEncryptTransformer(
+        target: target,
+        decodeProcedure: decodeProcedure,
+        random: Random(xorKey),
+        excludePatterns: excludePatterns,
+      );
+      component.transformChildren(transformer);
+
+      return PassSucceeded(
+        report: PassReport(
+          passName: name,
+          metrics: transformer.count == 0
+              ? const []
+              : [
+                  PassMetric(
+                    key: 'strings_encrypted',
+                    value: transformer.count,
+                  ),
+                ],
+        ),
+      );
+    } on Object catch (error) {
+      final exception = error is Exception
+          ? error
+          : Exception(error.toString());
+      return PassFailed(
+        error: exception,
+        report: PassReport(
+          passName: name,
+          message: error.toString(),
+        ),
+      );
     }
-    if (targetLib == null) {
-      return const Result.ok(null);
-    }
-
-    // Inject the _obfDecode$ helper and get the procedure.
-    final decodeProcedure = _injectHelper(targetLib, component);
-
-    // Walk the component and replace string literals.
-    final transformer = StringEncryptTransformer(
-      target: target,
-      decodeProcedure: decodeProcedure,
-      random: Random(xorKey),
-      excludePatterns: excludePatterns,
-    );
-    component.transformChildren(transformer);
-
-    return const Result.ok(null);
   }
 
   /// Inject the `_obfDecode$` procedure into [lib] and return it.

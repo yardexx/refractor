@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:refractor/src/cli/commands/build_command.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:test/test.dart';
@@ -11,13 +12,20 @@ void main() {
     late Directory tempDir;
     late String originalCurrentDir;
     late CommandRunner<int> runner;
+    late _MockLogger logger;
 
     setUp(() async {
       originalCurrentDir = Directory.current.path;
       tempDir = await Directory.systemTemp.createTemp('refractor_build_test_');
       Directory.current = tempDir.path;
+      logger = _MockLogger();
+      when(() => logger.detail(any())).thenReturn(null);
+      when(() => logger.info(any())).thenReturn(null);
+      when(() => logger.success(any())).thenReturn(null);
+      when(() => logger.err(any())).thenReturn(null);
 
-      runner = CommandRunner<int>('test', 'test')..addCommand(BuildCommand());
+      runner = CommandRunner<int>('test', 'test')
+        ..addCommand(BuildCommand(logger: logger));
     });
 
     tearDown(() async {
@@ -65,3 +73,5 @@ passes:
     });
   });
 }
+
+class _MockLogger extends Mock implements Logger {}

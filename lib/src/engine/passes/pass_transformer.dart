@@ -1,5 +1,5 @@
 import 'package:kernel/ast.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
 
 abstract class PassTransformer extends Transformer {
   PassTransformer({required this.target});

@@ -3,7 +3,6 @@ import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
-import 'package:refractor/src/utils/result.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -50,11 +49,10 @@ void main() {
       expect(targetCall.outputPath, 'build/out');
       expect(targetCall.target, Target.exe);
 
-      expect(result, isA<Ok<BuildResult>>());
-      final ok = result as Ok<BuildResult>;
-      expect(ok.value.outputPath, 'build/out');
-      expect(ok.value.passesRun, isEmpty);
-      expect(ok.value.symbolTable.size, 0);
+      expect(result.outputPath, 'build/out');
+      expect(result.passesRun, isEmpty);
+      expect(result.symbolTable.size, 0);
+      expect(result.failures, isEmpty);
     });
 
     test(
@@ -81,9 +79,7 @@ void main() {
             'build/out.dill',
           ],
         );
-        expect(result, isA<Ok<BuildResult>>());
-        final ok = result as Ok<BuildResult>;
-        expect(ok.value.outputPath, 'build/out.dill');
+        expect(result.outputPath, 'build/out.dill');
       },
     );
 
@@ -104,10 +100,40 @@ passes:
         ),
       );
 
-      expect(result, isA<Ok<BuildResult>>());
-      final ok = result as Ok<BuildResult>;
-      expect(ok.value.passesRun, ['string_encrypt', 'rename']);
+      expect(result.passesRun, ['string_encrypt', 'rename']);
     });
+
+    test(
+      'pass failure is reported and output generation is skipped',
+      () async {
+        final userUri = Uri.parse('package:sample_app/main.dart');
+        kernelIo.component.libraries.add(Library(userUri, fileUri: userUri));
+        kernelIo.component.setMainMethodAndMode(null, true);
+
+        final result = await engine.run(
+          config: RefractorConfig.fromYaml('''
+passes:
+  string_encrypt: true
+'''),
+          request: BuildRequest(
+            input: 'lib/main.dart',
+            output: 'build/out',
+            target: Target.exe,
+            workDirectory: '.dart_tool/refractor',
+            projectRootUri: Uri(scheme: 'file', path: '/project/'),
+            projectPackageName: 'sample_app',
+          ),
+        );
+
+        expect(result.failures, hasLength(1));
+        expect(result.failures.single.passName, 'string_encrypt');
+        expect(result.reports, hasLength(1));
+        expect(result.reports.single.passName, 'string_encrypt');
+        expect(result.reports.single.message, isNotNull);
+        expect(kernelIo.writeCalls, isEmpty);
+        expect(compiler.compileToTargetCalls, isEmpty);
+      },
+    );
   });
 }
 

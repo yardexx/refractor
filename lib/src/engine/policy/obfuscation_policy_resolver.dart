@@ -1,8 +1,8 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
 import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
 import 'package:refractor/src/engine/policy/declaration_policy.dart';
 import 'package:refractor/src/engine/policy/obfuscation_policy.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:refractor/src/utils/rename_helpers.dart';
 
 class ObfuscationPolicyResolver {

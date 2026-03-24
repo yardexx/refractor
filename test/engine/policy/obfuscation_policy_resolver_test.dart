@@ -1,7 +1,7 @@
 import 'package:glob/glob.dart';
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/obfuscation_target.dart';
 import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
-import 'package:refractor/src/engine/runner/obfuscation_target.dart';
 import 'package:test/test.dart';
 
 import '../../helpers/kernel_helpers.dart';
