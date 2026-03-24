@@ -1,8 +1,10 @@
 import 'dart:io';
 
+import 'package:ci/ci.dart';
 import 'package:mason_logger/mason_logger.dart' show ExitCode;
 import 'package:refractor/src/cli/commands/refractor_command.dart';
 import 'package:refractor/src/cli/reporting/build_reporter.dart';
+import 'package:refractor/src/cli/reporting/github_reporter.dart';
 import 'package:refractor/src/cli/reporting/text_reporter.dart';
 import 'package:refractor/src/cli/symbol_table_io.dart';
 import 'package:refractor/src/config/config_manager.dart';
@@ -18,7 +20,10 @@ import 'package:refractor/src/exceptions/refractor_exception.dart';
 ///
 /// Targets: exe, aot, jit, kernel (default: exe)
 class BuildCommand extends RefractorCommand {
-  BuildCommand({super.logger, BuildReporter? reporter}) : _reporter = reporter {
+  BuildCommand({
+    super.logger,
+    BuildReporter? reporter,
+  }) : _reporter = reporter {
     argParser
       ..addOption(
         'input',
@@ -49,7 +54,7 @@ class BuildCommand extends RefractorCommand {
   @override
   String get description => 'Compile, obfuscate, and build to a target format.';
 
-  BuildReporter get reporter => _reporter ?? TextReporter();
+  BuildReporter get reporter => _reporter ?? _detectReporter();
 
   Future<BuildResult> runBuild({
     required BuildRequest request,
@@ -84,7 +89,7 @@ class BuildCommand extends RefractorCommand {
 
     try {
       final result = await runBuild(request: request, config: config);
-      logger.info(reporter.render(result));
+      reporter.report(result);
 
       if (result.failures.isNotEmpty) {
         logger.err('Build failed: one or more passes reported failure.');
@@ -100,5 +105,13 @@ class BuildCommand extends RefractorCommand {
     } on Exception catch (e) {
       throw BuildException('Build failed: $e', cause: e);
     }
+  }
+
+  BuildReporter _detectReporter() {
+    if (isCI && Vendor.IS_GITHUB_ACTIONS) {
+      return GitHubReporter(logger);
+    }
+
+    return TextReporter(logger);
   }
 }
