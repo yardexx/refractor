@@ -201,7 +201,6 @@ const _exampleExpectedLines = <String>[
   'interpolation=interpolated:Hello done!',
   'unusedCase=unused:shadow',
   'unused=15',
-  '[VERBOSE] All arguments: --verbose',
 ];
 
 void main() {
@@ -271,6 +270,19 @@ refractor:
         expect(output, contains(line));
       }
     });
+
+    test('example app: normal and obfuscated binaries produce same output', () async {
+      final plainOutput = await _compileAndRunExampleAppNormally(
+        tempDir: tempDir,
+        arguments: const ['--verbose'],
+      );
+      final obfuscatedOutput = await _buildAndRunExampleApp(
+        tempDir: tempDir,
+        arguments: const ['--verbose'],
+      );
+
+      expect(obfuscatedOutput, equals(plainOutput));
+    });
   });
 }
 
@@ -324,10 +336,7 @@ Future<String> _buildAndRunExampleApp({
   required Directory tempDir,
   required List<String> arguments,
 }) async {
-  final scriptPath = Platform.script.toFilePath();
-  final repoRoot = p.normalize(
-    p.join(p.dirname(scriptPath), '..', '..'),
-  );
+  final repoRoot = p.normalize(Directory.current.path);
   final exampleRoot = '$repoRoot/example';
   final configYaml = File('$exampleRoot/refractor.yaml').readAsStringSync();
   final config = RefractorConfig.fromYaml(configYaml);
@@ -342,7 +351,7 @@ Future<String> _buildAndRunExampleApp({
   await engine.run(
     config: config,
     request: BuildRequest(
-      input: '$exampleRoot/bin/app.dart',
+      input: '$exampleRoot/lib/main.dart',
       output: outputPath,
       target: Target.exe,
       workDirectory: tempDir.path,
@@ -361,4 +370,38 @@ Future<String> _buildAndRunExampleApp({
   }
 
   return (processResult.stdout as String).trim();
+}
+
+Future<String> _compileAndRunExampleAppNormally({
+  required Directory tempDir,
+  required List<String> arguments,
+}) async {
+  final repoRoot = p.normalize(Directory.current.path);
+  final exampleRoot = '$repoRoot/example';
+  final sourcePath = '$exampleRoot/lib/main.dart';
+  final outputPath = '${tempDir.path}/example-plain.exe';
+
+  final processResult = Process.runSync(
+    'dart',
+    ['compile', 'exe', sourcePath, '-o', outputPath],
+    workingDirectory: exampleRoot,
+  );
+  if (processResult.exitCode != 0) {
+    fail(
+      'Plain example build failed with ${processResult.exitCode}:\n'
+      'stdout: ${processResult.stdout}\n'
+      'stderr: ${processResult.stderr}',
+    );
+  }
+
+  final binaryResult = Process.runSync(outputPath, arguments);
+  if (binaryResult.exitCode != 0) {
+    fail(
+      'Plain example binary exited with ${binaryResult.exitCode}:\n'
+      'stdout: ${binaryResult.stdout}\n'
+      'stderr: ${binaryResult.stderr}',
+    );
+  }
+
+  return (binaryResult.stdout as String).trim();
 }
