@@ -73,40 +73,41 @@ void main() {
     );
 
     test(
-      'excludes parameters of preserved main but still collects local variables',
+      'excludes parameters of preserved main but still collects local '
+      'variables',
       () {
-      final keptParam = VariableDeclaration('debug');
-      final keptLocal = VariableDeclaration('localValue');
-      final mainProcedure = Procedure(
-        Name('main'),
-        ProcedureKind.Method,
-        FunctionNode(
-          Block([keptLocal]),
-          namedParameters: [keptParam],
-        ),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(mainProcedure);
+        final keptParam = VariableDeclaration('debug');
+        final keptLocal = VariableDeclaration('localValue');
+        final mainProcedure = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(
+            Block([keptLocal]),
+            namedParameters: [keptParam],
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(mainProcedure);
 
-      final otherParam = VariableDeclaration('count');
-      final otherProcedure = Procedure(
-        Name('work'),
-        ProcedureKind.Method,
-        FunctionNode(
-          EmptyStatement(),
-          positionalParameters: [otherParam],
-          requiredParameterCount: 1,
-        ),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(otherProcedure);
+        final otherParam = VariableDeclaration('count');
+        final otherProcedure = Procedure(
+          Name('work'),
+          ProcedureKind.Method,
+          FunctionNode(
+            EmptyStatement(),
+            positionalParameters: [otherParam],
+            requiredParameterCount: 1,
+          ),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(otherProcedure);
 
-      final component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final selection = makeSelector(component).select(component);
+        final component = makeComponent(coreLib: coreLib, userLib: userLib);
+        final selection = makeSelector(component).select(component);
 
-      expect(selection.variables, isNot(contains(keptParam)));
-      expect(selection.variables, contains(keptLocal));
-      expect(selection.variables, contains(otherParam));
+        expect(selection.variables, isNot(contains(keptParam)));
+        expect(selection.variables, contains(keptLocal));
+        expect(selection.variables, contains(otherParam));
       },
     );
 
