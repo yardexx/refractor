@@ -166,5 +166,51 @@ void main() {
         );
       },
     );
+
+    test(
+      'kept project supertype members protect overriding subclass members',
+      () {
+        final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
+        coreLib.addClass(pragmaClass);
+
+        final base = Class(name: 'Base', fileUri: userLib.fileUri);
+        final keptMethod =
+            Procedure(
+              Name('render'),
+              ProcedureKind.Method,
+              FunctionNode(EmptyStatement()),
+              fileUri: userLib.fileUri,
+            )..addAnnotation(
+              ConstantExpression(
+                InstanceConstant(pragmaClass.reference, [], {}),
+              ),
+            );
+        base.addProcedure(keptMethod);
+        userLib.addClass(base);
+
+        final child = Class(
+          name: 'Child',
+          fileUri: userLib.fileUri,
+          supertype: base.asThisSupertype,
+        );
+        final overridingMethod = Procedure(
+          Name('render'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        child.addProcedure(overridingMethod);
+        userLib.addClass(child);
+
+        final component = makeComponent(coreLib: coreLib, userLib: userLib);
+        final selection = makeSelector(component).select(component);
+
+        expect(selection.instanceMembersByClass[child], isNotNull);
+        expect(
+          selection.instanceMembersByClass[child],
+          isNot(contains(overridingMethod)),
+        );
+      },
+    );
   });
 }

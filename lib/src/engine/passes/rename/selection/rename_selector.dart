@@ -237,7 +237,10 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
       final current = stack.removeLast();
       if (!visited.add(current)) continue;
 
-      if (!_projectScope.containsLibrary(current.enclosingLibrary)) {
+      final isProjectLibrary = _projectScope.containsLibrary(
+        current.enclosingLibrary,
+      );
+      if (!isProjectLibrary) {
         for (final procedure in current.procedures) {
           if (!procedure.isStatic) {
             names.add(procedure.name.text);
@@ -245,6 +248,17 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
         }
         for (final field in current.fields) {
           if (!field.isStatic) {
+            names.add(field.name.text);
+          }
+        }
+      } else {
+        for (final procedure in current.procedures) {
+          if (!procedure.isStatic && _policy.isMemberKept(procedure)) {
+            names.add(procedure.name.text);
+          }
+        }
+        for (final field in current.fields) {
+          if (!field.isStatic && _policy.isMemberKept(field)) {
             names.add(field.name.text);
           }
         }
