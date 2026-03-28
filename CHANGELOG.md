@@ -7,9 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] Amsterdam - 2026-03-28
+
+### Added
+
+- Structured per-pass reporting carried through `BuildResult`, including pass
+  metrics and failure records that later reporters can reuse.
+- Plain-text build reporting for local CLI runs.
+- GitHub Actions summary reporting for CI environments.
+- Resistance coverage based on compiled-artifact `strings` inspection for
+  rename and string-encrypt fixtures.
+- Stronger rename and string-encrypt regression coverage, including callable
+  alias and runtime smoke scenarios.
+
+### Changed
+
+- Promoted the current reporting and correctness-hardening work to the `0.2.0`
+  release baseline.
+- Moved build presentation concerns out of `BuildCommand` into dedicated
+  reporters.
+- Clarified and enforced the nested `refractor.passes` configuration shape used
+  by `refractor init` and config loading.
+
 ### Removed
 
-- **Dead code pass** — removed entirely. The Dart VM's CFG optimizer (ConstantPropagation + ControlFlowOptimizations) eliminates all inserted dead branches regardless of predicate complexity, because the branch bodies have no observable side effects. The pass provided zero obfuscation value in compiled output. See `docs/optimization-resistance.md` for full analysis. **Breaking:** existing `refractor.yaml` files with a `dead_code:` key will now throw `ConfigException`.
+- **Dead code pass** removed entirely (don't worry, it will return eventually ;) )
 
 ## [0.1.0] - 2026-03-01
 

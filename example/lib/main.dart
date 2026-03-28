@@ -1,6 +1,6 @@
 import 'dart:async';
 
-const String exampleVersion = '0.1.0';
+const String exampleVersion = '0.2.0';
 
 void main() async {
   final results = await runExampleApp(verbose: true);

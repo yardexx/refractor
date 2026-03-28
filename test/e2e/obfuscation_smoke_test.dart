@@ -184,7 +184,7 @@ alt:mutable
 ''';
 
 const _exampleExpectedLines = <String>[
-  'app=KernelEdgeCases@0.1.0',
+  'app=KernelEdgeCases@0.2.0',
   'mode=active',
   'override=Hello World!',
   'sdkOverride=FancyRenderer(prefix: Hello)',

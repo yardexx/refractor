@@ -10,6 +10,8 @@ A Dart kernel (`.dill`) obfuscation tool. Compiles a Dart entrypoint to kernel b
 - **Rename** — rewrites class, method, and field identifiers to short meaningless names
 - **String encryption** — replaces string literals with XOR-encoded byte arrays and an injected runtime decoder
 - **Symbol map** — writes a JSON mapping of obfuscated names back to originals for debugging
+- **Build reports** — emits pass metrics and failures through structured build results
+- **CI-friendly output** — writes GitHub Actions job summaries automatically when running in GitHub CI
 
 ## Installation
 
@@ -35,6 +37,9 @@ refractor build
 ```
 
 This compiles `lib/main.dart`, applies the passes defined in `refractor.yaml`, and writes the output to `build/`.
+
+Local runs print a plain-text build report. In GitHub Actions, Refractor also
+appends a Markdown summary to `GITHUB_STEP_SUMMARY`.
 
 ## Commands
 
@@ -83,18 +88,17 @@ refractor:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
   verbose: false
+  passes:
+    rename: true
 
-passes:
-  rename:
-    preserve_main: true
-
-  string_encrypt:
-    xor_key: 0x5A
-    exclude_patterns:
-      - "^https://"
+    string_encrypt:
+      xor_key: 0x5A
+      exclude_patterns:
+        - "^https://"
 ```
 
-Each pass value can be `true` (enabled with defaults), `false` (disabled), or a map with pass-specific options.
+Each pass value under `refractor.passes` can be `true` (enabled with defaults),
+`false` (disabled), or a map with pass-specific options.
 
 ## Development
 
