@@ -2339,8 +2339,7 @@ class BinaryBuilder {
 
   Expression _readInvalidExpression() {
     int offset = readOffset();
-    return new InvalidExpression(
-        readStringReference(), readExpressionOption())
+    return new InvalidExpression(readStringReference(), readExpressionOption())
       ..fileOffset = offset;
   }
 

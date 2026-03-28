@@ -132,34 +132,34 @@ void main() {
     test(
       'skips renaming synthetic anonymous mixin classes but keeps members',
       () {
-      final anonymousMixin = Class(
-        name: '_Greeter&Object&Prefixed',
-        fileUri: userLib.fileUri,
-        isAnonymousMixin: true,
-      );
-      final syntheticMethod = Procedure(
-        Name('format'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      anonymousMixin.addProcedure(syntheticMethod);
+        final anonymousMixin = Class(
+          name: '_Greeter&Object&Prefixed',
+          fileUri: userLib.fileUri,
+          isAnonymousMixin: true,
+        );
+        final syntheticMethod = Procedure(
+          Name('format'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        anonymousMixin.addProcedure(syntheticMethod);
 
-      final regularClass = Class(name: 'Greeter', fileUri: userLib.fileUri);
-      userLib
-        ..addClass(anonymousMixin)
-        ..addClass(regularClass);
+        final regularClass = Class(name: 'Greeter', fileUri: userLib.fileUri);
+        userLib
+          ..addClass(anonymousMixin)
+          ..addClass(regularClass);
 
-      final component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final selection = makeSelector(component).select(component);
+        final component = makeComponent(coreLib: coreLib, userLib: userLib);
+        final selection = makeSelector(component).select(component);
 
-      expect(selection.classes, contains(regularClass));
-      expect(selection.classes, isNot(contains(anonymousMixin)));
-      expect(selection.singletonMembers, isNot(contains(syntheticMethod)));
-      expect(
-        selection.instanceMembersByClass[anonymousMixin],
-        contains(syntheticMethod),
-      );
+        expect(selection.classes, contains(regularClass));
+        expect(selection.classes, isNot(contains(anonymousMixin)));
+        expect(selection.singletonMembers, isNot(contains(syntheticMethod)));
+        expect(
+          selection.instanceMembersByClass[anonymousMixin],
+          contains(syntheticMethod),
+        );
       },
     );
   });
