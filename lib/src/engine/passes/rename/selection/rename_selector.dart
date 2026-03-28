@@ -1,0 +1,272 @@
+import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/pass/selection/pass_selector.dart';
+import 'package:refractor/src/engine/passes/rename/selection/rename_selection.dart';
+import 'package:refractor/src/policy/rename_policy_view.dart';
+import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/utils/rename_helpers.dart';
+
+final class RenameSelector implements PassSelector<RenameSelection> {
+  RenameSelector({
+    required RenamePolicyView policy,
+    required ProjectScope projectScope,
+  }) : _policy = policy,
+       _projectScope = projectScope;
+
+  final RenamePolicyView _policy;
+  final ProjectScope _projectScope;
+
+  @override
+  RenameSelection select(Component component) {
+    final collector = _RenameSelectionCollector(
+      policy: _policy,
+      projectScope: _projectScope,
+    );
+    component.accept(collector);
+    return collector.build();
+  }
+}
+
+final class _RenameSelectionCollector extends RecursiveVisitor {
+  _RenameSelectionCollector({
+    required RenamePolicyView policy,
+    required ProjectScope projectScope,
+  }) : _policy = policy,
+       _projectScope = projectScope;
+
+  final RenamePolicyView _policy;
+  final ProjectScope _projectScope;
+
+  final List<Class> _classes = [];
+  final List<Member> _singletonMembers = [];
+  final List<VariableDeclaration> _variables = [];
+  final Map<Class, List<Member>> _instanceMembersByClass = {};
+
+  RenameSelection build() {
+    return RenameSelection(
+      classes: List.unmodifiable(_classes),
+      singletonMembers: List.unmodifiable(_singletonMembers),
+      variables: List.unmodifiable(_variables),
+      instanceMembersByClass: {
+        for (final entry in _instanceMembersByClass.entries)
+          entry.key: List.unmodifiable(entry.value),
+      },
+    );
+  }
+
+  @override
+  void visitLibrary(Library node) {
+    if (_policy.isLibraryKept(node)) {
+      return;
+    }
+
+    for (final procedure in node.procedures) {
+      if (_isRenameableMember(procedure) && procedure.name.text.isNotEmpty) {
+        _singletonMembers.add(procedure);
+      }
+    }
+
+    for (final field in node.fields) {
+      if (_isRenameableMember(field) && field.name.text.isNotEmpty) {
+        _singletonMembers.add(field);
+      }
+    }
+
+    super.visitLibrary(node);
+  }
+
+  @override
+  void visitClass(Class node) {
+    if (_policy.isClassKept(node)) {
+      return;
+    }
+
+    final shouldRenameClass = !_isSyntheticMixinClass(node);
+    if (shouldRenameClass) {
+      _classes.add(node);
+    }
+    final instanceMembers = <Member>[];
+    final externalNames = _externalMemberNames(node);
+
+    for (final procedure in node.procedures) {
+      if (!_isRenameableMember(procedure) ||
+          procedure.name.text.isEmpty ||
+          (!procedure.isStatic &&
+              externalNames.contains(memberNameText(procedure)))) {
+        continue;
+      }
+
+      if (procedure.isStatic) {
+        _singletonMembers.add(procedure);
+      } else {
+        instanceMembers.add(procedure);
+      }
+    }
+
+    for (final field in node.fields) {
+      if (!_isRenameableMember(field) ||
+          field.name.text.isEmpty ||
+          (!field.isStatic && externalNames.contains(memberNameText(field)))) {
+        continue;
+      }
+
+      if (field.isStatic) {
+        _singletonMembers.add(field);
+      } else {
+        instanceMembers.add(field);
+      }
+    }
+
+    for (final constructor in node.constructors) {
+      if (!shouldRenameClass) continue;
+      if (_isRenameableMember(constructor) &&
+          constructor.name.text.isNotEmpty) {
+        _singletonMembers.add(constructor);
+      }
+    }
+
+    _instanceMembersByClass[node] = instanceMembers;
+    super.visitClass(node);
+  }
+
+  @override
+  void visitProcedure(Procedure node) {
+    if (_policy.isMemberKept(node)) {
+      return;
+    }
+    super.visitProcedure(node);
+  }
+
+  @override
+  void visitConstructor(Constructor node) {
+    if (_policy.isMemberKept(node)) {
+      return;
+    }
+    super.visitConstructor(node);
+  }
+
+  @override
+  void visitField(Field node) {
+    if (_policy.isMemberKept(node)) {
+      return;
+    }
+    super.visitField(node);
+  }
+
+  @override
+  void visitVariableDeclaration(VariableDeclaration node) {
+    final name = node.name;
+    if (name == null || name.isEmpty) {
+      super.visitVariableDeclaration(node);
+      return;
+    }
+
+    if (_shouldCollectVariable(node)) {
+      _variables.add(node);
+    }
+
+    super.visitVariableDeclaration(node);
+  }
+
+  bool _isRenameableMember(Member member) {
+    return !_policy.isMemberKept(member);
+  }
+
+  bool _isSyntheticMixinClass(Class cls) {
+    // Preserve compiler-synthesized mixin application classes. Their generated
+    // names encode structure the VM still relies on in later transforms.
+    return cls.isAnonymousMixin || cls.isEliminatedMixin;
+  }
+
+  bool _shouldCollectVariable(VariableDeclaration variable) {
+    final enclosingMember = _findEnclosingMember(variable);
+    if (enclosingMember == null) {
+      return true;
+    }
+
+    if (_policy.isMemberKept(enclosingMember)) {
+      return false;
+    }
+
+    if (_isDynamicDispatchNamedParameter(variable, enclosingMember)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  Member? _findEnclosingMember(TreeNode node) {
+    var current = node.parent;
+    while (current != null) {
+      if (current is Member) return current;
+      current = current.parent;
+    }
+    return null;
+  }
+
+  bool _isDynamicDispatchNamedParameter(
+    VariableDeclaration variable,
+    Member enclosingMember,
+  ) {
+    return switch (enclosingMember) {
+      Procedure(isStatic: false) =>
+        enclosingMember.function.namedParameters.contains(variable),
+      _ => false,
+    };
+  }
+
+  Set<String> _externalMemberNames(Class cls) {
+    final names = <String>{};
+    final visited = <Class>{};
+    final stack = <Class>[];
+
+    void addSupertypes(Class current) {
+      if (current.supertype != null) {
+        stack.add(current.supertype!.classNode);
+      }
+      for (final iface in current.implementedTypes) {
+        stack.add(iface.classNode);
+      }
+      if (current.mixedInType != null) {
+        stack.add(current.mixedInType!.classNode);
+      }
+    }
+
+    addSupertypes(cls);
+
+    while (stack.isNotEmpty) {
+      final current = stack.removeLast();
+      if (!visited.add(current)) continue;
+
+      final isProjectLibrary = _projectScope.containsLibrary(
+        current.enclosingLibrary,
+      );
+      if (!isProjectLibrary) {
+        for (final procedure in current.procedures) {
+          if (!procedure.isStatic) {
+            names.add(procedure.name.text);
+          }
+        }
+        for (final field in current.fields) {
+          if (!field.isStatic) {
+            names.add(field.name.text);
+          }
+        }
+      } else {
+        for (final procedure in current.procedures) {
+          if (!procedure.isStatic && _policy.isMemberKept(procedure)) {
+            names.add(procedure.name.text);
+          }
+        }
+        for (final field in current.fields) {
+          if (!field.isStatic && _policy.isMemberKept(field)) {
+            names.add(field.name.text);
+          }
+        }
+      }
+
+      addSupertypes(current);
+    }
+
+    return names;
+  }
+}

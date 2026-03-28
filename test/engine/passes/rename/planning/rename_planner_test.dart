@@ -1,7 +1,9 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/passes/rename/model/rename_pass_options.dart';
+import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/passes/rename/planning/name_generator/sequential_generator.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart';
-import 'package:refractor/src/engine/policy/obfuscation_policy_resolver.dart';
+import 'package:refractor/src/engine/passes/rename/selection/rename_selector.dart';
+import 'package:refractor/src/policy/policy_resolver.dart';
 import 'package:test/test.dart';
 
 import '../../../../helpers/kernel_helpers.dart';
@@ -16,20 +18,28 @@ void main() {
       userLib = makeUserLibrary();
     });
 
-    RenamePlanner makePlanner(
+    RenameSelector makeSelector(
       Component component, {
-      RenamePassOptions? options,
+      RenamePassConfig? config,
     }) {
-      final resolvedOptions = options ?? const RenamePassOptions();
-      final policy = ObfuscationPolicyResolver().resolve(
-        component,
-        makeObfuscationTarget(),
-        renameOptions: resolvedOptions,
+      final resolvedConfig = config ?? const RenamePassConfig();
+      final projectScope = makeProjectScope();
+      final policy = PolicyResolver().resolve(
+        component: component,
+        config: RefractorConfig(passes: [resolvedConfig]),
+        projectScope: projectScope,
       );
-      return RenamePlanner(policy: policy);
+      return RenameSelector(
+        policy: policy.rename,
+        projectScope: projectScope,
+      );
     }
 
-    test('groups related instance members into one family', () {
+    RenamePlanner makePlanner() {
+      return RenamePlanner(generator: SequentialGenerator());
+    }
+
+    test('assigns the same mapped name to related instance members', () async {
       final base = Class(name: 'Base', fileUri: userLib.fileUri);
       final baseMethod = makeProcedure('run', base);
       userLib.addClass(base);
@@ -43,18 +53,18 @@ void main() {
       userLib.addClass(child);
 
       final component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final plan = makePlanner(component).plan(component);
+      final selection = makeSelector(component).select(component);
+      final plan = await makePlanner().plan(component, selection);
 
-      expect(plan.memberFamilies, hasLength(1));
       expect(
-        plan.memberFamilies.single.members,
-        containsAll([baseMethod, childMethod]),
+        plan.mapping.members[baseMethod]!.text,
+        equals(plan.mapping.members[childMethod]!.text),
       );
     });
 
     test(
-      'extracts singleton members for top-level, static, and constructors',
-      () {
+      'creates planned rename entries for top-level, static, and constructors',
+      () async {
         final topLevel = Procedure(
           Name('topLevel'),
           ProcedureKind.Method,
@@ -82,81 +92,17 @@ void main() {
         userLib.addClass(cls);
 
         final component = makeComponent(coreLib: coreLib, userLib: userLib);
-        final plan = makePlanner(component).plan(component);
+        final selection = makeSelector(component).select(component);
+        final plan = await makePlanner().plan(component, selection);
 
         expect(
-          plan.singletonMembers,
+          plan.mapping.members.keys,
           containsAll([topLevel, staticMethod, constructor]),
         );
       },
     );
 
-    test('excludes parameters of preserved main from variable planning', () {
-      final keptParam = VariableDeclaration('debug');
-      final keptLocal = VariableDeclaration('localValue');
-      final mainProcedure = Procedure(
-        Name('main'),
-        ProcedureKind.Method,
-        FunctionNode(
-          Block([keptLocal]),
-          namedParameters: [keptParam],
-        ),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(mainProcedure);
-
-      final otherParam = VariableDeclaration('count');
-      final otherProcedure = Procedure(
-        Name('work'),
-        ProcedureKind.Method,
-        FunctionNode(
-          EmptyStatement(),
-          positionalParameters: [otherParam],
-          requiredParameterCount: 1,
-        ),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(otherProcedure);
-
-      final component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final plan = makePlanner(component).plan(component);
-
-      expect(plan.variables, isNot(contains(keptParam)));
-      expect(plan.variables, isNot(contains(keptLocal)));
-      expect(plan.variables, contains(otherParam));
-    });
-
-    test(
-      'excludes named parameters of instance members from variable planning',
-      () {
-        final namedParam = VariableDeclaration('debug');
-        final positionalParam = VariableDeclaration('count');
-        final localValue = VariableDeclaration('localValue');
-        final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
-        final method = Procedure(
-          Name('configure'),
-          ProcedureKind.Method,
-          FunctionNode(
-            Block([localValue]),
-            positionalParameters: [positionalParam],
-            requiredParameterCount: 1,
-            namedParameters: [namedParam],
-          ),
-          fileUri: userLib.fileUri,
-        );
-        cls.addProcedure(method);
-        userLib.addClass(cls);
-
-        final component = makeComponent(coreLib: coreLib, userLib: userLib);
-        final plan = makePlanner(component).plan(component);
-
-        expect(plan.variables, isNot(contains(namedParam)));
-        expect(plan.variables, contains(positionalParam));
-        expect(plan.variables, contains(localValue));
-      },
-    );
-
-    test('can be reused without leaking prior planning state', () {
+    test('can be reused without leaking prior planning state', () async {
       final firstClass = Class(name: 'First', fileUri: userLib.fileUri)
         ..addProcedure(
           Procedure(
@@ -170,24 +116,27 @@ void main() {
       userLib.addClass(firstClass);
 
       final component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final planner = makePlanner(component);
+      final selection = makeSelector(component).select(component);
+      final planner = makePlanner();
 
-      final firstPlan = planner.plan(component);
-      final secondPlan = planner.plan(component);
+      final firstPlan = await planner.plan(component, selection);
+      final secondPlan = await planner.plan(component, selection);
 
-      expect(secondPlan.classes, hasLength(firstPlan.classes.length));
       expect(
-        secondPlan.singletonMembers,
-        hasLength(firstPlan.singletonMembers.length),
+        secondPlan.mapping.classes.length,
+        firstPlan.mapping.classes.length,
       );
-      expect(secondPlan.variables, hasLength(firstPlan.variables.length));
       expect(
-        secondPlan.memberFamilies,
-        hasLength(firstPlan.memberFamilies.length),
+        secondPlan.mapping.members.length,
+        firstPlan.mapping.members.length,
+      );
+      expect(
+        secondPlan.mapping.variables.length,
+        firstPlan.mapping.variables.length,
       );
     });
 
-    test('keeps private member families scoped by library', () {
+    test('keeps private member renames scoped by library', () async {
       final libA = makeUserLibrary('src/a.dart');
       final libB = makeUserLibrary();
 
@@ -217,9 +166,26 @@ void main() {
 
       final component = Component(libraries: [coreLib, libA, libB])
         ..setMainMethodAndMode(null, true);
-      final plan = makePlanner(component).plan(component);
+      final selection = makeSelector(component).select(component);
+      final plan = await makePlanner().plan(component, selection);
 
-      expect(plan.memberFamilies, hasLength(2));
+      expect(plan.mapping.members[baseMethod]!.library, same(libA));
+      expect(plan.mapping.members[derivedMethod]!.library, same(libB));
     });
+
+    test(
+      'produces deterministic final mapping for a fixed generator',
+      () async {
+        final cls = Class(name: 'Tracker', fileUri: userLib.fileUri);
+        userLib.addClass(cls);
+        final component = makeComponent(coreLib: coreLib, userLib: userLib);
+        final selection = makeSelector(component).select(component);
+
+        final first = await makePlanner().plan(component, selection);
+        final second = await makePlanner().plan(component, selection);
+
+        expect(first.mapping.classes[cls], equals(second.mapping.classes[cls]));
+      },
+    );
   });
 }

@@ -17,6 +17,13 @@ A Dart kernel (`.dill`) obfuscation tool. Compiles a Dart entrypoint to kernel b
 dart pub global activate --source git https://github.com/yardexx/refractor.git
 ```
 
+## SDK Compatibility
+
+Refractor is pinned to one Dart SDK line at a time because the vendored kernel
+API and binary format are tied to a specific SDK snapshot.
+
+This repository currently expects Dart `3.11.3`.
+
 ## Quick Start
 
 ```bash

@@ -17,17 +17,17 @@ void main() {
         reports: const [
           PassReport(
             passName: 'rename',
-            metrics: [
-              PassMetric(key: 'classes', value: 1),
-              PassMetric(key: 'members', value: 2),
-              PassMetric(key: 'variables', value: 3),
-            ],
+            metadata: {
+              'classes': '1',
+              'members': '2',
+              'variables': '3',
+            },
           ),
           PassReport(
             passName: 'string_encrypt',
-            metrics: [
-              PassMetric(key: 'strings_encrypted', value: 4),
-            ],
+            metadata: {
+              'strings_encrypted': '4',
+            },
           ),
         ],
       );
@@ -112,9 +112,9 @@ Error: Exception: kaboom''',
         reports: const [
           PassReport(
             passName: 'custom',
-            metrics: [
-              PassMetric(key: 'custom_metric_total', value: 7),
-            ],
+            metadata: {
+              'custom_metric_total': '7',
+            },
           ),
         ],
       );
@@ -167,7 +167,7 @@ Error: Exception: missing report''',
         reports: const [
           PassReport(
             passName: 'rename',
-            metrics: [PassMetric(key: 'classes', value: 1)],
+            metadata: {'classes': '1'},
           ),
         ],
       );

@@ -6,7 +6,9 @@
 library;
 
 import 'dart:io';
+import 'dart:isolate';
 
+import 'package:path/path.dart' as p;
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
@@ -200,7 +202,6 @@ const _exampleExpectedLines = <String>[
   'interpolation=interpolated:Hello done!',
   'unusedCase=unused:shadow',
   'unused=15',
-  '[VERBOSE] All arguments: --verbose',
 ];
 
 void main() {
@@ -221,8 +222,8 @@ void main() {
         configYaml: '''
 refractor:
   verbose: false
-passes:
-  rename: true
+  passes:
+    rename: true
 ''',
       );
       expect(output, equals(_expectedOutput.trim()));
@@ -236,10 +237,10 @@ passes:
           configYaml: '''
 refractor:
   verbose: false
-passes:
-  rename: true
-  string_encrypt:
-    xor_key: 42
+  passes:
+    rename: true
+    string_encrypt:
+      xor_key: 42
 ''',
         );
         expect(output, equals(_expectedOutput.trim()));
@@ -253,8 +254,8 @@ passes:
         configYaml: '''
 refractor:
   verbose: false
-passes:
-  rename: true
+  passes:
+    rename: true
 ''',
       );
       expect(output, equals(_callableAliasExpectedOutput.trim()));
@@ -270,6 +271,22 @@ passes:
         expect(output, contains(line));
       }
     });
+
+    test(
+      'example app: normal and obfuscated binaries produce same output',
+      () async {
+        final plainOutput = await _compileAndRunExampleAppNormally(
+          tempDir: tempDir,
+          arguments: const ['--verbose'],
+        );
+        final obfuscatedOutput = await _buildAndRunExampleApp(
+          tempDir: tempDir,
+          arguments: const ['--verbose'],
+        );
+
+        expect(obfuscatedOutput, equals(plainOutput));
+      },
+    );
   });
 }
 
@@ -323,7 +340,7 @@ Future<String> _buildAndRunExampleApp({
   required Directory tempDir,
   required List<String> arguments,
 }) async {
-  final repoRoot = Directory.current.path;
+  final repoRoot = await _repoRoot();
   final exampleRoot = '$repoRoot/example';
   final configYaml = File('$exampleRoot/refractor.yaml').readAsStringSync();
   final config = RefractorConfig.fromYaml(configYaml);
@@ -338,7 +355,7 @@ Future<String> _buildAndRunExampleApp({
   await engine.run(
     config: config,
     request: BuildRequest(
-      input: '$exampleRoot/bin/app.dart',
+      input: '$exampleRoot/lib/main.dart',
       output: outputPath,
       target: Target.exe,
       workDirectory: tempDir.path,
@@ -357,4 +374,51 @@ Future<String> _buildAndRunExampleApp({
   }
 
   return (processResult.stdout as String).trim();
+}
+
+Future<String> _compileAndRunExampleAppNormally({
+  required Directory tempDir,
+  required List<String> arguments,
+}) async {
+  final repoRoot = await _repoRoot();
+  final exampleRoot = '$repoRoot/example';
+  final sourcePath = '$exampleRoot/lib/main.dart';
+  final outputPath = '${tempDir.path}/example-plain.exe';
+
+  final processResult = Process.runSync(
+    'dart',
+    ['compile', 'exe', sourcePath, '-o', outputPath],
+    workingDirectory: exampleRoot,
+  );
+  if (processResult.exitCode != 0) {
+    fail(
+      'Plain example build failed with ${processResult.exitCode}:\n'
+      'stdout: ${processResult.stdout}\n'
+      'stderr: ${processResult.stderr}',
+    );
+  }
+
+  final binaryResult = Process.runSync(outputPath, arguments);
+  if (binaryResult.exitCode != 0) {
+    fail(
+      'Plain example binary exited with ${binaryResult.exitCode}:\n'
+      'stdout: ${binaryResult.stdout}\n'
+      'stderr: ${binaryResult.stderr}',
+    );
+  }
+
+  return (binaryResult.stdout as String).trim();
+}
+
+Future<String> _repoRoot() async {
+  final packageUri = await Isolate.resolvePackageUri(
+    Uri.parse('package:refractor/refractor.dart'),
+  );
+  if (packageUri == null || packageUri.scheme != 'file') {
+    throw StateError('Unable to resolve package:refractor/refractor.dart');
+  }
+
+  return p.normalize(
+    p.join(p.dirname(p.fromUri(packageUri)), '..'),
+  );
 }

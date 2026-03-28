@@ -1,8 +1,8 @@
 refractor:
   verbose: false
-passes:
-  rename: false
-  string_encrypt:
-    xor_key: 42
-    exclude_patterns:
-      - VISIBLE_MARKER
+  passes:
+    rename: false
+    string_encrypt:
+      xor_key: 42
+      exclude_patterns:
+        - VISIBLE_MARKER

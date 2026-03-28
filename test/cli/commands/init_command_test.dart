@@ -6,15 +6,17 @@ import 'package:mocktail/mocktail.dart';
 import 'package:refractor/src/cli/commands/init_command.dart';
 import 'package:test/test.dart';
 
+import '../../helpers/cwd_test_lock.dart';
+
 void main() {
   group('InitCommand', () {
+    late CwdTestLock cwdLock;
     late Directory tempDir;
-    late String originalCurrentDir;
     late _MockLogger logger;
     late CommandRunner<int> runner;
 
     setUp(() async {
-      originalCurrentDir = Directory.current.path;
+      cwdLock = await CwdTestLock.acquire();
       tempDir = await Directory.systemTemp.createTemp('refractor_init_test_');
       Directory.current = tempDir.path;
 
@@ -24,19 +26,27 @@ void main() {
     });
 
     tearDown(() async {
-      Directory.current = originalCurrentDir;
+      Directory.current = Directory.systemTemp.path;
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
+      await cwdLock.release();
     });
 
     test('creates default refractor.yaml when file does not exist', () async {
       final exitCode = await runner.run(['init']);
       final file = File('refractor.yaml');
+      final yaml = file.readAsStringSync();
 
       expect(exitCode, ExitCode.success.code);
       expect(file.existsSync(), isTrue);
-      expect(file.readAsStringSync(), contains('passes:'));
+      expect(yaml, contains('refractor:'));
+      expect(yaml, contains('  # exclude:'));
+      expect(yaml, contains('  passes:'));
+      expect(yaml, isNot(contains('preserve_main')));
+      expect(yaml, isNot(contains('\nexclude:')));
+      expect(yaml, isNot(contains('\nverbose:')));
+      expect(yaml, isNot(contains('symbol_map')));
     });
 
     test(

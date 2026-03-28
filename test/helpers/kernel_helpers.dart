@@ -1,8 +1,8 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/obfuscation_target.dart';
+import 'package:refractor/src/project/project_scope.dart';
 
 /// Creates a user library with a `package:refractor/...` URI so that
-/// [ObfuscationTarget.shouldObfuscateLibrary] returns `true`.
+/// [ProjectScope.containsLibrary] returns `true`.
 Library makeUserLibrary([String path = 'src/app.dart']) {
   final uri = Uri.parse('package:refractor/$path');
   return Library(uri, fileUri: uri);
@@ -111,9 +111,9 @@ Library makeDartCoreLibrary() {
   return lib;
 }
 
-/// Creates an [ObfuscationTarget] with defaults suitable for tests.
-ObfuscationTarget makeObfuscationTarget() {
-  return ObfuscationTarget(
+/// Creates a [ProjectScope] with defaults suitable for tests.
+ProjectScope makeProjectScope() {
+  return ProjectScope(
     projectRootUri: Uri.directory('/virtual/project'),
     projectPackageName: 'refractor',
   );

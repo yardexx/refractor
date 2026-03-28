@@ -1,5 +1,5 @@
-import 'package:refractor/src/engine/pass/pass_artifact.dart';
-import 'package:refractor/src/engine/pass/pass_report.dart';
+import 'package:refractor/src/engine/pass/reporting/pass_artifact.dart';
+import 'package:refractor/src/engine/pass/reporting/pass_report.dart';
 
 /// Collects heterogeneous results from pass runs.
 ///
@@ -15,6 +15,11 @@ class PassFailureRecord {
 
   final String passName;
   final Exception error;
+
+  Map<String, Object?> toJson() => {
+    'pass_name': passName,
+    'error': error.toString(),
+  };
 }
 
 class PassResults {
@@ -44,4 +49,12 @@ class PassResults {
   void addFailure(PassFailureRecord failure) {
     failures.add(failure);
   }
+
+  Map<String, Object?> toJson() => {
+    'artifacts': {
+      for (final entry in _artifacts.entries) entry.key: entry.value.toJson(),
+    },
+    'reports': [for (final report in reports) report.toJson()],
+    'failures': [for (final failure in failures) failure.toJson()],
+  };
 }

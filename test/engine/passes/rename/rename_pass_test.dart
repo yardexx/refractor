@@ -1,8 +1,12 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/obfuscation_target.dart';
+import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass.dart';
-import 'package:refractor/src/engine/passes/rename/model.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
+import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/policy/rename_policy_view.dart';
+import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
 import '../../../helpers/kernel_helpers.dart';
@@ -12,22 +16,62 @@ void main() {
     late Library coreLib;
     late Library userLib;
     late Component component;
-    late ObfuscationTarget target;
+    late ProjectScope projectScope;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
       userLib = makeUserLibrary();
-      target = makeObfuscationTarget();
+      projectScope = makeProjectScope();
     });
 
+    RenamePass makePass(
+      Component component, {
+      RenamePassConfig config = const RenamePassConfig(),
+    }) {
+      final policy = PolicyResolver().resolve(
+        component: component,
+        config: RefractorConfig(passes: [config]),
+        projectScope: projectScope,
+      );
+      return RenamePass(
+        config: config,
+        policy: policy.rename,
+        projectScope: projectScope,
+      );
+    }
+
     Future<RenameMapping> runPass([
-      RenamePassOptions options = const RenamePassOptions(),
+      RenamePassConfig config = const RenamePassConfig(),
     ]) async {
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final result = await RenamePass(options: options).run(component, target);
+      final result = await makePass(component, config: config).run(component);
       expect(result, isA<PassSucceeded>());
       return ((result as PassSucceeded).artifact! as RenameArtifact).mapping;
     }
+
+    test('returns stable pass result shape with report and artifact', () async {
+      final cls = Class(name: 'Tracker', fileUri: userLib.fileUri);
+      userLib.addClass(cls);
+
+      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final result = await makePass(component).run(component);
+
+      expect(result, isA<PassSucceeded>());
+      final success = result as PassSucceeded;
+      expect(success.report.passName, 'rename');
+      expect(success.artifact, isA<RenameArtifact>());
+    });
+
+    test('rename artifact is serializable to JSON data', () async {
+      final cls = Class(name: 'Tracker', fileUri: userLib.fileUri);
+      userLib.addClass(cls);
+
+      final mapping = await runPass();
+
+      expect(RenameArtifact(mapping: mapping).toJson(), {
+        'symbol_map': mapping.symbolMap,
+      });
+    });
 
     test('renames class name in user library', () async {
       final cls = Class(name: 'MyService', fileUri: userLib.fileUri);
@@ -47,7 +91,7 @@ void main() {
       );
       userLib.addProcedure(proc);
 
-      await runPass(const RenamePassOptions(preserveMain: false));
+      await runPass();
 
       expect(proc.name.text, isNot('doWork'));
     });
@@ -83,12 +127,12 @@ void main() {
 
       component = Component(libraries: [coreLib, userLib, otherLib])
         ..setMainMethodAndMode(null, true);
-      await RenamePass().run(component, target);
+      await makePass(component).run(component);
 
       expect(cls.name, equals('ExternalClass'));
     });
 
-    test('preserveMain: true keeps main procedure unchanged', () async {
+    test('keeps the component main procedure unchanged', () async {
       final mainProc = Procedure(
         Name('main'),
         ProcedureKind.Method,
@@ -97,24 +141,31 @@ void main() {
       );
       userLib.addProcedure(mainProc);
 
-      await runPass();
+      component = Component(libraries: [coreLib, userLib])
+        ..setMainMethodAndMode(mainProc.reference, true);
+      final result = await makePass(component).run(component);
+
+      expect(result, isA<PassSucceeded>());
 
       expect(mainProc.name.text, equals('main'));
     });
 
-    test('preserveMain: false renames main', () async {
-      final mainProc = Procedure(
-        Name('main'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(mainProc);
+    test(
+      'renames procedures named main when they are not the entrypoint',
+      () async {
+        final mainProc = Procedure(
+          Name('main'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        );
+        userLib.addProcedure(mainProc);
 
-      await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
-      expect(mainProc.name.text, isNot('main'));
-    });
+        expect(mainProc.name.text, isNot('main'));
+      },
+    );
 
     test('@pragma annotation prevents rename of annotated node', () async {
       final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
@@ -209,16 +260,16 @@ void main() {
       userLib.addClass(cls);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final result = await RenamePass().run(component, target);
+      final result = await makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       expect(result.report.passName, 'rename');
-      expect(result.report.metrics.map((metric) => metric.key), [
+      expect(result.report.metadata.keys, [
         'classes',
         'members',
         'variables',
       ]);
-      expect(result.report.metrics.first.value, 1);
+      expect(result.report.metadata['classes'], '1');
     });
 
     test('renames named constructor', () async {
@@ -293,7 +344,7 @@ void main() {
       );
       userLib.addProcedure(wrapper);
 
-      await runPass(const RenamePassOptions(preserveMain: false));
+      await runPass();
 
       expect(proc.name.text, isNot('compute'));
       expect(invocation.target, same(proc));
@@ -316,7 +367,7 @@ void main() {
       );
       userLib.addProcedure(wrapper);
 
-      await runPass(const RenamePassOptions(preserveMain: false));
+      await runPass();
 
       expect(field.name.text, isNot('config'));
       expect(staticGet.target, same(field));
@@ -343,7 +394,7 @@ void main() {
         );
         userLib.addProcedure(wrapper);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(ctor.name.text, isNot('build'));
         expect(invocation.target, same(ctor));
@@ -429,7 +480,7 @@ void main() {
       );
       userLib.addProcedure(wrapper);
 
-      await runPass(const RenamePassOptions(preserveMain: false));
+      await runPass();
 
       expect(field.name.text, isNot('setting'));
       expect(staticSet.target, same(field));
@@ -569,20 +620,63 @@ void main() {
         cls.addProcedure(method);
         lib.addClass(cls);
 
-        final t = makeObfuscationTarget();
         final comp = makeComponent(
           coreLib: makeDartCoreLibrary(),
           userLib: lib,
         );
+        final projectScope = makeProjectScope();
+        final policy = PolicyResolver().resolve(
+          component: comp,
+          config: RefractorConfig(
+            passes: [RenamePassConfig(seed: seed)],
+          ),
+          projectScope: projectScope,
+        );
         await RenamePass(
-          options: RenamePassOptions(seed: seed),
-        ).run(comp, t);
+          config: RenamePassConfig(seed: seed),
+          policy: policy.rename,
+          projectScope: projectScope,
+        ).run(comp);
         return method.name.text;
       }
 
       final name1 = await runWithSeed(42);
       final name2 = await runWithSeed(42);
       expect(name1, equals(name2));
+    });
+
+    test('reusing the same pass instance preserves seeded output', () async {
+      Future<String> runWithSharedPass(RenamePass pass) async {
+        final lib = makeUserLibrary();
+        final cls = Class(name: 'Svc', fileUri: lib.fileUri);
+        final method = Procedure(
+          Name('process'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: lib.fileUri,
+        );
+        cls.addProcedure(method);
+        lib.addClass(cls);
+
+        final comp = makeComponent(
+          coreLib: makeDartCoreLibrary(),
+          userLib: lib,
+        );
+        await pass.run(comp);
+        return method.name.text;
+      }
+
+      final scope = makeProjectScope();
+      final pass = RenamePass(
+        config: const RenamePassConfig(seed: 42),
+        policy: const RenamePolicyView(),
+        projectScope: scope,
+      );
+
+      final firstName = await runWithSharedPass(pass);
+      final secondName = await runWithSharedPass(pass);
+
+      expect(firstName, equals(secondName));
     });
 
     test('name pool uses alphabetic names', () async {
@@ -613,7 +707,7 @@ void main() {
       cls.addProcedure(method);
       userLib.addClass(cls);
 
-      await runPass(const RenamePassOptions(seed: 123));
+      await runPass(const RenamePassConfig(seed: 123));
 
       expect(method.name.text, isNot('run'));
       expect(method.name.text, matches(RegExp(r'^[a-zA-Z]+$')));
@@ -704,7 +798,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, extLib])
           ..setMainMethodAndMode(null, true);
-        await RenamePass().run(component, target);
+        await makePass(component).run(component);
 
         expect(
           buildOverride.name.text,
@@ -995,7 +1089,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, otherLib])
           ..setMainMethodAndMode(null, true);
-        final result = await RenamePass().run(component, target);
+        final result = await makePass(component).run(component);
 
         expect(result, isA<PassSucceeded>());
         expect(externalMethod.name.text, 'foo');
@@ -1032,7 +1126,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, otherLib])
           ..setMainMethodAndMode(null, true);
-        final result = await RenamePass().run(component, target);
+        final result = await makePass(component).run(component);
 
         expect(result, isA<PassSucceeded>());
         expect(localMethod.name.text, isNot('map'));
@@ -1085,7 +1179,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(callee.name.text, equals('configure'));
         expect(namedParam.name, equals('debug'));
@@ -1138,7 +1232,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(callee.name.text, equals('configure'));
         expect(namedParam.name, equals('debug'));
@@ -1190,7 +1284,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(callee.name.text, equals('configure'));
         expect(namedParam.name, equals('debug'));
@@ -1244,7 +1338,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(constructor.name.text, equals('create'));
         expect(namedParam.name, equals('debug'));
@@ -1311,7 +1405,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(redirectingFactory.name.text, equals('factory'));
         expect(namedParam.name, equals('debug'));
@@ -1373,7 +1467,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(genericHelper.name.text, equals('helper'));
         expect(namedParam.name, equals('debug'));
@@ -1434,7 +1528,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, isNot('debug'));
@@ -1509,7 +1603,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(redirectingFactory.name.text, equals('factory'));
         expect(namedParam.name, equals('debug'));
@@ -1569,7 +1663,7 @@ void main() {
         );
         userLib.addProcedure(caller);
 
-        await runPass(const RenamePassOptions(preserveMain: false));
+        await runPass();
 
         expect(method.name.text, equals('configure'));
         expect(namedParam.name, equals('debug'));

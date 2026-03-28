@@ -1,5 +1,4 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/obfuscation_target.dart';
 import 'package:refractor/src/engine/pass/pass_result.dart';
 
 /// Base class for all obfuscation passes.
@@ -8,5 +7,5 @@ abstract class Pass {
   String get name;
 
   /// Run this pass over [component], mutating it in place.
-  Future<PassResult> run(Component component, ObfuscationTarget target);
+  Future<PassResult> run(Component component);
 }

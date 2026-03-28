@@ -86,9 +86,10 @@ void main() {
     test('passesRun reflects YAML pass order', () async {
       final result = await engine.run(
         config: RefractorConfig.fromYaml('''
-passes:
-  string_encrypt: true
-  rename: true
+refractor:
+  passes:
+    string_encrypt: true
+    rename: true
 '''),
         request: BuildRequest(
           input: 'lib/main.dart',
@@ -112,8 +113,9 @@ passes:
 
         final result = await engine.run(
           config: RefractorConfig.fromYaml('''
-passes:
-  string_encrypt: true
+refractor:
+  passes:
+    string_encrypt: true
 '''),
           request: BuildRequest(
             input: 'lib/main.dart',

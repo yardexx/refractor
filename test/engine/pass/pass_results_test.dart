@@ -71,6 +71,39 @@ void main() {
         ['first', 'second'],
       );
     });
+
+    test('toJson serializes artifacts, reports, and failures', () {
+      results
+        ..addArtifact('rename', const _StringArtifact('mapping-data'))
+        ..addReport(
+          const PassReport(
+            passName: 'rename',
+            metadata: {'classes': '1'},
+          ),
+        )
+        ..addFailure(
+          PassFailureRecord(passName: 'string_encrypt', error: Exception('x')),
+        );
+
+      expect(results.toJson(), {
+        'artifacts': {
+          'rename': {'value': 'mapping-data'},
+        },
+        'reports': [
+          {
+            'pass_name': 'rename',
+            'message': null,
+            'metadata': {'classes': '1'},
+          },
+        ],
+        'failures': [
+          {
+            'pass_name': 'string_encrypt',
+            'error': 'Exception: x',
+          },
+        ],
+      });
+    });
   });
 }
 
@@ -78,10 +111,16 @@ final class _StringArtifact extends PassArtifact {
   const _StringArtifact(this.value);
 
   final String value;
+
+  @override
+  Map<String, Object?> toJson() => {'value': value};
 }
 
 final class _IntArtifact extends PassArtifact {
   const _IntArtifact(this.value);
 
   final int value;
+
+  @override
+  Map<String, Object?> toJson() => {'value': value};
 }

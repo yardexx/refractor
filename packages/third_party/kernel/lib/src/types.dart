@@ -13,7 +13,7 @@ import '../type_algebra.dart'
 
 import '../type_environment.dart' show IsSubtypeOf;
 
-import 'standard_bounds.dart';
+import '../src/standard_bounds.dart';
 
 class Types with StandardBounds {
   @override
@@ -1294,7 +1294,18 @@ class Types with StandardBounds {
 
       case (AuxiliaryType(), _):
       case (_, AuxiliaryType()):
-        throw "Unhandled type: ${t.runtimeType}";
+        throw "Unhandled type combination: "
+            "${s.runtimeType} ${t.runtimeType}";
+
+      case (FunctionTypeParameterType(), _):
+      case (_, FunctionTypeParameterType()):
+        throw "Unimplemented type combination: "
+            "${s.runtimeType} ${t.runtimeType}";
+
+      case (ClassTypeParameterType(), _):
+      case (_, ClassTypeParameterType()):
+        throw "Unimplemented type combination: "
+            "${s.runtimeType} ${t.runtimeType}";
     }
   }
 

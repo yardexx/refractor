@@ -45,7 +45,7 @@ final class TextReporter implements BuildReporter {
       _writePassBlock(
         buffer,
         passName: report.passName,
-        metrics: report.metrics,
+        metadata: report.metadata,
         message: report.message,
         error: failureByPass[report.passName]?.error.toString(),
       );
@@ -61,7 +61,7 @@ final class TextReporter implements BuildReporter {
       _writePassBlock(
         buffer,
         passName: failure.passName,
-        metrics: const [],
+        metadata: const {},
         error: failure.error.toString(),
       );
     }
@@ -74,7 +74,7 @@ final class TextReporter implements BuildReporter {
   void _writePassBlock(
     StringBuffer buffer, {
     required String passName,
-    required List<PassMetric> metrics,
+    required Map<String, String> metadata,
     String? message,
     String? error,
   }) {
@@ -82,7 +82,7 @@ final class TextReporter implements BuildReporter {
       ..writeln()
       ..writeln('${error == null ? '✅' : '❌'} $passName:');
 
-    _writeMetrics(buffer, metrics);
+    _writeMetadata(buffer, metadata);
 
     if (message case final message?) {
       buffer.writeln('Message: $message');
@@ -93,14 +93,14 @@ final class TextReporter implements BuildReporter {
     }
   }
 
-  void _writeMetrics(StringBuffer buffer, List<PassMetric> metrics) {
-    if (metrics.isEmpty) {
+  void _writeMetadata(StringBuffer buffer, Map<String, String> metadata) {
+    if (metadata.isEmpty) {
       buffer.writeln('(Nothing to report)');
       return;
     }
 
-    for (final metric in metrics) {
-      buffer.writeln('${labelForMetric(metric.key)}: ${metric.value}');
+    for (final entry in metadata.entries) {
+      buffer.writeln('${labelForMetric(entry.key)}: ${entry.value}');
     }
   }
 

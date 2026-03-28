@@ -1,31 +1,56 @@
 import 'package:glob/glob.dart';
-import 'package:json_annotation/json_annotation.dart';
-import 'package:refractor/src/config/converter/pass_config_converter.dart';
-import 'package:refractor/src/config/model/pass_config.dart';
 import 'package:refractor/src/config/model/refractor_settings.dart';
+import 'package:refractor/src/engine/pass/config/pass_config.dart';
+import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:yaml/yaml.dart';
 
-export 'package:refractor/src/config/converter/pass_config_converter.dart';
-export 'package:refractor/src/config/model/pass_config.dart';
 export 'package:refractor/src/config/model/refractor_settings.dart';
+export 'package:refractor/src/engine/passes/rename/config/rename_config.dart';
+export 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_config.dart';
 
-part 'refractor_config.g.dart';
-
-@JsonSerializable(
-  checked: true,
-  fieldRename: FieldRename.snake,
-  createToJson: false,
-  converters: [PassConfigListConverter()],
-)
 final class RefractorConfig {
   RefractorConfig({
     this.refractor = const RefractorSettings(),
     this.passes = const [],
   });
 
-  factory RefractorConfig.fromJson(Map<String, dynamic> json) =>
-      _$RefractorConfigFromJson(json);
+  factory RefractorConfig.fromJson(Map<String, dynamic> json) {
+    if (json.containsKey('exclude')) {
+      throw const ConfigException(
+        'Global exclude configuration must be nested under '
+        '"refractor.exclude".',
+      );
+    }
+
+    if (json.containsKey('passes')) {
+      throw const ConfigException(
+        'Pass configuration must be nested under "refractor.passes".',
+      );
+    }
+
+    final refractorNode = switch (json['refractor']) {
+      null => <String, dynamic>{},
+      Map() => Map<String, dynamic>.from(json['refractor'] as Map),
+      _ => throw const ConfigException(
+        '"refractor" must be a YAML mapping/object.',
+      ),
+    };
+
+    final passJsonNode = refractorNode.remove('passes');
+    final passJson = switch (passJsonNode) {
+      null => <String, dynamic>{},
+      Map() => Map<String, dynamic>.from(passJsonNode),
+      _ => throw const ConfigException(
+        '"refractor.passes" must be a YAML mapping/object.',
+      ),
+    };
+
+    return RefractorConfig(
+      refractor: RefractorSettings.fromJson(refractorNode),
+      passes: defaultPassRegistry.parseAll(passJson),
+    );
+  }
 
   /// Parses a YAML string into a [RefractorConfig].
   factory RefractorConfig.fromYaml(String yamlString) {

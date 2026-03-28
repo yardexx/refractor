@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 import 'package:refractor/src/config/model/refractor_config.dart';
@@ -19,8 +20,9 @@ class ResistanceFixture {
   });
 
   factory ResistanceFixture.load(String name) {
+    final repoRoot = _repoRoot();
     final fixtureDir = Directory(
-      p.join(Directory.current.path, 'test', 'fixtures', 'resistance', name),
+      p.join(repoRoot, 'test', 'fixtures', 'resistance', name),
     );
 
     final sourcePath = p.join(fixtureDir.path, 'main.dart');
@@ -47,6 +49,19 @@ class ResistanceFixture {
   final String expectationsPath;
   final RefractorConfig config;
   final ResistanceExpectations expectations;
+}
+
+String _repoRoot() {
+  final packageUri = Isolate.resolvePackageUriSync(
+    Uri.parse('package:refractor/refractor.dart'),
+  );
+  if (packageUri == null || packageUri.scheme != 'file') {
+    throw StateError('Unable to resolve package:refractor/refractor.dart');
+  }
+
+  return p.normalize(
+    p.join(p.dirname(p.fromUri(packageUri)), '..'),
+  );
 }
 
 class ResistanceExpectations {
@@ -206,8 +221,9 @@ int metricValue(BuildResult result, String metricName) {
 
   final report = result.reports.where((report) => report.passName == parts[0]);
   for (final passReport in report) {
-    for (final metric in passReport.metrics) {
-      if (metric.key == parts[1]) return metric.value;
+    final value = passReport.metadata[parts[1]];
+    if (value != null) {
+      return int.tryParse(value) ?? 0;
     }
   }
 
