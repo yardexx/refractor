@@ -1,6 +1,5 @@
 import 'package:kernel/kernel.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:refractor/src/engine/obfuscation_target.dart';
 import 'package:refractor/src/engine/pass.dart';
 
 /// Runs a list of [Pass]es over a kernel [Component].
@@ -15,14 +14,11 @@ class PassRunner {
   final Logger? logger;
 
   /// Run all passes on [component] and return collected results.
-  Future<PassResults> run(
-    Component component,
-    ObfuscationTarget target,
-  ) async {
+  Future<PassResults> run(Component component) async {
     final results = PassResults();
     for (final pass in passes) {
       logger?.detail('Running pass: ${pass.name}');
-      final execution = await pass.run(component, target);
+      final execution = await pass.run(component);
       switch (execution) {
         case PassSucceeded(:final artifact, :final report):
           results.addReport(report);

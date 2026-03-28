@@ -44,4 +44,7 @@ final class _FakeArtifact extends PassArtifact {
   const _FakeArtifact(this.value);
 
   final String value;
+
+  @override
+  Map<String, Object?> toJson() => {'value': value};
 }

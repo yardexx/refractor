@@ -17,17 +17,15 @@ refractor:
   # Enable verbose engine logs (useful when debugging analyzer/rename behavior).
   verbose: true
 
-# Pass configuration — enable/disable and configure each pass.
-# Use `true` for defaults, `false` to disable, or a map for custom settings.
-passes:
-  rename:
-    # Keep deterministic output while debugging rename/analyzer behavior.
-    seed: 1337
-    preserve_main: true
+  passes:
+    rename:
+      enabled: true
+      # Keep deterministic output while debugging rename/analyzer behavior.
+      seed: 1337
 
-  # Disable unrelated passes while debugging rename/analyzer behavior.
-  string_encrypt: false
-  # string_encrypt:
-  #   xor_key: 0x5A
-  #   exclude_patterns:
-  #     - "^https://"
+    # Disable unrelated passes while debugging rename/analyzer behavior.
+    string_encrypt: false
+    # string_encrypt:
+    #   xor_key: 0x5A
+    #   exclude_patterns:
+    #     - "^https://"

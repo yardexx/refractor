@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/obfuscation_target.dart';
 import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_config.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_transformer.dart';
+import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
+import 'package:refractor/src/project/project_scope.dart';
 
 /// Obfuscation pass that replaces plaintext [StringLiteral] nodes with a
 /// call to an injected decode helper, so strings are not visible in the binary.
@@ -14,28 +16,27 @@ import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_transf
 /// original string.
 class StringEncryptPass extends Pass {
   StringEncryptPass({
-    this.xorKey = 0x5A,
-    this.excludePatterns = const [],
+    required this.config,
+    required this.policy,
+    required this.projectScope,
   });
 
   static const String _helperBaseName = r'_obfDecode$';
 
-  final int xorKey;
-  final List<RegExp> excludePatterns;
+  final StringEncryptPassConfig config;
+  final StringEncryptPolicyView policy;
+  final ProjectScope projectScope;
 
   @override
   String get name => 'string_encrypt';
 
   @override
-  Future<PassResult> run(
-    Component component,
-    ObfuscationTarget target,
-  ) async {
+  Future<PassResult> run(Component component) async {
     try {
       // Find the first user library to inject our helper into.
       Library? targetLib;
       for (final lib in component.libraries) {
-        if (target.shouldObfuscateLibrary(lib)) {
+        if (projectScope.containsLibrary(lib) && !policy.isLibraryKept(lib)) {
           targetLib = lib;
           break;
         }
@@ -50,25 +51,22 @@ class StringEncryptPass extends Pass {
       final decodeProcedure = _injectHelper(targetLib, component);
 
       // Walk the component and replace string literals.
-      final transformer = StringEncryptTransformer(
-        target: target,
+      final encryptedCount = StringEncryptTransformer(
+        projectScope: projectScope,
+        policy: policy,
         decodeProcedure: decodeProcedure,
-        random: Random(xorKey),
-        excludePatterns: excludePatterns,
-      );
-      component.transformChildren(transformer);
+        random: Random(config.xorKey),
+        excludePatterns: config.excludePatterns.map(RegExp.new).toList(),
+      ).apply(component);
 
       return PassSucceeded(
         report: PassReport(
           passName: name,
-          metrics: transformer.count == 0
-              ? const []
-              : [
-                  PassMetric(
-                    key: 'strings_encrypted',
-                    value: transformer.count,
-                  ),
-                ],
+          metadata: encryptedCount == 0
+              ? const {}
+              : {
+                  'strings_encrypted': encryptedCount.toString(),
+                },
         ),
       );
     } on Object catch (error) {
@@ -214,7 +212,7 @@ class StringEncryptPass extends Pass {
     return procedure;
   }
 
-  List<int> encode(String s) => encodeWithKey(s, xorKey);
+  List<int> encode(String s) => encodeWithKey(s, config.xorKey);
 
   String _freshHelperName(Library lib) {
     final usedNames = <String>{

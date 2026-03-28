@@ -7,6 +7,7 @@ library;
 
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
@@ -221,8 +222,8 @@ void main() {
         configYaml: '''
 refractor:
   verbose: false
-passes:
-  rename: true
+  passes:
+    rename: true
 ''',
       );
       expect(output, equals(_expectedOutput.trim()));
@@ -236,10 +237,10 @@ passes:
           configYaml: '''
 refractor:
   verbose: false
-passes:
-  rename: true
-  string_encrypt:
-    xor_key: 42
+  passes:
+    rename: true
+    string_encrypt:
+      xor_key: 42
 ''',
         );
         expect(output, equals(_expectedOutput.trim()));
@@ -253,8 +254,8 @@ passes:
         configYaml: '''
 refractor:
   verbose: false
-passes:
-  rename: true
+  passes:
+    rename: true
 ''',
       );
       expect(output, equals(_callableAliasExpectedOutput.trim()));
@@ -323,7 +324,10 @@ Future<String> _buildAndRunExampleApp({
   required Directory tempDir,
   required List<String> arguments,
 }) async {
-  final repoRoot = Directory.current.path;
+  final scriptPath = Platform.script.toFilePath();
+  final repoRoot = p.normalize(
+    p.join(p.dirname(scriptPath), '..', '..'),
+  );
   final exampleRoot = '$repoRoot/example';
   final configYaml = File('$exampleRoot/refractor.yaml').readAsStringSync();
   final config = RefractorConfig.fromYaml(configYaml);

@@ -1,5 +1,5 @@
-import 'package:refractor/src/engine/pass/pass_artifact.dart';
-import 'package:refractor/src/engine/pass/pass_report.dart';
+import 'package:refractor/src/engine/pass/reporting/pass_artifact.dart';
+import 'package:refractor/src/engine/pass/reporting/pass_report.dart';
 
 sealed class PassResult {
   const PassResult({

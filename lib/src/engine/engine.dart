@@ -2,12 +2,13 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
-import 'package:refractor/src/engine/obfuscation_target.dart';
 import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/engine/pass_runner.dart';
-import 'package:refractor/src/engine/passes/rename/model.dart';
-import 'package:refractor/src/engine/pipeline_builder.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/engine/symbol_table.dart';
+import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/project/project_scope.dart';
 
 export 'package:refractor/src/engine/compiler/compiler.dart' show Target;
 
@@ -55,17 +56,24 @@ class RefractorEngine {
 
     // 2. Load & obfuscate.
     _logger?.detail('Running obfuscation passes...');
-    final enabledPasses = PipelineBuilder().build(config.passes);
     final component = kernelIO.load(dillPath);
-
-    final obfuscationTarget = ObfuscationTarget(
+    final projectScope = ProjectScope(
       projectRootUri: request.projectRootUri,
       projectPackageName: request.projectPackageName,
-      excludePatterns: config.excludePatterns,
+    );
+    final policy = PolicyResolver().resolve(
+      component: component,
+      config: config,
+      projectScope: projectScope,
+    );
+    final enabledPasses = defaultPassRegistry.createAll(
+      configs: config.passes,
+      policy: policy,
+      projectScope: projectScope,
     );
 
     final runner = PassRunner(passes: enabledPasses, logger: _logger);
-    final runResult = await runner.run(component, obfuscationTarget);
+    final runResult = await runner.run(component);
 
     // Extract symbol table from rename pass results.
     final symbolTable = SymbolTable();

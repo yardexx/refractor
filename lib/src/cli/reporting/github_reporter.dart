@@ -115,7 +115,7 @@ final class GitHubReporter implements BuildReporter {
       _writeTextPassBlock(
         buffer,
         passName: report.passName,
-        metrics: report.metrics,
+        metadata: report.metadata,
         message: report.message,
         error: failureByPass[report.passName]?.error.toString(),
       );
@@ -131,7 +131,7 @@ final class GitHubReporter implements BuildReporter {
       _writeGitHubPassBlock(
         buffer,
         passName: report.passName,
-        metrics: report.metrics,
+        metadata: report.metadata,
         message: report.message,
         error: failureByPass[report.passName]?.error.toString(),
       );
@@ -147,7 +147,7 @@ final class GitHubReporter implements BuildReporter {
       _writeTextPassBlock(
         buffer,
         passName: failure.passName,
-        metrics: const [],
+        metadata: const {},
         error: failure.error.toString(),
       );
     }
@@ -162,7 +162,7 @@ final class GitHubReporter implements BuildReporter {
       _writeGitHubPassBlock(
         buffer,
         passName: failure.passName,
-        metrics: const [],
+        metadata: const {},
         error: failure.error.toString(),
       );
     }
@@ -175,7 +175,7 @@ final class GitHubReporter implements BuildReporter {
   void _writeTextPassBlock(
     StringBuffer buffer, {
     required String passName,
-    required List<PassMetric> metrics,
+    required Map<String, String> metadata,
     String? message,
     String? error,
   }) {
@@ -183,7 +183,7 @@ final class GitHubReporter implements BuildReporter {
       ..writeln()
       ..writeln('${error == null ? '✅' : '❌'} $passName:');
 
-    _writeTextMetrics(buffer, metrics);
+    _writeTextMetadata(buffer, metadata);
 
     if (message case final message?) {
       buffer.writeln('Message: $message');
@@ -197,7 +197,7 @@ final class GitHubReporter implements BuildReporter {
   void _writeGitHubPassBlock(
     StringBuffer buffer, {
     required String passName,
-    required List<PassMetric> metrics,
+    required Map<String, String> metadata,
     String? message,
     String? error,
   }) {
@@ -205,7 +205,7 @@ final class GitHubReporter implements BuildReporter {
       ..writeln()
       ..writeln('## ${error == null ? '✅' : '❌'} $passName');
 
-    _writeGitHubMetrics(buffer, metrics);
+    _writeGitHubMetadata(buffer, metadata);
 
     if (message case final message?) {
       buffer.writeln('Message: $message');
@@ -216,25 +216,28 @@ final class GitHubReporter implements BuildReporter {
     }
   }
 
-  void _writeTextMetrics(StringBuffer buffer, List<PassMetric> metrics) {
-    if (metrics.isEmpty) {
+  void _writeTextMetadata(StringBuffer buffer, Map<String, String> metadata) {
+    if (metadata.isEmpty) {
       buffer.writeln('(Nothing to report)');
       return;
     }
 
-    for (final metric in metrics) {
-      buffer.writeln('${labelForMetric(metric.key)}: ${metric.value}');
+    for (final entry in metadata.entries) {
+      buffer.writeln('${labelForMetric(entry.key)}: ${entry.value}');
     }
   }
 
-  void _writeGitHubMetrics(StringBuffer buffer, List<PassMetric> metrics) {
-    if (metrics.isEmpty) {
+  void _writeGitHubMetadata(
+    StringBuffer buffer,
+    Map<String, String> metadata,
+  ) {
+    if (metadata.isEmpty) {
       buffer.writeln('(Nothing to report)');
       return;
     }
 
-    for (final metric in metrics) {
-      buffer.writeln('- ${labelForMetric(metric.key)}: ${metric.value}');
+    for (final entry in metadata.entries) {
+      buffer.writeln('- ${labelForMetric(entry.key)}: ${entry.value}');
     }
   }
 }

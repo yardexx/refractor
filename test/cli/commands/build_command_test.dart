@@ -12,16 +12,18 @@ import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:test/test.dart';
 
+import '../../helpers/cwd_test_lock.dart';
+
 void main() {
   group('BuildCommand', () {
+    late CwdTestLock cwdLock;
     late Directory tempDir;
-    late String originalCurrentDir;
     late CommandRunner<int> runner;
     late _MockLogger logger;
     late File summaryFile;
 
     setUp(() async {
-      originalCurrentDir = Directory.current.path;
+      cwdLock = await CwdTestLock.acquire();
       tempDir = await Directory.systemTemp.createTemp('refractor_build_test_');
       Directory.current = tempDir.path;
       summaryFile = File('${tempDir.path}/github_step_summary.md');
@@ -36,10 +38,11 @@ void main() {
     });
 
     tearDown(() async {
-      Directory.current = originalCurrentDir;
+      Directory.current = Directory.systemTemp.path;
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
+      await cwdLock.release();
     });
 
     test('throws ConfigException when refractor.yaml is missing', () async {
@@ -56,9 +59,10 @@ void main() {
     test('builds kernel output for a minimal project', () async {
       File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
       File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: false
-  string_encrypt: false
+refractor:
+  passes:
+    rename: false
+    string_encrypt: false
 ''');
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
@@ -111,9 +115,10 @@ passes:
 
         File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
         File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: false
-  string_encrypt: true
+refractor:
+  passes:
+    rename: false
+    string_encrypt: true
 ''');
         Directory('lib').createSync(recursive: true);
         File(
@@ -164,7 +169,7 @@ passes:
               reports: const [
                 PassReport(
                   passName: 'rename',
-                  metrics: [PassMetric(key: 'classes', value: 1)],
+                  metadata: {'classes': '1'},
                 ),
               ],
             ),
@@ -173,9 +178,10 @@ passes:
 
       File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
       File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: true
-  string_encrypt: false
+refractor:
+  passes:
+    rename: true
+    string_encrypt: false
 ''');
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
@@ -221,7 +227,7 @@ passes:
               reports: const [
                 PassReport(
                   passName: 'rename',
-                  metrics: [PassMetric(key: 'classes', value: 1)],
+                  metadata: {'classes': '1'},
                 ),
               ],
             ),
@@ -230,9 +236,10 @@ passes:
 
       File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
       File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: true
-  string_encrypt: false
+refractor:
+  passes:
+    rename: true
+    string_encrypt: false
 ''');
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
@@ -285,9 +292,10 @@ passes:
 
       File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
       File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: false
-  string_encrypt: true
+refractor:
+  passes:
+    rename: false
+    string_encrypt: true
 ''');
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
@@ -336,7 +344,7 @@ passes:
                 reports: const [
                   PassReport(
                     passName: 'rename',
-                    metrics: [PassMetric(key: 'classes', value: 1)],
+                    metadata: {'classes': '1'},
                   ),
                 ],
               ),
@@ -345,9 +353,10 @@ passes:
 
         File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
         File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: true
-  string_encrypt: false
+refractor:
+  passes:
+    rename: true
+    string_encrypt: false
 ''');
         Directory('lib').createSync(recursive: true);
         File(
@@ -385,7 +394,7 @@ passes:
               reports: const [
                 PassReport(
                   passName: 'rename',
-                  metrics: [PassMetric(key: 'classes', value: 1)],
+                  metadata: {'classes': '1'},
                 ),
               ],
             ),
@@ -394,9 +403,10 @@ passes:
 
       File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
       File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: true
-  string_encrypt: false
+refractor:
+  passes:
+    rename: true
+    string_encrypt: false
 ''');
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
@@ -438,7 +448,7 @@ passes:
                 reports: const [
                   PassReport(
                     passName: 'rename',
-                    metrics: [PassMetric(key: 'classes', value: 1)],
+                    metadata: {'classes': '1'},
                   ),
                 ],
               ),
@@ -447,9 +457,10 @@ passes:
 
         File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
         File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: true
-  string_encrypt: false
+refractor:
+  passes:
+    rename: true
+    string_encrypt: false
 ''');
         Directory('lib').createSync(recursive: true);
         File(

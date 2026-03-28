@@ -5,22 +5,25 @@ import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:test/test.dart';
 
+import '../helpers/cwd_test_lock.dart';
+
 void main() {
   group('ConfigManager.loadConfig', () {
+    late CwdTestLock cwdLock;
     late Directory tempDir;
-    late String originalCurrentDir;
 
     setUp(() async {
-      originalCurrentDir = Directory.current.path;
+      cwdLock = await CwdTestLock.acquire();
       tempDir = await Directory.systemTemp.createTemp('refractor_config_test_');
       Directory.current = tempDir.path;
     });
 
     tearDown(() async {
-      Directory.current = originalCurrentDir;
+      Directory.current = Directory.systemTemp.path;
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
+      await cwdLock.release();
     });
 
     test('throws when no config file is present', () {
@@ -35,8 +38,9 @@ void main() {
     test('loads valid config file', () {
       File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
       File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: true
+refractor:
+  passes:
+    rename: true
 ''');
 
       final config = ConfigManager.loadConfig();
@@ -49,8 +53,9 @@ passes:
 
     test('loads config even when pubspec.yaml is missing', () {
       File('refractor.yaml').writeAsStringSync('''
-passes:
-  rename: true
+refractor:
+  passes:
+    rename: true
 ''');
 
       final config = ConfigManager.loadConfig();
@@ -64,9 +69,10 @@ passes:
     test('loads explicit configPath when provided', () {
       File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
       File('custom.yaml').writeAsStringSync('''
-passes:
-  rename: false
-  string_encrypt: true
+refractor:
+  passes:
+    rename: false
+    string_encrypt: true
 ''');
 
       final config = ConfigManager.loadConfig(configPath: 'custom.yaml');

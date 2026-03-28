@@ -47,30 +47,23 @@ const _defaultTemplate = '''
 # Modeled after analysis_options.yaml for Dart developer familiarity.
 # See: https://github.com/yardexx/refractor
 
-# Global tool settings.
 refractor:
-  # Output path for the symbol map (original → obfuscated name mapping).
-  # symbol_map: build/refractor_map.json
-
-  # Scope is fixed to the current project (pubspec package + current folder).
-
   # Library URI/path exclusions using glob patterns.
   # exclude:
   #   - "**/*.g.dart"
   #   - "**/*.freezed.dart"
 
-# Pass configuration — enable/disable and configure each pass.
-# Use `true` for defaults, `false` to disable, or a map for custom settings.
-passes:
-  rename:
-    # preserve_main: true
+  passes:
+    rename:
+      enabled: true
+      # exclude:
+      #   - "lib/src/public_api/**"
 
-  string_encrypt: true
-  # string_encrypt:
-  #   xor_key: 0x5A
-  #   exclude_patterns:
-  #     - "^https://"
-
-# Verbose logging.
-# verbose: false
+    string_encrypt:
+      enabled: true
+      # xor_key: 0x5A
+      # exclude:
+      #   - "lib/src/logging/**"
+      # exclude_patterns:
+      #   - "^https://"
 ''';

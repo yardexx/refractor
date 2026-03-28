@@ -1,5 +1,4 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/obfuscation_target.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass_runner.dart';
 import 'package:test/test.dart';
@@ -20,10 +19,7 @@ class _TrackingPass extends Pass {
   static int _globalOrder = 0;
 
   @override
-  Future<PassResult> run(
-    Component component,
-    ObfuscationTarget target,
-  ) async {
+  Future<PassResult> run(Component component) async {
     wasRun = true;
     runOrder = _globalOrder++;
     return PassSucceeded(
@@ -41,12 +37,11 @@ class _MutatingPass extends Pass {
   String get name => 'mutating';
 
   @override
-  Future<PassResult> run(
-    Component component,
-    ObfuscationTarget target,
-  ) async {
+  Future<PassResult> run(Component component) async {
     for (final lib in component.libraries) {
-      if (target.shouldObfuscateLibrary(lib)) {
+      if (lib.importUri.scheme == 'package' &&
+          lib.importUri.pathSegments.isNotEmpty &&
+          lib.importUri.pathSegments.first == 'refractor') {
         lib.addClass(Class(name: 'Injected', fileUri: lib.fileUri));
         break;
       }
@@ -64,10 +59,7 @@ class _FailingPass extends Pass {
   final String name;
 
   @override
-  Future<PassResult> run(
-    Component component,
-    ObfuscationTarget target,
-  ) async {
+  Future<PassResult> run(Component component) async {
     return PassFailed(
       error: Exception('boom'),
       report: PassReport(passName: name, message: 'boom'),
@@ -78,14 +70,11 @@ class _FailingPass extends Pass {
 void main() {
   group('PassRunner', () {
     late Component component;
-    late ObfuscationTarget target;
-
     setUp(() {
       _TrackingPass.resetOrder();
       final coreLib = makeDartCoreLibrary();
       final userLib = makeUserLibrary();
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      target = makeObfuscationTarget();
     });
 
     test('runs passes in order and returns PassResults', () async {
@@ -94,7 +83,7 @@ void main() {
       final pass3 = _TrackingPass('third');
 
       final runner = PassRunner(passes: [pass1, pass2, pass3]);
-      final result = await runner.run(component, target);
+      final result = await runner.run(component);
 
       expect(result, isA<PassResults>());
       expect(pass1.wasRun, isTrue);
@@ -112,7 +101,7 @@ void main() {
     test('empty pass list returns component unchanged', () async {
       final runner = PassRunner(passes: []);
       final libraryCount = component.libraries.length;
-      final result = await runner.run(component, target);
+      final result = await runner.run(component);
 
       expect(result, isA<PassResults>());
       expect(component.libraries, hasLength(libraryCount));
@@ -123,7 +112,7 @@ void main() {
       final tracker = _TrackingPass('after');
 
       final runner = PassRunner(passes: [mutating, tracker]);
-      await runner.run(component, target);
+      await runner.run(component);
 
       // Mutating pass should have added a class.
       final userLib = component.libraries.firstWhere(
@@ -142,7 +131,7 @@ void main() {
       final tracker = _TrackingPass('after');
 
       final runner = PassRunner(passes: [failing, tracker]);
-      final result = await runner.run(component, target);
+      final result = await runner.run(component);
 
       expect(tracker.wasRun, isTrue);
       expect(result.failures, hasLength(1));
@@ -163,7 +152,7 @@ void main() {
         );
 
         final runner = PassRunner(passes: [failing, tracker]);
-        final result = await runner.run(component, target);
+        final result = await runner.run(component);
 
         expect(result.failures, hasLength(1));
         expect(
@@ -179,4 +168,9 @@ final class _TrackingArtifact extends PassArtifact {
   const _TrackingArtifact(this.value);
 
   final String value;
+
+  @override
+  Map<String, Object?> toJson() => {
+    'value': value,
+  };
 }

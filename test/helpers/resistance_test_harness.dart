@@ -19,8 +19,9 @@ class ResistanceFixture {
   });
 
   factory ResistanceFixture.load(String name) {
+    final repoRoot = _repoRootFromScript();
     final fixtureDir = Directory(
-      p.join(Directory.current.path, 'test', 'fixtures', 'resistance', name),
+      p.join(repoRoot, 'test', 'fixtures', 'resistance', name),
     );
 
     final sourcePath = p.join(fixtureDir.path, 'main.dart');
@@ -47,6 +48,12 @@ class ResistanceFixture {
   final String expectationsPath;
   final RefractorConfig config;
   final ResistanceExpectations expectations;
+}
+
+String _repoRootFromScript() {
+  final scriptPath = p.fromUri(Platform.script);
+  final scriptDir = p.dirname(scriptPath);
+  return p.normalize(p.join(scriptDir, '..', '..'));
 }
 
 class ResistanceExpectations {
@@ -206,8 +213,9 @@ int metricValue(BuildResult result, String metricName) {
 
   final report = result.reports.where((report) => report.passName == parts[0]);
   for (final passReport in report) {
-    for (final metric in passReport.metrics) {
-      if (metric.key == parts[1]) return metric.value;
+    final value = passReport.metadata[parts[1]];
+    if (value != null) {
+      return int.tryParse(value) ?? 0;
     }
   }
 
