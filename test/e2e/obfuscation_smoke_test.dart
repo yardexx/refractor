@@ -6,6 +6,7 @@
 library;
 
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 import 'package:refractor/src/config/model/refractor_config.dart';
@@ -271,18 +272,21 @@ refractor:
       }
     });
 
-    test('example app: normal and obfuscated binaries produce same output', () async {
-      final plainOutput = await _compileAndRunExampleAppNormally(
-        tempDir: tempDir,
-        arguments: const ['--verbose'],
-      );
-      final obfuscatedOutput = await _buildAndRunExampleApp(
-        tempDir: tempDir,
-        arguments: const ['--verbose'],
-      );
+    test(
+      'example app: normal and obfuscated binaries produce same output',
+      () async {
+        final plainOutput = await _compileAndRunExampleAppNormally(
+          tempDir: tempDir,
+          arguments: const ['--verbose'],
+        );
+        final obfuscatedOutput = await _buildAndRunExampleApp(
+          tempDir: tempDir,
+          arguments: const ['--verbose'],
+        );
 
-      expect(obfuscatedOutput, equals(plainOutput));
-    });
+        expect(obfuscatedOutput, equals(plainOutput));
+      },
+    );
   });
 }
 
@@ -336,7 +340,7 @@ Future<String> _buildAndRunExampleApp({
   required Directory tempDir,
   required List<String> arguments,
 }) async {
-  final repoRoot = p.normalize(Directory.current.path);
+  final repoRoot = await _repoRoot();
   final exampleRoot = '$repoRoot/example';
   final configYaml = File('$exampleRoot/refractor.yaml').readAsStringSync();
   final config = RefractorConfig.fromYaml(configYaml);
@@ -376,7 +380,7 @@ Future<String> _compileAndRunExampleAppNormally({
   required Directory tempDir,
   required List<String> arguments,
 }) async {
-  final repoRoot = p.normalize(Directory.current.path);
+  final repoRoot = await _repoRoot();
   final exampleRoot = '$repoRoot/example';
   final sourcePath = '$exampleRoot/lib/main.dart';
   final outputPath = '${tempDir.path}/example-plain.exe';
@@ -404,4 +408,17 @@ Future<String> _compileAndRunExampleAppNormally({
   }
 
   return (binaryResult.stdout as String).trim();
+}
+
+Future<String> _repoRoot() async {
+  final packageUri = await Isolate.resolvePackageUri(
+    Uri.parse('package:refractor/refractor.dart'),
+  );
+  if (packageUri == null || packageUri.scheme != 'file') {
+    throw StateError('Unable to resolve package:refractor/refractor.dart');
+  }
+
+  return p.normalize(
+    p.join(p.dirname(p.fromUri(packageUri)), '..'),
+  );
 }

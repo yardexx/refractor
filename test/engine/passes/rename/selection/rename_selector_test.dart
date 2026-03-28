@@ -72,7 +72,9 @@ void main() {
       },
     );
 
-    test('excludes parameters of preserved main from selection variables', () {
+    test(
+      'excludes parameters of preserved main but still collects local variables',
+      () {
       final keptParam = VariableDeclaration('debug');
       final keptLocal = VariableDeclaration('localValue');
       final mainProcedure = Procedure(
@@ -103,9 +105,10 @@ void main() {
       final selection = makeSelector(component).select(component);
 
       expect(selection.variables, isNot(contains(keptParam)));
-      expect(selection.variables, isNot(contains(keptLocal)));
+      expect(selection.variables, contains(keptLocal));
       expect(selection.variables, contains(otherParam));
-    });
+      },
+    );
 
     test('reusing a selector does not leak selection state between runs', () {
       final componentOne = makeComponent(coreLib: coreLib, userLib: userLib);

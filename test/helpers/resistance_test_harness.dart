@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 import 'package:refractor/src/config/model/refractor_config.dart';
@@ -19,7 +20,7 @@ class ResistanceFixture {
   });
 
   factory ResistanceFixture.load(String name) {
-    final repoRoot = _repoRootFromScript();
+    final repoRoot = _repoRoot();
     final fixtureDir = Directory(
       p.join(repoRoot, 'test', 'fixtures', 'resistance', name),
     );
@@ -50,10 +51,17 @@ class ResistanceFixture {
   final ResistanceExpectations expectations;
 }
 
-String _repoRootFromScript() {
-  final scriptPath = p.fromUri(Platform.script);
-  final scriptDir = p.dirname(scriptPath);
-  return p.normalize(p.join(scriptDir, '..', '..'));
+String _repoRoot() {
+  final packageUri = Isolate.resolvePackageUriSync(
+    Uri.parse('package:refractor/refractor.dart'),
+  );
+  if (packageUri == null || packageUri.scheme != 'file') {
+    throw StateError('Unable to resolve package:refractor/refractor.dart');
+  }
+
+  return p.normalize(
+    p.join(p.dirname(p.fromUri(packageUri)), '..'),
+  );
 }
 
 class ResistanceExpectations {
