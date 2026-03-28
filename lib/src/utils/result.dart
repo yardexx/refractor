@@ -50,3 +50,14 @@ final class Error<T> extends Result<T> {
   @override
   String toString() => 'Result<$T>.error($error)';
 }
+
+/// Executes [body] and wraps the return value in [Result.ok].
+///
+/// If [body] throws an [Exception], it is caught and wrapped in [Result.error].
+Result<T> runCatching<T>(T Function() body) {
+  try {
+    return Result.ok(body());
+  } on Exception catch (e) {
+    return Result.error(e);
+  }
+}

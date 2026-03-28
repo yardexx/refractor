@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:test/test.dart';
@@ -25,6 +24,24 @@ void main() {
       expect(table.obfuscated('missing'), isNull);
     });
 
+    test('prefers bare private key for reverse lookups when available', () {
+      final table = SymbolTable()
+        ..record('_secret', 'package:refractor/src/app.dart::_a')
+        ..record('_secret', '_a');
+
+      expect(table.obfuscated('_secret'), '_a');
+    });
+
+    test('falls back to scoped private key when no bare key exists', () {
+      final table = SymbolTable()
+        ..record('_secret', 'package:refractor/src/app.dart::_a');
+
+      expect(
+        table.obfuscated('_secret'),
+        'package:refractor/src/app.dart::_a',
+      );
+    });
+
     test('exports pretty-printed JSON', () {
       final table = SymbolTable()..record('MyClass', r'_$0');
 
@@ -33,21 +50,6 @@ void main() {
 
       expect(decoded, {r'_$0': 'MyClass'});
       expect(json, contains('\n'));
-    });
-
-    test('writes symbol map to disk', () async {
-      final table = SymbolTable()..record('MyClass', r'_$0');
-      final dir = await Directory.systemTemp.createTemp('symbol_table_test_');
-      final file = File('${dir.path}/maps/symbols.json');
-
-      table.writeToFile(file.path);
-
-      expect(file.existsSync(), isTrue);
-      final decoded =
-          jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      expect(decoded, {r'_$0': 'MyClass'});
-
-      await dir.delete(recursive: true);
     });
   });
 }

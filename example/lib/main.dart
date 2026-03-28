@@ -1,208 +1,343 @@
-// obfuscator_test.dart
-// Purpose: Stress-test a Dart obfuscator with diverse language features.
-
 import 'dart:async';
-import 'dart:math';
 
-void main(List<String> args) async {
-  Logger.global.logLevel = LogLevel.debug;
+const String exampleVersion = '0.2.0';
 
-  final app = Application<AppConfig>(
-    config: AppConfig(
-      appName: 'ObfuscatorTest',
-      version: 1,
-      flags: {'experimental': true},
+void main() async {
+  final results = await runExampleApp(verbose: true);
+  for (final line in results) {
+    print(line);
+  }
+}
+
+Future<List<String>> runExampleApp({bool verbose = false}) async {
+  final app = ExampleApp(
+    const AppConfig(
+      appName: 'KernelEdgeCases',
+      mode: ExampleMode.active,
+      enableDiagnostics: true,
     ),
   );
 
   await app.start();
 
-  final result = computeComplexValue(5);
-  Logger.global.debug('Computed value: $result');
+  final renderer = FancyRenderer(prefix: 'Hello');
+  final greeter = GreeterService();
+  final holder = MessageHolder();
 
-  final service = RandomService(seed: 42);
-  Logger.global.info('Random value: ${service.next()}');
+  final lines = <String>[
+    'app=${app.config.appName}@$exampleVersion',
+    'mode=${describeMode(app.config.mode)}',
+    'override=${greeter.greet(label: 'World', excited: true)}',
+    'sdkOverride=${renderer.toString()}',
+    'dynamic=${callRenderDynamically(renderer)}',
+    'dynamicField=${mutateMessageDynamically(holder)}',
+    'construction=${exerciseDirectConstruction()}',
+    'tearOffs=${exerciseTearOffs()}',
+    'instanceTearOff=${exerciseInstanceTearOff(renderer)}',
+    'fieldAliases=${exerciseFieldBackedAliases()}',
+    'mutableAlias=${exerciseMutableAlias()}',
+    'locals=${exerciseLocalInvocation()}',
+    'excluded=${exerciseExcludedMembers()}',
+    'secret=${app.secretSummary(renderer)}',
+    'enum=${summarizeEnumValues()}',
+  ];
 
-  try {
-    dangerousOperation(-1);
-  } catch (e, st) {
-    Logger.global.error('Caught error: $e\n$st');
+  if (verbose) {
+    lines.add('interpolation=${buildInterpolatedMessage(renderer)}');
+    lines.add('unusedCase=${const _UnusedCase('shadow').reveal()}');
+    lines.add('unused=${_unusedFunction(7)}');
   }
 
-  final transformer = StringTransformer();
-  final transformed = transformer.transformAll([
-    'alpha',
-    'beta',
-    'gamma',
-  ], (s) => s.toUpperCase());
-
-  Logger.global.info('Transformed: $transformed');
-
-  final lazy = Lazy<int>(() {
-    Logger.global.debug('Lazy value evaluated');
-    return 99;
-  });
-
-  Logger.global.info('Lazy value is ${lazy.value}');
+  await app.stop();
+  return lines;
 }
 
-/// ------------------------------------------------------------
-/// Core application structures
-/// ------------------------------------------------------------
-
-class Application<T extends BaseConfig> with Lifecycle {
-  final T config;
-
-  Application({required this.config});
-
-  @override
-  Future<void> start() async {
-    Logger.global.info('Starting ${config.appName} v${config.version}');
-
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    if (config.flags['experimental'] == true) {
-      Logger.global.warn('Experimental features enabled');
-    }
-  }
-
-  @override
-  Future<void> stop() async {
-    Logger.global.info('Stopping application');
-  }
+String describeMode(ExampleMode mode) {
+  return switch (mode) {
+    ExampleMode.idle => 'idle',
+    ExampleMode.active => 'active',
+    ExampleMode.done => 'done',
+  };
 }
 
-abstract class BaseConfig {
-  String get appName;
-  int get version;
-  Map<String, bool> get flags;
+String summarizeEnumValues() {
+  return [for (final mode in ExampleMode.values) mode.name].join(',');
 }
 
-class AppConfig implements BaseConfig {
-  @override
-  final String appName;
-
-  @override
-  final int version;
-
-  @override
-  final Map<String, bool> flags;
-
-  const AppConfig({
-    required this.appName,
-    required this.version,
-    required this.flags,
-  });
+@Tag('top-level-named')
+String topLevelNamed({required String value, bool debug = false}) {
+  return debug ? 'top:$value' : value;
 }
 
-/// ------------------------------------------------------------
-/// Logging system
-/// ------------------------------------------------------------
-
-enum LogLevel { debug, info, warn, error }
-
-class Logger {
-  static final Logger global = Logger._internal();
-
-  LogLevel logLevel = LogLevel.info;
-
-  Logger._internal();
-
-  void debug(String message) {
-    _log(LogLevel.debug, message);
-  }
-
-  void info(String message) {
-    _log(LogLevel.info, message);
-  }
-
-  void warn(String message) {
-    _log(LogLevel.warn, message);
-  }
-
-  void error(String message) {
-    _log(LogLevel.error, message);
-  }
-
-  void _log(LogLevel level, String message) {
-    if (level.index < logLevel.index) return;
-
-    final timestamp = DateTime.now().toIso8601String();
-    print('[$timestamp][$level] $message');
-  }
+String alternateTopLevelNamed({required String value, bool debug = false}) {
+  return 'alt:$value';
 }
 
-/// ------------------------------------------------------------
-/// Mixins & utilities
-/// ------------------------------------------------------------
+@Tag('generic-helper')
+T genericEcho<T>({required T value, bool debug = false}) {
+  return value;
+}
+
+String callRenderDynamically(dynamic renderer) {
+  return renderer.render(label: 'dynamic', excited: true) as String;
+}
+
+String mutateMessageDynamically(dynamic holder) {
+  holder.message = 'dynamic-message';
+  return holder.message as String;
+}
+
+String exerciseLocalInvocation() {
+  String localFormat({required String input, bool loud = false}) {
+    return loud ? input.toUpperCase() : input;
+  }
+
+  return localFormat(input: 'local', loud: true);
+}
+
+String exerciseDirectConstruction() {
+  final payload = Payload.named(value: 'ctor', debug: true);
+  final redirected = RedirectPayload<String>.redirect(
+    value: 'factory',
+    debug: true,
+  );
+  final redirectedInt = RedirectPayload<int>.redirect(value: 9, debug: true);
+
+  return [
+    payload.describe(),
+    redirected.describe(),
+    redirectedInt.describe(),
+  ].join(' | ');
+}
+
+String exerciseTearOffs() {
+  final topAlias = topLevelNamed;
+  final genericAlias = genericEcho<int>;
+  final ctorAlias = Payload.named;
+  final factoryAlias = RedirectPayload<String>.redirect;
+  final instantiatedFactoryAlias = RedirectPayload<int>.redirect;
+
+  final top = topAlias(value: 'alias', debug: true);
+  final genericValue = genericAlias(value: 7, debug: true);
+  final payload = ctorAlias(value: 'ctor', debug: true);
+  final redirected = factoryAlias(value: 'factory', debug: true);
+  final redirectedInt = instantiatedFactoryAlias(value: 9, debug: true);
+
+  return [
+    top,
+    '$genericValue',
+    payload.describe(),
+    redirected.describe(),
+    redirectedInt.describe(),
+  ].join(' | ');
+}
+
+String exerciseInstanceTearOff(FancyRenderer renderer) {
+  final instanceAlias = renderer.render;
+  return instanceAlias(label: 'instance', excited: true);
+}
+
+String exerciseFieldBackedAliases() {
+  final top = AliasHub.finalTopLevelAlias(value: 'field-alias', debug: true);
+  final redirected = AliasHub.finalFactoryAlias(
+    value: 'field-factory',
+    debug: true,
+  );
+  final instantiated = AliasHub.finalInstantiatedFactoryAlias(
+    value: 12,
+    debug: true,
+  );
+  return '$top | ${redirected.describe()} | ${instantiated.describe()}';
+}
+
+String exerciseMutableAlias() {
+  String Function({required String value, bool debug}) callback = topLevelNamed;
+  callback = alternateTopLevelNamed;
+  return callback(value: 'mutable', debug: true);
+}
+
+String exerciseExcludedMembers() {
+  final service = EntryPointService();
+  final constructorCase = EntryPointPayload.named(
+    value: 'constructor',
+    debug: true,
+  );
+  return [
+    service.callback(label: 'entry', excited: true),
+    service.createPayload(value: 'payload', debug: true).describe(),
+    constructorCase.describe(),
+  ].join(' | ');
+}
+
+String buildInterpolatedMessage(FancyRenderer renderer) {
+  final mode = describeMode(ExampleMode.done);
+  return 'interpolated:${renderer.render(label: mode, excited: true)}';
+}
+
+class Tag {
+  const Tag(this.label);
+
+  final String label;
+}
+
+enum ExampleMode { idle, active, done }
 
 mixin Lifecycle {
   Future<void> start();
   Future<void> stop();
 }
 
-class RandomService {
-  final Random _random;
-
-  RandomService({int? seed}) : _random = Random(seed);
-
-  int next() => _random.nextInt(100);
+abstract class NamedService {
+  String greet({required String label, bool excited = false});
 }
 
-class Lazy<T> {
-  T? _cached;
-  final T Function() _factory;
-
-  Lazy(this._factory);
-
-  T get value => _cached ??= _factory();
-}
-
-/// ------------------------------------------------------------
-/// Algorithms & transformations
-/// ------------------------------------------------------------
-
-int computeComplexValue(int n) {
-  if (n <= 0) return 0;
-  return n * n + computeComplexValue(n - 1);
-}
-
-void dangerousOperation(int value) {
-  if (value < 0) {
-    throw ArgumentError.value(value, 'value', 'Must be >= 0');
+mixin AuditMixin on NamedService {
+  String audited({required String label, bool excited = false}) {
+    return '[audit] ${greet(label: label, excited: excited)}';
   }
 }
 
-class StringTransformer {
-  List<String> transformAll(
-    Iterable<String> input,
-    String Function(String) transformer,
-  ) {
-    return input.map(transformer).toList(growable: false);
+class AppConfig {
+  const AppConfig({
+    required this.appName,
+    required this.mode,
+    required this.enableDiagnostics,
+  });
+
+  final String appName;
+  final ExampleMode mode;
+  final bool enableDiagnostics;
+}
+
+@Tag('app-class')
+class ExampleApp with Lifecycle {
+  ExampleApp(this.config);
+
+  final AppConfig config;
+
+  @Tag('app-field')
+  final String _secretToken = 'vault-token';
+
+  @override
+  Future<void> start() async {
+    if (config.enableDiagnostics) {
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
+  @override
+  Future<void> stop() async {}
+
+  String secretSummary(FancyRenderer renderer) {
+    return '${renderer.reveal()}|$_secretToken|${renderer.audited(label: 'mix', excited: true)}';
   }
 }
 
-/// ------------------------------------------------------------
-/// Dead / unused code (should still be obfuscated)
-/// ------------------------------------------------------------
+class GreeterService extends NamedService with AuditMixin {
+  @override
+  String greet({required String label, bool excited = false}) {
+    final suffix = excited ? '!' : '';
+    return 'Hello $label$suffix';
+  }
+}
 
-// ignore: unused_element
-class _UnusedClass {
+@Tag('renderer-class')
+class FancyRenderer extends NamedService with AuditMixin {
+  @Tag('renderer-field')
+  final String prefix;
+
+  @Tag('renderer-private-field')
+  final String _secret = 'renderer-secret';
+
+  @Tag('renderer-constructor')
+  FancyRenderer({required this.prefix});
+
+  @override
+  @Tag('renderer-method')
+  String greet({required String label, bool excited = false}) {
+    return render(label: label, excited: excited);
+  }
+
+  String render({required String label, bool excited = false}) {
+    final suffix = excited ? '!' : '';
+    return '$prefix $label$suffix';
+  }
+
+  String reveal() => _secret;
+
+  @override
+  String toString() => 'FancyRenderer(prefix: $prefix)';
+}
+
+class MessageHolder {
+  String message = 'seed-message';
+}
+
+class AliasHub {
+  static final String Function({required String value, bool debug})
+  finalTopLevelAlias = topLevelNamed;
+
+  static final int Function({required int value, bool debug})
+  finalGenericAlias = genericEcho<int>;
+
+  static final RedirectPayload<String> Function({
+    required String value,
+    bool debug,
+  })
+  finalFactoryAlias = RedirectPayload<String>.redirect;
+
+  static final RedirectPayload<int> Function({required int value, bool debug})
+  finalInstantiatedFactoryAlias = RedirectPayload<int>.redirect;
+}
+
+class Payload {
+  @Tag('payload-field')
+  final String value;
+
+  @Tag('payload-constructor')
+  Payload.named({required this.value, bool debug = false});
+
+  String describe() => 'Payload($value)';
+}
+
+class RedirectPayload<T> {
+  final T value;
+
+  RedirectPayload.named({required this.value, bool debug = false});
+
+  factory RedirectPayload.redirect({required T value, bool debug}) =
+      RedirectPayload<T>.named;
+
+  String describe() => 'Redirect($value)';
+}
+
+class EntryPointPayload {
+  final String value;
+
+  @pragma('vm:entry-point')
+  EntryPointPayload.named({required this.value, bool debug = false});
+
+  String describe() => 'EntryPointPayload($value)';
+}
+
+class EntryPointService {
+  @pragma('vm:entry-point')
+  String callback({required String label, bool excited = false}) {
+    return excited ? 'entry:$label!' : 'entry:$label';
+  }
+
+  @pragma('vm:entry-point')
+  EntryPointPayload createPayload({required String value, bool debug = false}) {
+    return EntryPointPayload.named(value: value, debug: debug);
+  }
+}
+
+class _UnusedCase {
+  const _UnusedCase(this.secret);
+
   final String secret;
 
-  _UnusedClass(this.secret);
-
-  String reveal() => 'Secret: $secret';
+  String reveal() => 'unused:$secret';
 }
 
-// ignore: unused_element
-int _unusedFunction(int x) {
-  return x ^ 0xDEADBEEF;
-}
-
-// ignore: unused_element
-const Map<String, dynamic> _unusedConstants = {
-  'pi': 3.14159,
-  'answer': 42,
-  'nested': {'key': 'value'},
-};
+int _unusedFunction(int value) => value * 2 + 1;

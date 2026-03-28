@@ -1,85 +1,109 @@
-import 'package:kernel/ast.dart';
-import 'package:refractor/src/engine/passes/pass_transformer.dart';
-import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
+import 'dart:math';
 
-class StringEncryptTransformer extends PassTransformer {
+import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
+import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
+import 'package:refractor/src/project/project_scope.dart';
+
+class StringEncryptTransformer {
   StringEncryptTransformer({
+    required Procedure decodeProcedure,
+    required Random random,
+    required ProjectScope projectScope,
+    required StringEncryptPolicyView policy,
+    this.excludePatterns = const [],
+  }) : _decodeProcedure = decodeProcedure,
+       _random = random,
+       _projectScope = projectScope,
+       _policy = policy;
+
+  final Procedure _decodeProcedure;
+  final Random _random;
+  final ProjectScope _projectScope;
+  final StringEncryptPolicyView _policy;
+  final List<RegExp> excludePatterns;
+
+  int apply(Component component) {
+    final visitor = _StringEncryptVisitor(
+      decodeProcedure: _decodeProcedure,
+      random: _random,
+      projectScope: _projectScope,
+      policy: _policy,
+      excludePatterns: excludePatterns,
+    );
+    component.transformChildren(visitor);
+    return visitor.encryptedCount;
+  }
+}
+
+final class _StringEncryptVisitor extends ScopedKernelTransformer {
+  _StringEncryptVisitor({
     required this.decodeProcedure,
-    // TODO(user): Consider using an object which encapsulates random
-    // generation and encoding logic, to support multiple algorithms.
-    required this.xorKey,
-    required super.context,
+    required this.random,
+    required super.projectScope,
+    required this.policy,
+    required this.excludePatterns,
   });
 
   final Procedure decodeProcedure;
-  final int xorKey;
-  int count = 0;
+  final Random random;
+  final StringEncryptPolicyView policy;
+  final List<RegExp> excludePatterns;
 
-  // Track whether we're inside a const context or annotation.
-  int _constDepth = 0;
-  int _annotationDepth = 0;
-
-  bool get _inConstContext => _constDepth > 0 || _annotationDepth > 0;
+  int encryptedCount = 0;
 
   @override
   TreeNode visitClass(Class node) {
-    // Skip annotation processing on class annotations to avoid encrypting them.
-    _annotationDepth++;
-    for (var i = 0; i < node.annotations.length; i++) {
-      node.annotations[i] = node.annotations[i].accept(this) as Expression;
+    if (policy.isClassKept(node)) {
+      return node;
     }
-    _annotationDepth--;
-    // Transform the rest of the class normally.
-    node.transformChildren(this);
-    return node;
+    return super.visitClass(node);
   }
 
   @override
   TreeNode visitProcedure(Procedure node) {
-    // Skip the helper procedure itself.
     if (node == decodeProcedure) return node;
-
-    // Don't encrypt annotation arguments.
-    _annotationDepth++;
-    for (var i = 0; i < node.annotations.length; i++) {
-      node.annotations[i] = node.annotations[i].accept(this) as Expression;
+    if (policy.isMemberKept(node)) {
+      return node;
     }
-    _annotationDepth--;
-
-    // Transform function body normally.
-    node.function = node.function.accept(this) as FunctionNode;
-    return node;
+    return super.visitProcedure(node);
   }
 
   @override
-  TreeNode visitConstantExpression(ConstantExpression node) {
-    _constDepth++;
-    try {
-      return super.visitConstantExpression(node);
-    } finally {
-      _constDepth--;
+  TreeNode visitField(Field node) {
+    if (policy.isMemberKept(node)) {
+      return node;
     }
+    return super.visitField(node);
+  }
+
+  @override
+  TreeNode visitConstructor(Constructor node) {
+    if (policy.isMemberKept(node)) {
+      return node;
+    }
+    return super.visitConstructor(node);
   }
 
   @override
   TreeNode visitStringLiteral(StringLiteral node) {
-    if (_inConstContext) return node;
-    for (final pattern in context.options.stringExcludePatterns) {
+    if (inConstContext) return node;
+    for (final pattern in excludePatterns) {
       if (pattern.hasMatch(node.value)) return node;
     }
 
-    final pass = StringEncryptPass(xorKey: xorKey);
-    final encoded = pass.encode(node.value);
-    count++;
+    final key = random.nextInt(0xFFFFFFFF) + 1;
+    final encoded = StringEncryptPass.encodeWithKey(node.value, key);
+    encryptedCount++;
 
-    // Build: _obfDecode$([encoded bytes], xorKey)
     return StaticInvocation(
       decodeProcedure,
       Arguments([
         ListLiteral(
           encoded.map((b) => IntLiteral(b) as Expression).toList(),
         ),
-        IntLiteral(xorKey),
+        IntLiteral(key),
       ]),
     );
   }

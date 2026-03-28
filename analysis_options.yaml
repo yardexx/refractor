@@ -4,7 +4,10 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "test/fixtures/**"
-    - "third_party/**"
   errors:
+    # Too strict
     todo: false
+    # Docs are planned for later
     public_member_api_docs: false
+    # Too strict
+    one_member_abstracts: false

@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_config.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_transformer.dart';
-import 'package:refractor/src/engine/runner/pass.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
+import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
+import 'package:refractor/src/project/project_scope.dart';
 
 /// Obfuscation pass that replaces plaintext [StringLiteral] nodes with a
 /// call to an injected decode helper, so strings are not visible in the binary.
@@ -12,38 +15,72 @@ import 'package:refractor/src/engine/runner/pass_context.dart';
 /// At runtime, the injected `_obfDecode$` reverses this to recover the
 /// original string.
 class StringEncryptPass extends Pass {
-  StringEncryptPass({this.xorKey = 0x5A});
-  static const String _helperName = r'_obfDecode$';
+  StringEncryptPass({
+    required this.config,
+    required this.policy,
+    required this.projectScope,
+  });
 
-  final int xorKey;
+  static const String _helperBaseName = r'_obfDecode$';
+
+  final StringEncryptPassConfig config;
+  final StringEncryptPolicyView policy;
+  final ProjectScope projectScope;
 
   @override
   String get name => 'string_encrypt';
 
   @override
-  void run(Component component, PassContext context) {
-    // Find the first user library to inject our helper into.
-    Library? targetLib;
-    for (final lib in component.libraries) {
-      if (context.shouldObfuscateLibrary(lib)) {
-        targetLib = lib;
-        break;
+  Future<PassResult> run(Component component) async {
+    try {
+      // Find the first user library to inject our helper into.
+      Library? targetLib;
+      for (final lib in component.libraries) {
+        if (projectScope.containsLibrary(lib) && !policy.isLibraryKept(lib)) {
+          targetLib = lib;
+          break;
+        }
       }
-    }
-    if (targetLib == null) {
-      return;
-    }
+      if (targetLib == null) {
+        return PassSucceeded(
+          report: PassReport(passName: name),
+        );
+      }
 
-    // Inject the _obfDecode$ helper and get the procedure.
-    final decodeProcedure = _injectHelper(targetLib, component);
+      // Inject the _obfDecode$ helper and get the procedure.
+      final decodeProcedure = _injectHelper(targetLib, component);
 
-    // Walk the component and replace string literals.
-    final transformer = StringEncryptTransformer(
-      context: context,
-      decodeProcedure: decodeProcedure,
-      xorKey: xorKey,
-    );
-    component.transformChildren(transformer);
+      // Walk the component and replace string literals.
+      final encryptedCount = StringEncryptTransformer(
+        projectScope: projectScope,
+        policy: policy,
+        decodeProcedure: decodeProcedure,
+        random: Random(config.xorKey),
+        excludePatterns: config.excludePatterns.map(RegExp.new).toList(),
+      ).apply(component);
+
+      return PassSucceeded(
+        report: PassReport(
+          passName: name,
+          metadata: encryptedCount == 0
+              ? const {}
+              : {
+                  'strings_encrypted': encryptedCount.toString(),
+                },
+        ),
+      );
+    } on Object catch (error) {
+      final exception = error is Exception
+          ? error
+          : Exception(error.toString());
+      return PassFailed(
+        error: exception,
+        report: PassReport(
+          passName: name,
+          message: error.toString(),
+        ),
+      );
+    }
   }
 
   /// Inject the `_obfDecode$` procedure into [lib] and return it.
@@ -164,7 +201,7 @@ class StringEncryptPass extends Pass {
     // Create the procedure.
     // Private names (starting with _) require a library reference.
     final procedure = Procedure(
-      Name(_helperName, lib),
+      Name(_freshHelperName(lib), lib),
       ProcedureKind.Method,
       functionNode,
       fileUri: lib.fileUri,
@@ -175,7 +212,26 @@ class StringEncryptPass extends Pass {
     return procedure;
   }
 
-  List<int> encode(String s) {
-    return utf8.encode(s).map((b) => b ^ xorKey).toList();
+  List<int> encode(String s) => encodeWithKey(s, config.xorKey);
+
+  String _freshHelperName(Library lib) {
+    final usedNames = <String>{
+      for (final procedure in lib.procedures) procedure.name.text,
+      for (final field in lib.fields) field.name.text,
+    };
+
+    if (!usedNames.contains(_helperBaseName)) {
+      return _helperBaseName;
+    }
+
+    var suffix = 1;
+    while (usedNames.contains('$_helperBaseName$suffix')) {
+      suffix++;
+    }
+    return '$_helperBaseName$suffix';
+  }
+
+  static List<int> encodeWithKey(String s, int key) {
+    return utf8.encode(s).map((b) => b ^ key).toList();
   }
 }

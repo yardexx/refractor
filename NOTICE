@@ -4,8 +4,8 @@ This project includes third-party software. The following notices apply:
 Dart Kernel Library (package:kernel)
 ================================================================================
 
-Source: https://github.com/dart-lang/sdk/tree/3.10.0/pkg/kernel
-Version: Dart SDK 3.10.0 (commit b1a587b650acd12239743dd1f9d88d6fe19ae442)
+Source: https://github.com/dart-lang/sdk/tree/3.11.3/pkg/kernel
+Version: Dart SDK 3.11.3 (commit 33a71e18a5595e403b9ed5972b2b744d73b1e1eb)
 Location: third_party/kernel/
 License: BSD 3-Clause
 

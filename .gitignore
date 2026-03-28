@@ -1,6 +1,7 @@
 # Dart
 .dart_tool/
 build/
+pubspec.lock
 
 # Refractor shadow workspace
 .refractor/
@@ -17,4 +18,3 @@ Thumbs.db
 # Misc
 .cursorignore/
 .claude/
-CLAUDE.md

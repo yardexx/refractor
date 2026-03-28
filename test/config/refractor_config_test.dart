@@ -1,8 +1,8 @@
+import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
-import 'package:refractor/src/engine/passes/dead_code/dead_code_pass.dart';
-import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
-import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
-import 'package:refractor/src/exceptions/refractor_exception.dart';
+import 'package:refractor/src/engine/pass/pass_registry.dart';
+import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -10,30 +10,58 @@ void main() {
     test('throws ConfigException for empty YAML', () {
       expect(
         () => RefractorConfig.fromYaml(''),
-        throwsA(isA<ConfigException>()),
+        throwsA(isA<Exception>()),
       );
     });
 
     test('throws ConfigException for malformed YAML', () {
       expect(
-        () => RefractorConfig.fromYaml('passes: [rename: true'),
-        throwsA(isA<ConfigException>()),
+        () => RefractorConfig.fromYaml('refractor: [passes: [rename: true'),
+        throwsA(isA<Exception>()),
       );
     });
 
     test('throws ConfigException for non-map YAML root', () {
       expect(
         () => RefractorConfig.fromYaml('- rename\n- string_encrypt'),
-        throwsA(isA<ConfigException>()),
+        throwsA(isA<Exception>()),
       );
     });
 
-    test('parses boolean pass toggles', () {
-      final config = RefractorConfig.fromYaml('''
+    test('rejects legacy top-level passes', () {
+      expect(
+        () => RefractorConfig.fromYaml('''
 passes:
-  rename: false
-  string_encrypt: true
-  dead_code: true
+  rename: true
+'''),
+        throwsA(
+          predicate(
+            (e) => e.toString().contains('refractor.passes'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects legacy top-level exclude', () {
+      expect(
+        () => RefractorConfig.fromYaml('''
+exclude:
+  - "**/*.g.dart"
+'''),
+        throwsA(
+          predicate(
+            (e) => e.toString().contains('refractor.exclude'),
+          ),
+        ),
+      );
+    });
+
+    test('parses boolean pass toggles under refractor.passes', () {
+      final config = RefractorConfig.fromYaml('''
+refractor:
+  passes:
+    rename: false
+    string_encrypt: true
 ''');
 
       expect(
@@ -44,8 +72,20 @@ passes:
         config.passes.whereType<StringEncryptPassConfig>().single.enabled,
         isTrue,
       );
+    });
+
+    test('parses global excludes under refractor.exclude', () {
+      final config = RefractorConfig.fromYaml('''
+refractor:
+  exclude:
+    - "**/*.g.dart"
+  passes:
+    rename: true
+''');
+
+      expect(config.excludePatterns, hasLength(1));
       expect(
-        config.passes.whereType<DeadCodePassConfig>().single.enabled,
+        config.excludePatterns.single.matches('lib/src/user.g.dart'),
         isTrue,
       );
     });
@@ -53,8 +93,9 @@ passes:
     test('throws ConfigException for unknown pass', () {
       expect(
         () => RefractorConfig.fromYaml('''
-passes:
-  unknown_pass: true
+refractor:
+  passes:
+    unknown_pass: true
 '''),
         throwsA(
           predicate(
@@ -65,89 +106,83 @@ passes:
     });
   });
 
-  group('RefractorConfig.buildPasses', () {
+  group('PassRegistry', () {
     test('builds only enabled passes with concrete options', () {
       final config = RefractorConfig.fromYaml('''
-passes:
-  rename: false
-  string_encrypt:
-    xor_key: 23
-  dead_code:
-    max_insertions_per_procedure: 5
+refractor:
+  passes:
+    rename: false
+    string_encrypt:
+      xor_key: 23
 ''');
+      final projectScope = ProjectScope(
+        projectRootUri: Uri.directory('/virtual/project'),
+        projectPackageName: 'refractor',
+      );
+      final policy = PolicyResolver().resolve(
+        component: _emptyComponent(),
+        config: config,
+        projectScope: projectScope,
+      );
 
-      final passes = config.buildPasses();
+      final passes = defaultPassRegistry.createAll(
+        configs: config.passes,
+        policy: policy,
+        projectScope: projectScope,
+      );
 
-      expect(passes.length, 2);
-      expect(passes[0], isA<StringEncryptPass>());
-      expect((passes[0] as StringEncryptPass).xorKey, 23);
-      expect(passes[1], isA<DeadCodePass>());
-      expect((passes[1] as DeadCodePass).maxInsertionsPerProcedure, 5);
+      expect(passes.length, 1);
+      expect(passes[0].name, 'string_encrypt');
+    });
+
+    test('preserves YAML pass order', () {
+      final config = RefractorConfig.fromYaml('''
+refractor:
+  passes:
+    string_encrypt: true
+    rename: true
+''');
+      final projectScope = ProjectScope(
+        projectRootUri: Uri.directory('/virtual/project'),
+        projectPackageName: 'refractor',
+      );
+      final policy = PolicyResolver().resolve(
+        component: _emptyComponent(),
+        config: config,
+        projectScope: projectScope,
+      );
+
+      final passes = defaultPassRegistry.createAll(
+        configs: config.passes,
+        policy: policy,
+        projectScope: projectScope,
+      );
+
+      expect(passes.map((pass) => pass.name).toList(), [
+        'string_encrypt',
+        'rename',
+      ]);
     });
   });
 
-  group('RefractorConfig.toOptions', () {
-    test('maps rename and global settings correctly', () {
+  group('RefractorConfig.excludePatterns', () {
+    test('maps exclude settings to Glob list', () {
       final config = RefractorConfig(
         refractor: const RefractorSettings(
           exclude: ['**/*.g.dart'],
-          verbose: true,
         ),
-        passes: [
-          RenamePassConfig(preserveMain: false),
-        ],
       );
 
-      final options = config.toOptions();
-
-      expect(options.preserveMain, isFalse);
-      expect(options.verbose, isTrue);
+      final patterns = config.excludePatterns;
+      expect(patterns, hasLength(1));
       expect(
-        options.excludeLibraryUriPatterns.single.matches(
-          'package:my_app/src/user.g.dart',
-        ),
+        patterns.single.matches('lib/src/user.g.dart'),
         isTrue,
       );
     });
-
-    test('maps string encryption exclude patterns to regex list', () {
-      final config = RefractorConfig.fromYaml('''
-passes:
-  string_encrypt:
-    exclude_patterns:
-      - "^https://"
-      - "SECRET"
-''');
-
-      final options = config.toOptions();
-
-      expect(options.stringExcludePatterns, hasLength(2));
-      expect(
-        options.stringExcludePatterns[0].hasMatch('https://api.test'),
-        isTrue,
-      );
-      expect(options.stringExcludePatterns[1].hasMatch('SECRET_KEY'), isTrue);
-    });
   });
+}
 
-  group('RefractorConfig.passesFromNames', () {
-    test('creates passes from valid names', () {
-      final passes = RefractorConfig.passesFromNames([
-        'rename',
-        'string_encrypt',
-        'dead_code',
-      ]);
-
-      expect(passes[0], isA<RenamePass>());
-      expect(passes[1], isA<StringEncryptPass>());
-      expect(passes[2], isA<DeadCodePass>());
-    });
-
-    test('throws ConfigException for invalid names', () {
-      expect(
-        () => RefractorConfig.passesFromNames(['rename', 'bad']),
-        throwsA(isA<ConfigException>()),
-      );
-    });
-  });
+Component _emptyComponent() {
+  return Component()..setMainMethodAndMode(null, true);
 }

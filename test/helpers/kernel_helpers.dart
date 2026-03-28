@@ -1,11 +1,8 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/name_generator.dart';
-import 'package:refractor/src/engine/runner/pass_context.dart';
-import 'package:refractor/src/engine/runner/pass_options.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
+import 'package:refractor/src/project/project_scope.dart';
 
 /// Creates a user library with a `package:refractor/...` URI so that
-/// [PassContext.shouldObfuscateLibrary] returns `true`.
+/// [ProjectScope.containsLibrary] returns `true`.
 Library makeUserLibrary([String path = 'src/app.dart']) {
   final uri = Uri.parse('package:refractor/$path');
   return Library(uri, fileUri: uri);
@@ -88,16 +85,50 @@ Library makeDartCoreLibrary() {
   final boolClass = Class(name: 'bool', fileUri: coreUri);
   lib.addClass(boolClass);
 
+  // top-level identical(Object? a, Object? b) -> bool
+  final objectClass = Class(name: 'Object', fileUri: coreUri);
+  lib.addClass(objectClass);
+  final objectType = InterfaceType(objectClass, Nullability.nullable);
+  final boolType = InterfaceType(boolClass, Nullability.nonNullable);
+  lib.addProcedure(
+    Procedure(
+      Name('identical'),
+      ProcedureKind.Method,
+      FunctionNode(
+        EmptyStatement(),
+        positionalParameters: [
+          VariableDeclaration('a', type: objectType),
+          VariableDeclaration('b', type: objectType),
+        ],
+        requiredParameterCount: 2,
+        returnType: boolType,
+      ),
+      fileUri: coreUri,
+      isStatic: true,
+    ),
+  );
+
   return lib;
 }
 
-/// Creates a [PassContext] with fresh [SymbolTable] and [NameGenerator].
-PassContext makePassContext([PassOptions? options]) {
-  return PassContext(
-    symbolTable: SymbolTable(),
-    nameGenerator: NameGenerator(),
-    options: options ?? const PassOptions(),
+/// Creates a [ProjectScope] with defaults suitable for tests.
+ProjectScope makeProjectScope() {
+  return ProjectScope(
+    projectRootUri: Uri.directory('/virtual/project'),
+    projectPackageName: 'refractor',
   );
+}
+
+/// Creates a [Procedure] with the given [name] and adds it to [cls].
+Procedure makeProcedure(String name, Class cls) {
+  final proc = Procedure(
+    Name(name),
+    ProcedureKind.Method,
+    FunctionNode(EmptyStatement()),
+    fileUri: cls.fileUri,
+  );
+  cls.addProcedure(proc);
+  return proc;
 }
 
 /// Bundles the given libraries into a [Component].

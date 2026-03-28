@@ -5,7 +5,7 @@
 # Global tool settings.
 refractor:
   # Output path for the symbol map (original → obfuscated name mapping).
-  # symbol_map: build/refractor_map.json
+  symbol_map: build/refractor_map.json
 
   # Scope is fixed to the current project (pubspec package + current folder).
 
@@ -14,19 +14,18 @@ refractor:
   #   - "**/*.g.dart"
   #   - "**/*.freezed.dart"
 
-# Pass configuration — enable/disable and configure each pass.
-# Use `true` for defaults, `false` to disable, or a map for custom settings.
-passes:
-  rename:
-    # preserve_main: true
+  # Enable verbose engine logs (useful when debugging analyzer/rename behavior).
+  verbose: true
 
-  string_encrypt: true
-  # string_encrypt:
-  #   xor_key: 0x5A
-  #   exclude_patterns:
-  #     - "^https://"
+  passes:
+    rename:
+      enabled: true
+      # Keep deterministic output while debugging rename/analyzer behavior.
+      seed: 1337
 
-  dead_code: false
-
-# Verbose logging.
-# verbose: false
+    # Disable unrelated passes while debugging rename/analyzer behavior.
+    string_encrypt: false
+    # string_encrypt:
+    #   xor_key: 0x5A
+    #   exclude_patterns:
+    #     - "^https://"
