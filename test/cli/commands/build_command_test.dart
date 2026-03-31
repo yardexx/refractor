@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -8,7 +9,6 @@ import 'package:refractor/src/cli/reporting/github_reporter.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/pass.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:test/test.dart';
 
@@ -73,14 +73,12 @@ refractor:
         'kernel',
         '--input',
         'lib/main.dart',
-        '--output',
-        'build',
       ]);
 
       expect(exitCode, ExitCode.success.code);
       expect(File('build/out.dill').existsSync(), isTrue);
       expect(File('build/out.dill').lengthSync(), greaterThan(0));
-      expect(File('symbol_map.json').existsSync(), isTrue);
+      expect(File('build/build_artifacts.json').existsSync(), isFalse);
       verify(
         () => logger.info(any(that: contains('✅ Build report:'))),
       ).called(1);
@@ -95,8 +93,8 @@ refractor:
               logger: logger,
               result: BuildResult(
                 outputPath: 'build/out.dill',
-                symbolTable: SymbolTable(),
                 passesRun: ['string_encrypt'],
+                passResults: PassResults(),
                 reports: const [
                   PassReport(
                     passName: 'string_encrypt',
@@ -131,12 +129,10 @@ refractor:
           'kernel',
           '--input',
           'lib/main.dart',
-          '--output',
-          'build',
         ]);
 
         expect(exitCode, ExitCode.software.code);
-        expect(File('symbol_map.json').existsSync(), isFalse);
+        expect(File('build/build_artifacts.json').existsSync(), isFalse);
         verify(
           () => logger.info(
             any(
@@ -164,8 +160,8 @@ refractor:
             ),
             result: BuildResult(
               outputPath: 'build/out.dill',
-              symbolTable: SymbolTable(),
               passesRun: ['rename'],
+              passResults: PassResults(),
               reports: const [
                 PassReport(
                   passName: 'rename',
@@ -192,8 +188,6 @@ refractor:
         'kernel',
         '--input',
         'lib/main.dart',
-        '--output',
-        'build',
       ]);
 
       expect(exitCode, ExitCode.success.code);
@@ -222,8 +216,8 @@ refractor:
             ),
             result: BuildResult(
               outputPath: 'build/out.dill',
-              symbolTable: SymbolTable(),
               passesRun: ['rename'],
+              passResults: PassResults(),
               reports: const [
                 PassReport(
                   passName: 'rename',
@@ -250,8 +244,6 @@ refractor:
         'kernel',
         '--input',
         'lib/main.dart',
-        '--output',
-        'build',
       ]);
 
       final contents = summaryFile.readAsStringSync();
@@ -275,8 +267,8 @@ refractor:
             ),
             result: BuildResult(
               outputPath: 'build/out.dill',
-              symbolTable: SymbolTable(),
               passesRun: ['string_encrypt'],
+              passResults: PassResults(),
               reports: const [
                 PassReport(passName: 'string_encrypt', message: 'boom'),
               ],
@@ -306,8 +298,6 @@ refractor:
         'kernel',
         '--input',
         'lib/main.dart',
-        '--output',
-        'build',
       ]);
 
       expect(exitCode, ExitCode.software.code);
@@ -339,8 +329,8 @@ refractor:
               logger: logger,
               result: BuildResult(
                 outputPath: 'build/out.dill',
-                symbolTable: SymbolTable(),
                 passesRun: ['rename'],
+                passResults: PassResults(),
                 reports: const [
                   PassReport(
                     passName: 'rename',
@@ -369,8 +359,6 @@ refractor:
           'kernel',
           '--input',
           'lib/main.dart',
-          '--output',
-          'build',
         ]);
 
         expect(exitCode, ExitCode.success.code);
@@ -389,8 +377,8 @@ refractor:
             ),
             result: BuildResult(
               outputPath: 'build/out.dill',
-              symbolTable: SymbolTable(),
               passesRun: ['rename'],
+              passResults: PassResults(),
               reports: const [
                 PassReport(
                   passName: 'rename',
@@ -421,8 +409,6 @@ refractor:
         'kernel',
         '--input',
         'lib/main.dart',
-        '--output',
-        'build',
       ]);
 
       expect(exitCode, ExitCode.success.code);
@@ -443,8 +429,8 @@ refractor:
               reporter: GitHubReporter(logger),
               result: BuildResult(
                 outputPath: 'build/out.dill',
-                symbolTable: SymbolTable(),
                 passesRun: ['rename'],
+                passResults: PassResults(),
                 reports: const [
                   PassReport(
                     passName: 'rename',
@@ -473,8 +459,6 @@ refractor:
           'kernel',
           '--input',
           'lib/main.dart',
-          '--output',
-          'build',
         ]);
 
         expect(exitCode, ExitCode.success.code);
@@ -485,6 +469,71 @@ refractor:
         ).called(1);
       },
     );
+
+    test('writes generic artifact json when pass artifacts exist', () async {
+      final passResults = PassResults()
+        ..addArtifact(
+          'rename',
+          const _JsonArtifact({
+            'symbol_map': {'a': 'b'},
+          }),
+        )
+        ..addArtifact(
+          'string_encrypt',
+          const _JsonArtifact({'records': []}),
+        );
+
+      runner = CommandRunner<int>('test', 'test')
+        ..addCommand(
+          _FakeBuildCommand(
+            logger: logger,
+            result: BuildResult(
+              outputPath: 'build/out.dill',
+              passesRun: ['rename', 'string_encrypt'],
+              passResults: passResults,
+              reports: const [
+                PassReport(passName: 'rename'),
+                PassReport(passName: 'string_encrypt'),
+              ],
+            ),
+          ),
+        );
+
+      File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+      File('refractor.yaml').writeAsStringSync('''
+refractor:
+  passes:
+    rename: true
+    string_encrypt: true
+''');
+      Directory('lib').createSync(recursive: true);
+      File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
+
+      final exitCode = await runner.run([
+        'build',
+        '--target',
+        'kernel',
+        '--input',
+        'lib/main.dart',
+      ]);
+
+      expect(exitCode, ExitCode.success.code);
+      final json =
+          jsonDecode(
+                File('build/build_artifacts.json').readAsStringSync(),
+              )
+              as Map<String, dynamic>;
+      expect(json, {
+        'passes': {
+          'rename': {
+            'symbol_map': {'a': 'b'},
+          },
+          'string_encrypt': {
+            'records': <Object?>[],
+          },
+        },
+      });
+    });
   });
 }
 
@@ -506,4 +555,13 @@ class _FakeBuildCommand extends BuildCommand {
   }) async {
     return result;
   }
+}
+
+final class _JsonArtifact extends PassArtifact {
+  const _JsonArtifact(this.value);
+
+  final Map<String, Object?> value;
+
+  @override
+  Map<String, Object?> toJson() => value;
 }
