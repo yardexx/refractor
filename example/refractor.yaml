@@ -4,9 +4,6 @@
 
 # Global tool settings.
 refractor:
-  # Output path for the symbol map (original → obfuscated name mapping).
-  symbol_map: build/refractor_map.json
-
   # Scope is fixed to the current project (pubspec package + current folder).
 
   # Library URI/path exclusions using glob patterns.
@@ -23,9 +20,8 @@ refractor:
       # Keep deterministic output while debugging rename/analyzer behavior.
       seed: 1337
 
-    # Disable unrelated passes while debugging rename/analyzer behavior.
-    string_encrypt: false
-    # string_encrypt:
-    #   xor_key: 0x5A
-    #   exclude_patterns:
-    #     - "^https://"
+      # Disable unrelated passes while debugging rename/analyzer behavior.
+    string_encrypt:
+      xor_key: 0x5A
+      exclude_patterns:
+        - "^https://"

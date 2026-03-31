@@ -9,9 +9,9 @@ part of 'refractor_settings.dart';
 RefractorSettings _$RefractorSettingsFromJson(Map<String, dynamic> json) =>
     $checkedCreate('RefractorSettings', json, ($checkedConvert) {
       final val = RefractorSettings(
-        symbolMap: $checkedConvert(
-          'symbol_map',
-          (v) => v as String? ?? 'symbol_map.json',
+        artifactJson: $checkedConvert(
+          'artifact_json',
+          (v) => v as String? ?? 'build_artifacts.json',
         ),
         exclude: $checkedConvert(
           'exclude',
@@ -22,4 +22,4 @@ RefractorSettings _$RefractorSettingsFromJson(Map<String, dynamic> json) =>
         verbose: $checkedConvert('verbose', (v) => v as bool? ?? false),
       );
       return val;
-    }, fieldKeyMap: const {'symbolMap': 'symbol_map'});
+    }, fieldKeyMap: const {'artifactJson': 'artifact_json'});

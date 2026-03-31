@@ -4,6 +4,7 @@ library;
 
 import 'dart:io';
 
+import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:test/test.dart';
 
 import '../helpers/resistance_test_harness.dart';
@@ -37,11 +38,13 @@ void main() {
       expect(outputFile.lengthSync(), greaterThan(0));
       expect(run.buildResult.failures, isEmpty);
       expect(run.normalizedStringsOutput, isNotEmpty);
+      final renameArtifact = run.buildResult.passResults
+          .artifact<RenameArtifact>('rename');
 
       for (final originalName in fixture.expectations.renameHelpers) {
         expect(
-          run.buildResult.symbolTable.obfuscated(originalName),
-          isNotNull,
+          renameArtifact?.mapping.symbolMap.containsValue(originalName),
+          isTrue,
           reason: 'Expected $originalName to be present in the rename map.',
         );
       }
