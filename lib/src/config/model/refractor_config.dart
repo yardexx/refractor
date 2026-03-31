@@ -90,7 +90,7 @@ final class RefractorConfig {
   /// Convenience getters for backward compatibility with pipeline/proxy code.
   bool get verbose => refractor.verbose;
 
-  String get symbolMapPath => refractor.symbolMap;
+  String get artifactJsonPath => refractor.artifactJson;
 }
 
 /// Recursively converts [YamlMap]/[YamlList] to plain Dart [Map]/[List].

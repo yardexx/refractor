@@ -51,7 +51,7 @@ void main() {
 
       expect(result.outputPath, 'build/out');
       expect(result.passesRun, isEmpty);
-      expect(result.symbolTable.size, 0);
+      expect(result.passResults.artifacts, isEmpty);
       expect(result.failures, isEmpty);
     });
 

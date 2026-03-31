@@ -2,7 +2,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/cli/reporting/github_reporter.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/pass.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -12,8 +11,8 @@ void main() {
     test('renders metrics in report order with human labels', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['rename', 'string_encrypt'],
+        passResults: PassResults(),
         reports: const [
           PassReport(
             passName: 'rename',
@@ -53,8 +52,8 @@ Passes succeeded: 2. Passes failed: 0.
     test('renders empty successful reports explicitly', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['string_encrypt'],
+        passResults: PassResults(),
         reports: const [
           PassReport(passName: 'string_encrypt'),
         ],
@@ -76,8 +75,8 @@ Passes succeeded: 1. Passes failed: 0.
     test('renders failures with message and underlying error', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['string_encrypt'],
+        passResults: PassResults(),
         reports: const [
           PassReport(passName: 'string_encrypt', message: 'boom'),
         ],
@@ -107,8 +106,8 @@ Error: Exception: kaboom''',
     test('renders unknown metric keys with readable fallback labels', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['custom'],
+        passResults: PassResults(),
         reports: const [
           PassReport(
             passName: 'custom',
@@ -135,8 +134,8 @@ Passes succeeded: 1. Passes failed: 0.
     test('renders failure-only records even without a matching report', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: const [],
+        passResults: PassResults(),
         failures: [
           PassFailureRecord(
             passName: 'rename',
@@ -162,8 +161,8 @@ Error: Exception: missing report''',
     test('renders deterministically for the same build result', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['rename'],
+        passResults: PassResults(),
         reports: const [
           PassReport(
             passName: 'rename',

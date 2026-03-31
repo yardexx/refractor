@@ -9,7 +9,7 @@ part 'refractor_settings.g.dart';
 )
 final class RefractorSettings {
   const RefractorSettings({
-    this.symbolMap = 'symbol_map.json',
+    this.artifactJson = 'build_artifacts.json',
     this.exclude = const [],
     this.verbose = false,
   });
@@ -17,17 +17,17 @@ final class RefractorSettings {
   factory RefractorSettings.fromJson(Map<String, dynamic> json) =>
       _$RefractorSettingsFromJson(json);
 
-  final String symbolMap;
+  final String artifactJson;
   final List<String> exclude;
   final bool verbose;
 
   RefractorSettings copyWith({
-    String? symbolMap,
+    String? artifactJson,
     List<String>? exclude,
     bool? verbose,
   }) {
     return RefractorSettings(
-      symbolMap: symbolMap ?? this.symbolMap,
+      artifactJson: artifactJson ?? this.artifactJson,
       exclude: exclude ?? this.exclude,
       verbose: verbose ?? this.verbose,
     );

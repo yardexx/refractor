@@ -104,6 +104,14 @@ void main() {
         ],
       });
     });
+
+    test('artifacts exposes collected pass artifacts', () {
+      results.addArtifact('rename', const _StringArtifact('mapping-data'));
+
+      expect(results.artifacts, {
+        'rename': const _StringArtifact('mapping-data'),
+      });
+    });
   });
 }
 
