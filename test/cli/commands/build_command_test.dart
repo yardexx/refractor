@@ -85,6 +85,38 @@ refractor:
     });
 
     test(
+      'removes stale artifact json when a successful build has no artifacts',
+      () async {
+        File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+        File('refractor.yaml').writeAsStringSync('''
+refractor:
+  passes:
+    rename: false
+    string_encrypt: false
+''');
+        Directory('build').createSync(recursive: true);
+        Directory('lib').createSync(recursive: true);
+        File(
+          'lib/main.dart',
+        ).writeAsStringSync('void main() { print("ok"); }\n');
+        File(
+          'build/build_artifacts.json',
+        ).writeAsStringSync('{"passes":{"rename":{"symbol_map":{"a":"b"}}}}');
+
+        final exitCode = await runner.run([
+          'build',
+          '--target',
+          'kernel',
+          '--input',
+          'lib/main.dart',
+        ]);
+
+        expect(exitCode, ExitCode.success.code);
+        expect(File('build/build_artifacts.json').existsSync(), isFalse);
+      },
+    );
+
+    test(
       'emits rendered report and returns software code on failure',
       () async {
         runner = CommandRunner<int>('test', 'test')

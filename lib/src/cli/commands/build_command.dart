@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:ci/ci.dart';
 import 'package:mason_logger/mason_logger.dart' show ExitCode;
 import 'package:refractor/src/cli/commands/refractor_command.dart';
@@ -82,9 +84,16 @@ class BuildCommand extends RefractorCommand {
       }
 
       logger.detail('Writing output to ${result.outputPath}...');
+      final artifactPath = workspace.auxiliaryOutputPath(
+        config.artifactJsonPath,
+      );
       if (result.passResults.hasArtifacts) {
-        final path = workspace.auxiliaryOutputPath(config.artifactJsonPath);
-        result.passResults.writeArtifactsToPath(path);
+        result.passResults.writeArtifactsToPath(artifactPath);
+      } else {
+        final artifactFile = File(artifactPath);
+        if (artifactFile.existsSync()) {
+          artifactFile.deleteSync();
+        }
       }
 
       logger.success('Build complete: ${result.outputPath}');
