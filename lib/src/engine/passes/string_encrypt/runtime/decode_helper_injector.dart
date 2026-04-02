@@ -65,6 +65,7 @@ final class DecodeHelperInjector {
     return procedure;
   }
 
+  // Resolves the SDK members needed to build:
   // Utf8Codec().decode(List<int>.of(bytes.reversed.map(...)))
   _DecodeHelperKernelContext _resolveKernelContext(Component component) {
     final coreLibrary = component.libraries.firstWhere(
@@ -269,12 +270,11 @@ final class DecodeHelperInjector {
     );
   }
 
-  // (byte)
-  // {
-  //    final decoded = byte ^ ((key >> shift) & 0xFF);
-  //    shift = (shift + 8) & 24;
-  //    return decoded;
-  // }`
+  // (byte) {
+  //   final decoded = byte ^ ((key >> shift) & 0xFF);
+  //   shift = (shift + 8) & 24;
+  //   return decoded;
+  // }
   FunctionExpression _buildDecodeMapLambda({
     required _DecodeHelperKernelContext context,
     required VariableDeclaration keyParam,
