@@ -3,6 +3,12 @@ import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
+import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/pass/config/pass_config.dart';
+import 'package:refractor/src/engine/pass/config/pass_definition.dart';
+import 'package:refractor/src/engine/pass/pass_registry.dart';
+import 'package:refractor/src/policy/resolved_policy.dart';
+import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -107,16 +113,14 @@ refractor:
     test(
       'pass failure is reported and output generation is skipped',
       () async {
-        final userUri = Uri.parse('package:sample_app/main.dart');
-        kernelIo.component.libraries.add(Library(userUri, fileUri: userUri));
-        kernelIo.component.setMainMethodAndMode(null, true);
+        engine = RefractorEngine(
+          compiler: compiler,
+          kernelIO: kernelIo,
+          passRegistry: PassRegistry([_FailingDefinition()]),
+        );
 
         final result = await engine.run(
-          config: RefractorConfig.fromYaml('''
-refractor:
-  passes:
-    string_encrypt: true
-'''),
+          config: RefractorConfig(passes: [const _FailingPassConfig()]),
           request: BuildRequest(
             input: 'lib/main.dart',
             output: 'build/out',
@@ -184,4 +188,46 @@ class _WriteCall {
 
   final Component component;
   final String path;
+}
+
+final class _FailingPassConfig extends PassConfig {
+  const _FailingPassConfig();
+}
+
+final class _FailingDefinition implements PassDefinition<_FailingPassConfig> {
+  @override
+  String get name => 'string_encrypt';
+
+  @override
+  Pass createPass({
+    required _FailingPassConfig config,
+    required ResolvedPolicy policy,
+    required ProjectScope projectScope,
+  }) {
+    return _FailingPass();
+  }
+
+  @override
+  _FailingPassConfig parseConfig(Map<String, dynamic> json) {
+    return const _FailingPassConfig();
+  }
+
+  @override
+  bool supports(PassConfig config) => config is _FailingPassConfig;
+}
+
+final class _FailingPass extends Pass {
+  @override
+  String get name => 'string_encrypt';
+
+  @override
+  Future<PassResult> run(Component component) async {
+    return PassFailed(
+      error: Exception('boom'),
+      report: const PassReport(
+        passName: 'string_encrypt',
+        message: 'boom',
+      ),
+    );
+  }
 }

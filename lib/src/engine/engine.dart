@@ -47,10 +47,13 @@ class RefractorEngine {
   RefractorEngine({
     required this.compiler,
     required this.kernelIO,
+    PassRegistry passRegistry = defaultPassRegistry,
     Logger? logger,
-  }) : _logger = logger;
+  }) : _passRegistry = passRegistry,
+       _logger = logger;
   final Compiler compiler;
   final KernelIO kernelIO;
+  final PassRegistry _passRegistry;
   final Logger? _logger;
 
   Future<BuildResult> run({
@@ -74,7 +77,7 @@ class RefractorEngine {
       projectScope: projectScope,
     );
 
-    final enabledPasses = defaultPassRegistry.createAll(
+    final enabledPasses = _passRegistry.createAll(
       configs: config.passes,
       policy: policy,
       projectScope: projectScope,
