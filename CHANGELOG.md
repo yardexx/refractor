@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-02
+
+### Added
+
+- String-encrypt coverage for literal segments inside kernel
+  `StringConcatenation` nodes, including mixed-expression interpolation cases.
+- UTF-8 and target-matrix verification for `string_encrypt`, covering `exe`,
+  `jit`, and `aot` rename-plus-string-encrypt workflows.
+- Structural coverage for the injected string-encrypt decode helper and its
+  `@pragma('vm:never-inline')` hardening.
+
+### Changed
+
+- Reworked `string_encrypt` around the current staged pass architecture and
+  strengthened its runtime codec to use a UTF-8-safe reversed multi-byte XOR
+  pipeline.
+- Moved string-encrypt helper injection into the transformation stage so
+  selection stays source-focused and all pass mutation stays in the transformer.
+- Unified string-encrypt literal exclusion behind policy instead of keeping a
+  selector-local exclusion path.
+- Normalized JIT and AOT snapshot output handling for `.dill`-based builds.
+- Generic artifact output now removes stale `build_artifacts.json` files when a
+  successful build produces no artifacts.
+
 ## [0.2.0] Amsterdam - 2026-03-28
 
 ### Added
