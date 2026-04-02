@@ -97,6 +97,9 @@ final class PolicyResolver {
         keptLibraries: stringKeptLibraries,
         keptClasses: stringClasses,
         keptMembers: stringMembers,
+        excludedLiteralPatterns: stringEncryptConfig?.excludePatterns
+            .map(RegExp.new)
+            .toList(),
       ),
     );
   }

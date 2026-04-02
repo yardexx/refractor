@@ -3,28 +3,48 @@ import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_plan.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encryption_record.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_helper_injector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transform_output.dart';
+import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
 class StringEncryptTransformer
     implements
         PassTransformer<StringEncryptPlan, StringEncryptTransformOutput> {
   StringEncryptTransformer({
-    required Procedure decodeProcedure,
     required ProjectScope projectScope,
-  }) : _decodeProcedure = decodeProcedure,
-       _projectScope = projectScope;
+    required StringEncryptPolicyView policy,
+  }) : _projectScope = projectScope,
+       _policy = policy;
 
-  final Procedure _decodeProcedure;
   final ProjectScope _projectScope;
+  final StringEncryptPolicyView _policy;
 
   @override
   Future<StringEncryptTransformOutput> apply(
     Component component,
     StringEncryptPlan plan,
   ) async {
+    if (plan.rewrites.isEmpty) {
+      return const StringEncryptTransformOutput(
+        encryptedCount: 0,
+        records: [],
+      );
+    }
+
+    final setupResult = DecodeHelperInjector(
+      projectScope: _projectScope,
+      policy: _policy,
+    ).injectIntoFirstEligibleLibrary(component);
+    if (setupResult == null) {
+      return const StringEncryptTransformOutput(
+        encryptedCount: 0,
+        records: [],
+      );
+    }
+
     final visitor = _StringEncryptVisitor(
-      decodeProcedure: _decodeProcedure,
+      decodeProcedure: setupResult.decodeProcedure,
       projectScope: _projectScope,
       plan: plan,
     );

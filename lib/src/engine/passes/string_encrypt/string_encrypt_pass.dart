@@ -3,7 +3,6 @@ import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_config.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_planner.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encrypt_artifact.dart';
-import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_helper_injector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transformer.dart';
 import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
@@ -32,21 +31,9 @@ class StringEncryptPass extends Pass {
   @override
   Future<PassResult> run(Component component) async {
     try {
-      final setupResult = DecodeHelperInjector(
-        projectScope: projectScope,
-        policy: policy,
-      ).injectIntoFirstEligibleLibrary(component);
-      if (setupResult == null) {
-        return PassSucceeded(
-          report: PassReport(passName: name),
-        );
-      }
-
       final selection = StringEncryptSelector(
         projectScope: projectScope,
         policy: policy,
-        decodeProcedure: setupResult.decodeProcedure,
-        excludePatterns: config.excludePatterns.map(RegExp.new).toList(),
       ).select(component);
       final plan = await StringEncryptPlanner(
         seed: config.xorKey,
@@ -54,7 +41,7 @@ class StringEncryptPass extends Pass {
 
       final output = StringEncryptTransformer(
         projectScope: projectScope,
-        decodeProcedure: setupResult.decodeProcedure,
+        policy: policy,
       ).apply(component, plan);
       final transformOutput = await output;
 

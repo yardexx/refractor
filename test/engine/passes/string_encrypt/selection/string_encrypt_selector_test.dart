@@ -8,32 +8,26 @@ import '../../../../helpers/kernel_helpers.dart';
 void main() {
   group('StringEncryptSelector', () {
     late Library coreLib;
+    late Library convertLib;
     late Library userLib;
     late Component component;
-    late Procedure decodeProcedure;
-
     setUp(() {
       coreLib = makeDartCoreLibrary();
+      convertLib = makeDartConvertLibrary();
       userLib = makeUserLibrary();
-      decodeProcedure = Procedure(
-        Name(r'_obfDecode$', userLib),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-        isStatic: true,
+      component = makeComponent(
+        coreLib: coreLib,
+        userLib: userLib,
+        extraLibraries: [convertLib],
       );
-      userLib.addProcedure(decodeProcedure);
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
     });
 
     StringEncryptSelector makeSelector({
-      List<RegExp> excludePatterns = const [],
+      StringEncryptPolicyView policy = const StringEncryptPolicyView(),
     }) {
       return StringEncryptSelector(
         projectScope: makeProjectScope(),
-        policy: const StringEncryptPolicyView(),
-        decodeProcedure: decodeProcedure,
-        excludePatterns: excludePatterns,
+        policy: policy,
       );
     }
 
@@ -58,7 +52,9 @@ void main() {
       );
 
       final selection = makeSelector(
-        excludePatterns: [RegExp('KEEP_ME')],
+        policy: StringEncryptPolicyView(
+          excludedLiteralPatterns: [RegExp('KEEP_ME')],
+        ),
       ).select(component);
 
       expect(selection.contains(selectedLiteral), isTrue);
@@ -105,6 +101,35 @@ void main() {
         selection.orderedLiterals,
         [same(firstLiteral), same(secondLiteral)],
       );
+    });
+
+    test('skips empty string literal segments in concatenations', () {
+      final keptLiteral = StringLiteral('kept');
+      final valueParam = VariableDeclaration('value');
+      userLib.addProcedure(
+        Procedure(
+          Name('concat'),
+          ProcedureKind.Method,
+          FunctionNode(
+            ReturnStatement(
+              StringConcatenation([
+                StringLiteral(''),
+                VariableGet(valueParam),
+                keptLiteral,
+                StringLiteral(''),
+              ]),
+            ),
+            positionalParameters: [valueParam],
+            requiredParameterCount: 1,
+          ),
+          fileUri: userLib.fileUri,
+        ),
+      );
+
+      final selection = makeSelector().select(component);
+
+      expect(selection.selectedLiteralCount, 1);
+      expect(selection.orderedLiterals, [same(keptLiteral)]);
     });
   });
 }

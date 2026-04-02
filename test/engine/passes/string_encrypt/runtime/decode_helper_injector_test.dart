@@ -8,11 +8,13 @@ import '../../../../helpers/kernel_helpers.dart';
 void main() {
   group('DecodeHelperInjector', () {
     late Library coreLib;
+    late Library convertLib;
     late Library firstUserLib;
     late Library secondUserLib;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
+      convertLib = makeDartConvertLibrary();
       firstUserLib = makeUserLibrary('src/first.dart');
       secondUserLib = makeUserLibrary('src/second.dart');
     });
@@ -28,7 +30,7 @@ void main() {
 
     test('injects into the first eligible user library', () {
       final component = Component(
-        libraries: [coreLib, firstUserLib, secondUserLib],
+        libraries: [coreLib, convertLib, firstUserLib, secondUserLib],
       )..setMainMethodAndMode(null, true);
 
       final result = makeInjector().injectIntoFirstEligibleLibrary(component);
@@ -56,7 +58,7 @@ void main() {
         ),
       );
       final component = Component(
-        libraries: [coreLib, firstUserLib],
+        libraries: [coreLib, convertLib, firstUserLib],
       )..setMainMethodAndMode(null, true);
 
       final result = makeInjector().injectIntoFirstEligibleLibrary(component);
@@ -71,6 +73,59 @@ void main() {
         result!.decodeProcedure.name.text,
         '${DecodeHelperInjector.helperBaseName}1',
       );
+    });
+
+    test('adds vm:never-inline pragma to injected helper', () {
+      final component = Component(
+        libraries: [coreLib, convertLib, firstUserLib],
+      )..setMainMethodAndMode(null, true);
+
+      final result = makeInjector().injectIntoFirstEligibleLibrary(component);
+
+      expect(result, isNotNull);
+      final annotation = result!.decodeProcedure.annotations.single;
+      expect(annotation, isA<ConstantExpression>());
+      final constant = (annotation as ConstantExpression).constant;
+      expect(constant, isA<InstanceConstant>());
+      final instance = constant as InstanceConstant;
+      expect(instance.classNode.name, 'pragma');
+      final nameField = instance.classNode.fields.firstWhere(
+        (field) => field.name.text == 'name',
+      );
+      expect(
+        instance.fieldValues[nameField.fieldReference],
+        StringConstant('vm:never-inline'),
+      );
+    });
+
+    test('keeps the injected helper static with the expected signature', () {
+      final component = Component(
+        libraries: [coreLib, convertLib, firstUserLib],
+      )..setMainMethodAndMode(null, true);
+
+      final result = makeInjector().injectIntoFirstEligibleLibrary(component);
+
+      expect(result, isNotNull);
+      final helper = result!.decodeProcedure;
+      expect(helper.isStatic, isTrue);
+      expect(helper.function.requiredParameterCount, 2);
+      expect(helper.function.positionalParameters, hasLength(2));
+      expect(helper.function.returnType, isA<InterfaceType>());
+
+      final bytesType =
+          helper.function.positionalParameters.first.type as InterfaceType;
+      final keyType =
+          helper.function.positionalParameters.last.type as InterfaceType;
+      final returnType = helper.function.returnType as InterfaceType;
+
+      expect(bytesType.classNode.name, 'List');
+      expect(bytesType.typeArguments.single, isA<InterfaceType>());
+      expect(
+        (bytesType.typeArguments.single as InterfaceType).classNode.name,
+        'int',
+      );
+      expect(keyType.classNode.name, 'int');
+      expect(returnType.classNode.name, 'String');
     });
   });
 }

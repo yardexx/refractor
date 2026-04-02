@@ -10,22 +10,19 @@ import '../../../../helpers/kernel_helpers.dart';
 void main() {
   group('StringEncryptTransformer', () {
     late Library coreLib;
+    late Library convertLib;
     late Library userLib;
     late Component component;
-    late Procedure decodeProcedure;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
+      convertLib = makeDartConvertLibrary();
       userLib = makeUserLibrary();
-      decodeProcedure = Procedure(
-        Name(r'_obfDecode$', userLib),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-        isStatic: true,
+      component = makeComponent(
+        coreLib: coreLib,
+        userLib: userLib,
+        extraLibraries: [convertLib],
       );
-      userLib.addProcedure(decodeProcedure);
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
     });
 
     test('returns explicit transform output with encrypted count', () async {
@@ -48,8 +45,6 @@ void main() {
       final selection = StringEncryptSelector(
         projectScope: makeProjectScope(),
         policy: const StringEncryptPolicyView(),
-        decodeProcedure: decodeProcedure,
-        excludePatterns: const [],
       ).select(component);
       final plan = await StringEncryptPlanner(seed: 42).plan(
         component,
@@ -57,8 +52,8 @@ void main() {
       );
 
       final output = StringEncryptTransformer(
-        decodeProcedure: decodeProcedure,
         projectScope: makeProjectScope(),
+        policy: const StringEncryptPolicyView(),
       ).apply(component, plan);
       final transformOutput = await output;
 
@@ -68,7 +63,12 @@ void main() {
       expect(transformOutput.records.first.enclosingMemberName, 'counted');
       expect(transformOutput.records.first.enclosingMemberKind, 'procedure');
 
-      final body = userLib.procedures.last.function.body! as Block;
+      final body =
+          userLib.procedures
+                  .firstWhere((procedure) => procedure.name.text == 'counted')
+                  .function
+                  .body!
+              as Block;
       final firstExpression = body.statements.first as ExpressionStatement;
       final secondReturn = body.statements.last as ReturnStatement;
       final firstCall = firstExpression.expression as StaticInvocation;
@@ -91,6 +91,57 @@ void main() {
             .toList(),
         firstRewrite.encodedBytes,
       );
+    });
+
+    test('rewrites literal segments inside StringConcatenation only', () async {
+      final leadingLiteral = StringLiteral('Hello ');
+      final trailingLiteral = StringLiteral('!');
+      final valueParam = VariableDeclaration('value');
+      userLib.addProcedure(
+        Procedure(
+          Name('concat'),
+          ProcedureKind.Method,
+          FunctionNode(
+            ReturnStatement(
+              StringConcatenation([
+                leadingLiteral,
+                VariableGet(valueParam),
+                trailingLiteral,
+              ]),
+            ),
+            positionalParameters: [valueParam],
+            requiredParameterCount: 1,
+          ),
+          fileUri: userLib.fileUri,
+        ),
+      );
+
+      final selection = StringEncryptSelector(
+        projectScope: makeProjectScope(),
+        policy: const StringEncryptPolicyView(),
+      ).select(component);
+      final plan = await StringEncryptPlanner(seed: 42).plan(
+        component,
+        selection,
+      );
+
+      final transformOutput = await StringEncryptTransformer(
+        projectScope: makeProjectScope(),
+        policy: const StringEncryptPolicyView(),
+      ).apply(component, plan);
+
+      expect(transformOutput.encryptedCount, 2);
+      final returnStatement =
+          userLib.procedures
+                  .firstWhere((procedure) => procedure.name.text == 'concat')
+                  .function
+                  .body!
+              as ReturnStatement;
+      final concat = returnStatement.expression! as StringConcatenation;
+
+      expect(concat.expressions[0], isA<StaticInvocation>());
+      expect(concat.expressions[1], isA<VariableGet>());
+      expect(concat.expressions[2], isA<StaticInvocation>());
     });
   });
 }

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass.dart';
@@ -14,20 +12,17 @@ import '../../helpers/kernel_helpers.dart';
 
 void main() {
   group('StringEncryptCodec.encodeWithKey', () {
-    test('round-trip XOR with known key', () {
+    test('round-trips ASCII with known key', () {
       const input = 'hello';
       final encoded = StringEncryptCodec.encodeWithKey(input, 0x5A);
-
-      // Decode by XOR-ing again with the same key.
-      final decoded = utf8.decode(encoded.map((b) => b ^ 0x5A).toList());
+      final decoded = StringEncryptCodec.decodeWithKey(encoded, 0x5A);
       expect(decoded, equals(input));
     });
 
     test('with custom xorKey', () {
       const input = 'abc';
       final encoded = StringEncryptCodec.encodeWithKey(input, 0xFF);
-
-      final decoded = utf8.decode(encoded.map((b) => b ^ 0xFF).toList());
+      final decoded = StringEncryptCodec.decodeWithKey(encoded, 0xFF);
       expect(decoded, equals(input));
     });
 
@@ -35,19 +30,39 @@ void main() {
       final encoded = StringEncryptCodec.encodeWithKey('', 0x5A);
       expect(encoded, isEmpty);
     });
+
+    test('round-trips Unicode with multi-byte UTF-8', () {
+      const input = 'žluťoučký 🌍';
+      final encoded = StringEncryptCodec.encodeWithKey(input, 0x12345678);
+
+      expect(
+        StringEncryptCodec.decodeWithKey(encoded, 0x12345678),
+        equals(input),
+      );
+    });
   });
 
   group('StringEncryptPass.run', () {
     late Library coreLib;
+    late Library convertLib;
     late Library userLib;
     late Component component;
     late ProjectScope projectScope;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
+      convertLib = makeDartConvertLibrary();
       userLib = makeUserLibrary();
       projectScope = makeProjectScope();
     });
+
+    Component makeRuntimeComponent() {
+      return makeComponent(
+        coreLib: coreLib,
+        userLib: userLib,
+        extraLibraries: [convertLib],
+      );
+    }
 
     StringEncryptPass makePass(
       Component component, {
@@ -80,7 +95,7 @@ void main() {
         );
         userLib.addProcedure(proc);
 
-        component = makeComponent(coreLib: coreLib, userLib: userLib);
+        component = makeRuntimeComponent();
         await makePass(component).run(component);
 
         final body = proc.function.body! as Block;
@@ -103,7 +118,7 @@ void main() {
       );
       userLib.addProcedure(proc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final body = proc.function.body! as Block;
@@ -116,7 +131,7 @@ void main() {
         ..addAnnotation(ConstantExpression(StringConstant('keep_me')));
       userLib.addClass(cls);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final annotation = cls.annotations.first as ConstantExpression;
@@ -131,7 +146,7 @@ void main() {
           ..addAnnotation(StringLiteral('keep_expr'));
         userLib.addClass(cls);
 
-        component = makeComponent(coreLib: coreLib, userLib: userLib);
+        component = makeRuntimeComponent();
         await makePass(component).run(component);
 
         final annotation = cls.annotations.first;
@@ -147,7 +162,7 @@ void main() {
       )..addAnnotation(ConstantExpression(StringConstant('keep_field')));
       userLib.addField(field);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final annotation = field.annotations.first as ConstantExpression;
@@ -168,7 +183,7 @@ void main() {
       cls.addConstructor(constructor);
       userLib.addClass(cls);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final annotation = constructor.annotations.first as ConstantExpression;
@@ -188,7 +203,7 @@ void main() {
       )..addAnnotation(StringLiteral('keep_proc_annotation'));
       userLib.addProcedure(procedure);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final annotation = procedure.annotations.first;
@@ -212,7 +227,7 @@ void main() {
       );
       userLib.addProcedure(proc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(
         component,
         config: const StringEncryptPassConfig(
@@ -249,7 +264,7 @@ void main() {
       );
       userLib.addProcedure(proc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final helperNames = userLib.procedures.map((p) => p.name.text).toList();
@@ -278,7 +293,7 @@ void main() {
         );
         userLib.addProcedure(proc);
 
-        component = makeComponent(coreLib: coreLib, userLib: userLib);
+        component = makeRuntimeComponent();
         await makePass(component).run(component);
 
         final helperNames = userLib.procedures.map((p) => p.name.text).toList();
@@ -308,7 +323,7 @@ void main() {
       );
       userLib.addProcedure(userProc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final coreBody = coreProc.function.body! as Block;
@@ -330,7 +345,7 @@ void main() {
       );
       userLib.addProcedure(proc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       await makePass(component).run(component);
 
       final body = proc.function.body! as Block;
@@ -355,7 +370,7 @@ void main() {
       );
       userLib.addProcedure(proc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       final result = await makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
@@ -374,7 +389,7 @@ void main() {
       );
       userLib.addProcedure(proc);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       final result = await makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
@@ -411,7 +426,7 @@ void main() {
         ),
       );
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       final result = await makePass(component).run(component);
       final success = result as PassSucceeded;
       final artifact = success.artifact! as StringEncryptArtifact;
@@ -441,7 +456,7 @@ void main() {
       cls.addConstructor(constructor);
       userLib.addClass(cls);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       final result = await makePass(component).run(component);
       final artifact =
           (result as PassSucceeded).artifact! as StringEncryptArtifact;
@@ -473,7 +488,7 @@ void main() {
       )..addAnnotation(StringLiteral('annotation_value'));
       userLib.addProcedure(procedure);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeRuntimeComponent();
       final result = await makePass(
         component,
         config: const StringEncryptPassConfig(
@@ -484,6 +499,69 @@ void main() {
 
       expect(success.artifact, isNull);
       expect(success.report.metadata, isEmpty);
+    });
+
+    test('rewrites literal segments inside StringConcatenation', () async {
+      final valueParam = VariableDeclaration('value');
+      final procedure = Procedure(
+        Name('greet'),
+        ProcedureKind.Method,
+        FunctionNode(
+          ReturnStatement(
+            StringConcatenation([
+              StringLiteral('Hello '),
+              VariableGet(valueParam),
+              StringLiteral('!'),
+            ]),
+          ),
+          positionalParameters: [valueParam],
+          requiredParameterCount: 1,
+        ),
+        fileUri: userLib.fileUri,
+      );
+      userLib.addProcedure(procedure);
+
+      component = makeRuntimeComponent();
+      final result = await makePass(component).run(component);
+
+      expect(result, isA<PassSucceeded>());
+      final returnStatement = procedure.function.body! as ReturnStatement;
+      final concat = returnStatement.expression! as StringConcatenation;
+      expect(concat.expressions[0], isA<StaticInvocation>());
+      expect(concat.expressions[1], isA<VariableGet>());
+      expect(concat.expressions[2], isA<StaticInvocation>());
+      expect(result.report.metadata['strings_encrypted'], '2');
+    });
+
+    test('leaves empty StringConcatenation segments untouched', () async {
+      final valueParam = VariableDeclaration('value');
+      final procedure = Procedure(
+        Name('greet'),
+        ProcedureKind.Method,
+        FunctionNode(
+          ReturnStatement(
+            StringConcatenation([
+              StringLiteral(''),
+              VariableGet(valueParam),
+              StringLiteral('done'),
+            ]),
+          ),
+          positionalParameters: [valueParam],
+          requiredParameterCount: 1,
+        ),
+        fileUri: userLib.fileUri,
+      );
+      userLib.addProcedure(procedure);
+
+      component = makeRuntimeComponent();
+      final result = await makePass(component).run(component);
+
+      final returnStatement = procedure.function.body! as ReturnStatement;
+      final concat = returnStatement.expression! as StringConcatenation;
+      expect(concat.expressions[0], isA<StringLiteral>());
+      expect((concat.expressions[0] as StringLiteral).value, isEmpty);
+      expect(concat.expressions[2], isA<StaticInvocation>());
+      expect(result.report.metadata['strings_encrypted'], '1');
     });
   });
 }

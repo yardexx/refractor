@@ -14,19 +14,10 @@ void main() {
     late Library coreLib;
     late Library userLib;
     late Component component;
-    late Procedure decodeProcedure;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
       userLib = makeUserLibrary();
-      decodeProcedure = Procedure(
-        Name(r'_obfDecode$', userLib),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: userLib.fileUri,
-        isStatic: true,
-      );
-      userLib.addProcedure(decodeProcedure);
       component = makeComponent(coreLib: coreLib, userLib: userLib);
     });
 
@@ -50,8 +41,6 @@ void main() {
       final selection = StringEncryptSelector(
         projectScope: makeProjectScope(),
         policy: const StringEncryptPolicyView(),
-        decodeProcedure: decodeProcedure,
-        excludePatterns: const [],
       ).select(component);
       final plan = await StringEncryptPlanner(seed: 42).plan(
         component,
@@ -112,6 +101,26 @@ void main() {
         );
       }
     });
+
+    test(
+      'encoded bytes differ from the old single-step xor baseline',
+      () async {
+        final fixture = await planFixture();
+        final rewrite = fixture.plan.rewriteFor(fixture.literals.first)!;
+
+        expect(
+          rewrite.encodedBytes,
+          isNot(
+            equals(
+              _oldSingleStepEncode(
+                fixture.literals.first.value,
+                rewrite.key,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   });
 }
 
@@ -125,4 +134,8 @@ final class _PlannedFixture {
   final StringEncryptSelection selection;
   final StringEncryptPlan plan;
   final List<StringLiteral> literals;
+}
+
+List<int> _oldSingleStepEncode(String value, int key) {
+  return value.codeUnits.map((byte) => byte ^ key).toList(growable: false);
 }

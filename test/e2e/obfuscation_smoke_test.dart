@@ -247,6 +247,44 @@ refractor:
       },
     );
 
+    test(
+      'rename + string_encrypt: obfuscated jit snapshot produces correct output',
+      () async {
+        final output = await _compileObfuscateRun(
+          tempDir: tempDir,
+          target: Target.jit,
+          configYaml: '''
+refractor:
+  verbose: false
+  passes:
+    rename: true
+    string_encrypt:
+      xor_key: 42
+''',
+        );
+        expect(output, equals(_expectedOutput.trim()));
+      },
+    );
+
+    test(
+      'rename + string_encrypt: obfuscated aot snapshot produces correct output',
+      () async {
+        final output = await _compileObfuscateRun(
+          tempDir: tempDir,
+          target: Target.aot,
+          configYaml: '''
+refractor:
+  verbose: false
+  passes:
+    rename: true
+    string_encrypt:
+      xor_key: 42
+''',
+        );
+        expect(output, equals(_expectedOutput.trim()));
+      },
+    );
+
     test('rename pass: callable aliases survive obfuscated AOT', () async {
       final output = await _compileObfuscateRun(
         tempDir: tempDir,
@@ -296,9 +334,10 @@ Future<String> _compileObfuscateRun({
   required Directory tempDir,
   required String configYaml,
   String source = _testProgram,
+  Target target = Target.exe,
 }) async {
   final sourcePath = '${tempDir.path}/main.dart';
-  final exePath = '${tempDir.path}/main.exe';
+  final outputPath = '${tempDir.path}/main${target.extension}';
 
   File(sourcePath).writeAsStringSync(source);
 
@@ -315,16 +354,15 @@ Future<String> _compileObfuscateRun({
     config: config,
     request: BuildRequest(
       input: sourcePath,
-      output: exePath,
-      target: Target.exe,
+      output: outputPath,
+      target: target,
       workDirectory: tempDir.path,
       projectRootUri: Uri.file('${tempDir.path}/'),
       projectPackageName: null,
     ),
   );
 
-  // Run the compiled binary.
-  final processResult = Process.runSync(exePath, []);
+  final processResult = _runCompiledOutput(target, outputPath);
   if (processResult.exitCode != 0) {
     fail(
       'Binary exited with ${processResult.exitCode}:\n'
@@ -334,6 +372,37 @@ Future<String> _compileObfuscateRun({
   }
 
   return (processResult.stdout as String).trim();
+}
+
+ProcessResult _runCompiledOutput(Target target, String outputPath) {
+  return switch (target) {
+    Target.exe => Process.runSync(outputPath, []),
+    Target.jit => Process.runSync('dart', ['run', outputPath]),
+    Target.aot => Process.runSync(_findDartAotRuntime(), [outputPath]),
+    Target.kernel => Process.runSync('dart', [outputPath]),
+  };
+}
+
+String _findDartAotRuntime() {
+  final dartExecutable = File(Platform.resolvedExecutable);
+  final sdkBin = dartExecutable.parent;
+  final sibling = File(p.join(sdkBin.path, 'dartaotruntime'));
+  if (sibling.existsSync()) {
+    return sibling.path;
+  }
+
+  final path = Platform.environment['PATH'];
+  if (path != null && path.isNotEmpty) {
+    for (final entry in path.split(Platform.isWindows ? ';' : ':')) {
+      if (entry.isEmpty) continue;
+      final candidate = File(p.join(entry, 'dartaotruntime'));
+      if (candidate.existsSync()) {
+        return candidate.path;
+      }
+    }
+  }
+
+  fail('Unable to locate dartaotruntime for AOT verification.');
 }
 
 Future<String> _buildAndRunExampleApp({

@@ -9,25 +9,17 @@ final class StringEncryptSelector
   StringEncryptSelector({
     required ProjectScope projectScope,
     required StringEncryptPolicyView policy,
-    required Procedure decodeProcedure,
-    required List<RegExp> excludePatterns,
   }) : _projectScope = projectScope,
-       _policy = policy,
-       _decodeProcedure = decodeProcedure,
-       _excludePatterns = excludePatterns;
+       _policy = policy;
 
   final ProjectScope _projectScope;
   final StringEncryptPolicyView _policy;
-  final Procedure _decodeProcedure;
-  final List<RegExp> _excludePatterns;
 
   @override
   StringEncryptSelection select(Component component) {
     final collector = _StringEncryptSelectionCollector(
       projectScope: _projectScope,
       policy: _policy,
-      decodeProcedure: _decodeProcedure,
-      excludePatterns: _excludePatterns,
     );
     component.accept(collector);
     return collector.build();
@@ -38,17 +30,11 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
   _StringEncryptSelectionCollector({
     required ProjectScope projectScope,
     required StringEncryptPolicyView policy,
-    required Procedure decodeProcedure,
-    required List<RegExp> excludePatterns,
   }) : _projectScope = projectScope,
-       _policy = policy,
-       _decodeProcedure = decodeProcedure,
-       _excludePatterns = excludePatterns;
+       _policy = policy;
 
   final ProjectScope _projectScope;
   final StringEncryptPolicyView _policy;
-  final Procedure _decodeProcedure;
-  final List<RegExp> _excludePatterns;
   final List<StringLiteral> _selectedStringLiterals = <StringLiteral>[];
   final Set<StringLiteral> _selectedStringLiteralSet = <StringLiteral>{};
 
@@ -94,9 +80,6 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
   @override
   void visitProcedure(Procedure node) {
     _visitAnnotations(node.annotations);
-    if (node == _decodeProcedure) {
-      return;
-    }
     if (_policy.isMemberKept(node)) {
       return;
     }
@@ -139,10 +122,11 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
     if (_inConstContext) {
       return;
     }
-    for (final pattern in _excludePatterns) {
-      if (pattern.hasMatch(node.value)) {
-        return;
-      }
+    if (node.value.isEmpty) {
+      return;
+    }
+    if (!_policy.shouldEncryptLiteral(node)) {
+      return;
     }
     if (_selectedStringLiteralSet.add(node)) {
       _selectedStringLiterals.add(node);
