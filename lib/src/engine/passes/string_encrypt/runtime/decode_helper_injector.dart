@@ -220,7 +220,11 @@ final class DecodeHelperInjector {
     );
   }
 
-  // bytes.reversed.map((byte) { final decoded = ...; shift = ...; return decoded; })`
+  // bytes.reversed.map((byte) {
+  //    final decoded = ...;
+  //    shift = ...;
+  //    return decoded;
+  // })`
   InstanceInvocation _buildMappedDecodedBytes({
     required _DecodeHelperKernelContext context,
     required VariableDeclaration bytesParam,

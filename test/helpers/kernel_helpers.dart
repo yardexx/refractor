@@ -20,19 +20,19 @@ Library makeDartCoreLibrary() {
   // int class with ^ operator
   final intClass = Class(name: 'int', fileUri: coreUri);
   final intType = InterfaceType(intClass, Nullability.nonNullable);
-  final numClass = Class(name: 'num', fileUri: coreUri);
-  numClass.addProcedure(
-    Procedure(
-      Name('+'),
-      ProcedureKind.Operator,
-      FunctionNode(
-        EmptyStatement(),
-        positionalParameters: [VariableDeclaration('other', type: intType)],
-        returnType: intType,
+  final numClass = Class(name: 'num', fileUri: coreUri)
+    ..addProcedure(
+      Procedure(
+        Name('+'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
+    );
   lib.addClass(numClass);
   final xorProc = Procedure(
     Name('^'),
@@ -44,43 +44,44 @@ Library makeDartCoreLibrary() {
     ),
     fileUri: coreUri,
   );
-  intClass.addProcedure(xorProc);
-  intClass.addProcedure(
-    Procedure(
-      Name('>>'),
-      ProcedureKind.Operator,
-      FunctionNode(
-        EmptyStatement(),
-        positionalParameters: [VariableDeclaration('other', type: intType)],
-        returnType: intType,
+  intClass
+    ..addProcedure(xorProc)
+    ..addProcedure(
+      Procedure(
+        Name('>>'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
-  intClass.addProcedure(
-    Procedure(
-      Name('&'),
-      ProcedureKind.Operator,
-      FunctionNode(
-        EmptyStatement(),
-        positionalParameters: [VariableDeclaration('other', type: intType)],
-        returnType: intType,
+    )
+    ..addProcedure(
+      Procedure(
+        Name('&'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
-  intClass.addProcedure(
-    Procedure(
-      Name('+'),
-      ProcedureKind.Operator,
-      FunctionNode(
-        EmptyStatement(),
-        positionalParameters: [VariableDeclaration('other', type: intType)],
-        returnType: intType,
+    )
+    ..addProcedure(
+      Procedure(
+        Name('+'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
+    );
   lib.addClass(intClass);
 
   // String class with fromCharCodes factory
@@ -128,94 +129,96 @@ Library makeDartCoreLibrary() {
     ),
     fileUri: coreUri,
   );
-  iterableClass.addProcedure(mapProc);
-  iterableClass.addProcedure(
-    Procedure(
-      Name('toList'),
-      ProcedureKind.Method,
-      FunctionNode(
-        EmptyStatement(),
-        returnType: listIntType,
+  iterableClass
+    ..addProcedure(mapProc)
+    ..addProcedure(
+      Procedure(
+        Name('toList'),
+        ProcedureKind.Method,
+        FunctionNode(
+          EmptyStatement(),
+          returnType: listIntType,
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
-  iterableClass.addProcedure(
-    Procedure(
-      Name('reversed'),
-      ProcedureKind.Getter,
-      FunctionNode(
-        EmptyStatement(),
-        returnType: iterableIntType,
+    )
+    ..addProcedure(
+      Procedure(
+        Name('reversed'),
+        ProcedureKind.Getter,
+        FunctionNode(
+          EmptyStatement(),
+          returnType: iterableIntType,
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
+    );
   lib.addClass(iterableClass);
 
   // List class with reversed getter.
-  listClass.addProcedure(
-    Procedure(
-      Name('reversed'),
-      ProcedureKind.Getter,
-      FunctionNode(
-        EmptyStatement(),
-        returnType: iterableIntType,
+  listClass
+    ..addProcedure(
+      Procedure(
+        Name('reversed'),
+        ProcedureKind.Getter,
+        FunctionNode(
+          EmptyStatement(),
+          returnType: iterableIntType,
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
-  listClass.addProcedure(
-    Procedure(
-      Name('add'),
-      ProcedureKind.Method,
-      FunctionNode(
-        EmptyStatement(),
-        positionalParameters: [
-          VariableDeclaration('value', type: intType),
-        ],
-        requiredParameterCount: 1,
-        returnType: const VoidType(),
+    )
+    ..addProcedure(
+      Procedure(
+        Name('add'),
+        ProcedureKind.Method,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [
+            VariableDeclaration('value', type: intType),
+          ],
+          requiredParameterCount: 1,
+          returnType: const VoidType(),
+        ),
+        fileUri: coreUri,
       ),
-      fileUri: coreUri,
-    ),
-  );
-  listClass.addProcedure(
-    Procedure(
-      Name('of'),
-      ProcedureKind.Factory,
-      FunctionNode(
-        EmptyStatement(),
-        positionalParameters: [
-          VariableDeclaration('elements', type: iterableIntType),
-        ],
-        requiredParameterCount: 1,
-        returnType: listIntType,
+    )
+    ..addProcedure(
+      Procedure(
+        Name('of'),
+        ProcedureKind.Factory,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [
+            VariableDeclaration('elements', type: iterableIntType),
+          ],
+          requiredParameterCount: 1,
+          returnType: listIntType,
+        ),
+        fileUri: coreUri,
+        isStatic: true,
       ),
-      fileUri: coreUri,
-      isStatic: true,
-    ),
-  );
+    );
   lib.addClass(listClass);
 
   // bool class (needed for dead code branch)
   final boolClass = Class(name: 'bool', fileUri: coreUri);
   lib.addClass(boolClass);
 
-  final pragmaClass = Class(name: 'pragma', fileUri: coreUri);
-  pragmaClass.addField(
-    Field.immutable(
-      Name('name'),
-      type: stringType,
-      fileUri: coreUri,
-    ),
-  );
-  pragmaClass.addField(
-    Field.immutable(
-      Name('options'),
-      fileUri: coreUri,
-    ),
-  );
+  final pragmaClass = Class(name: 'pragma', fileUri: coreUri)
+    ..addField(
+      Field.immutable(
+        Name('name'),
+        type: stringType,
+        fileUri: coreUri,
+      ),
+    )
+    ..addField(
+      Field.immutable(
+        Name('options'),
+        fileUri: coreUri,
+      ),
+    );
   lib.addClass(pragmaClass);
 
   // top-level identical(Object? a, Object? b) -> bool
@@ -259,38 +262,40 @@ Library makeDartConvertLibrary() {
     intType,
   ]);
 
-  utf8CodecClass.addProcedure(
-    Procedure(
-      Name('decode'),
-      ProcedureKind.Method,
-      FunctionNode(
-        EmptyStatement(),
-        positionalParameters: [
-          VariableDeclaration('codeUnits', type: listIntType),
-        ],
-        requiredParameterCount: 1,
-        returnType: stringType,
+  utf8CodecClass
+    ..addProcedure(
+      Procedure(
+        Name('decode'),
+        ProcedureKind.Method,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [
+            VariableDeclaration('codeUnits', type: listIntType),
+          ],
+          requiredParameterCount: 1,
+          returnType: stringType,
+        ),
+        fileUri: convertUri,
       ),
-      fileUri: convertUri,
-    ),
-  );
-  utf8CodecClass.addConstructor(
-    Constructor(
-      FunctionNode(EmptyStatement()),
-      name: Name(''),
-      fileUri: convertUri,
-      isConst: true,
-    ),
-  );
-  lib.addClass(utf8CodecClass);
-  lib.addField(
-    Field.immutable(
-      Name('utf8'),
-      initializer: NullLiteral(),
-      type: InterfaceType(utf8CodecClass, Nullability.nonNullable),
-      fileUri: convertUri,
-    ),
-  );
+    )
+    ..addConstructor(
+      Constructor(
+        FunctionNode(EmptyStatement()),
+        name: Name(''),
+        fileUri: convertUri,
+        isConst: true,
+      ),
+    );
+  lib
+    ..addClass(utf8CodecClass)
+    ..addField(
+      Field.immutable(
+        Name('utf8'),
+        initializer: NullLiteral(),
+        type: InterfaceType(utf8CodecClass, Nullability.nonNullable),
+        fileUri: convertUri,
+      ),
+    );
 
   return lib;
 }
