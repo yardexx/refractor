@@ -242,6 +242,33 @@ refractor:
 
       expect(policy.rename.isLibraryKept(fileLibrary), isTrue);
     });
+
+    test('compiles string-encrypt exclude_patterns into literal policy', () {
+      final library = _userLibrary('src/strings.dart');
+      final component = _component([coreLib, library]);
+      final config = RefractorConfig.fromYaml('''
+refractor:
+  passes:
+    string_encrypt:
+      exclude_patterns:
+        - KEEP_ME
+''');
+
+      final policy = PolicyResolver().resolve(
+        component: component,
+        config: config,
+        projectScope: projectScope,
+      );
+
+      expect(
+        policy.stringEncrypt.shouldEncryptLiteral(StringLiteral('hello')),
+        isTrue,
+      );
+      expect(
+        policy.stringEncrypt.shouldEncryptLiteral(StringLiteral('KEEP_ME')),
+        isFalse,
+      );
+    });
   });
 }
 

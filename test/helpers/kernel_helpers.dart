@@ -11,8 +11,8 @@ Library makeUserLibrary([String path = 'src/app.dart']) {
 /// Creates a synthetic `dart:core` library with stub classes and procedures
 /// required by passes.
 ///
-/// Contains: `int` (with `^` operator), `String` (with `fromCharCodes`),
-/// `Iterable` (with `map`), `List`, and `bool`.
+/// Contains: `int` operators, `String`, `Iterable`, `List`, `bool`, and
+/// `pragma`.
 Library makeDartCoreLibrary() {
   final coreUri = Uri.parse('dart:core');
   final lib = Library(coreUri, fileUri: coreUri);
@@ -20,6 +20,20 @@ Library makeDartCoreLibrary() {
   // int class with ^ operator
   final intClass = Class(name: 'int', fileUri: coreUri);
   final intType = InterfaceType(intClass, Nullability.nonNullable);
+  final numClass = Class(name: 'num', fileUri: coreUri)
+    ..addProcedure(
+      Procedure(
+        Name('+'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
+      ),
+    );
+  lib.addClass(numClass);
   final xorProc = Procedure(
     Name('^'),
     ProcedureKind.Operator,
@@ -30,18 +44,59 @@ Library makeDartCoreLibrary() {
     ),
     fileUri: coreUri,
   );
-  intClass.addProcedure(xorProc);
+  intClass
+    ..addProcedure(xorProc)
+    ..addProcedure(
+      Procedure(
+        Name('>>'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
+      ),
+    )
+    ..addProcedure(
+      Procedure(
+        Name('&'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
+      ),
+    )
+    ..addProcedure(
+      Procedure(
+        Name('+'),
+        ProcedureKind.Operator,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [VariableDeclaration('other', type: intType)],
+          returnType: intType,
+        ),
+        fileUri: coreUri,
+      ),
+    );
   lib.addClass(intClass);
 
   // String class with fromCharCodes factory
   final stringClass = Class(name: 'String', fileUri: coreUri);
   final stringType = InterfaceType(stringClass, Nullability.nonNullable);
   final iterableClass = Class(name: 'Iterable', fileUri: coreUri);
+  final listClass = Class(name: 'List', fileUri: coreUri);
   final iterableIntType = InterfaceType(
     iterableClass,
     Nullability.nonNullable,
     [intType],
   );
+  final listIntType = InterfaceType(listClass, Nullability.nonNullable, [
+    intType,
+  ]);
   final fromCharCodesProc = Procedure(
     Name('fromCharCodes'),
     ProcedureKind.Factory,
@@ -74,16 +129,97 @@ Library makeDartCoreLibrary() {
     ),
     fileUri: coreUri,
   );
-  iterableClass.addProcedure(mapProc);
+  iterableClass
+    ..addProcedure(mapProc)
+    ..addProcedure(
+      Procedure(
+        Name('toList'),
+        ProcedureKind.Method,
+        FunctionNode(
+          EmptyStatement(),
+          returnType: listIntType,
+        ),
+        fileUri: coreUri,
+      ),
+    )
+    ..addProcedure(
+      Procedure(
+        Name('reversed'),
+        ProcedureKind.Getter,
+        FunctionNode(
+          EmptyStatement(),
+          returnType: iterableIntType,
+        ),
+        fileUri: coreUri,
+      ),
+    );
   lib.addClass(iterableClass);
 
-  // List class (no methods needed)
-  final listClass = Class(name: 'List', fileUri: coreUri);
+  // List class with reversed getter.
+  listClass
+    ..addProcedure(
+      Procedure(
+        Name('reversed'),
+        ProcedureKind.Getter,
+        FunctionNode(
+          EmptyStatement(),
+          returnType: iterableIntType,
+        ),
+        fileUri: coreUri,
+      ),
+    )
+    ..addProcedure(
+      Procedure(
+        Name('add'),
+        ProcedureKind.Method,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [
+            VariableDeclaration('value', type: intType),
+          ],
+          requiredParameterCount: 1,
+          returnType: const VoidType(),
+        ),
+        fileUri: coreUri,
+      ),
+    )
+    ..addProcedure(
+      Procedure(
+        Name('of'),
+        ProcedureKind.Factory,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [
+            VariableDeclaration('elements', type: iterableIntType),
+          ],
+          requiredParameterCount: 1,
+          returnType: listIntType,
+        ),
+        fileUri: coreUri,
+        isStatic: true,
+      ),
+    );
   lib.addClass(listClass);
 
   // bool class (needed for dead code branch)
   final boolClass = Class(name: 'bool', fileUri: coreUri);
   lib.addClass(boolClass);
+
+  final pragmaClass = Class(name: 'pragma', fileUri: coreUri)
+    ..addField(
+      Field.immutable(
+        Name('name'),
+        type: stringType,
+        fileUri: coreUri,
+      ),
+    )
+    ..addField(
+      Field.immutable(
+        Name('options'),
+        fileUri: coreUri,
+      ),
+    );
+  lib.addClass(pragmaClass);
 
   // top-level identical(Object? a, Object? b) -> bool
   final objectClass = Class(name: 'Object', fileUri: coreUri);
@@ -107,6 +243,59 @@ Library makeDartCoreLibrary() {
       isStatic: true,
     ),
   );
+
+  return lib;
+}
+
+Library makeDartConvertLibrary() {
+  final convertUri = Uri.parse('dart:convert');
+  final coreUri = Uri.parse('dart:core');
+  final lib = Library(convertUri, fileUri: convertUri);
+
+  final intClass = Class(name: 'int', fileUri: coreUri);
+  final stringClass = Class(name: 'String', fileUri: coreUri);
+  final listClass = Class(name: 'List', fileUri: coreUri);
+  final utf8CodecClass = Class(name: 'Utf8Codec', fileUri: convertUri);
+  final intType = InterfaceType(intClass, Nullability.nonNullable);
+  final stringType = InterfaceType(stringClass, Nullability.nonNullable);
+  final listIntType = InterfaceType(listClass, Nullability.nonNullable, [
+    intType,
+  ]);
+
+  utf8CodecClass
+    ..addProcedure(
+      Procedure(
+        Name('decode'),
+        ProcedureKind.Method,
+        FunctionNode(
+          EmptyStatement(),
+          positionalParameters: [
+            VariableDeclaration('codeUnits', type: listIntType),
+          ],
+          requiredParameterCount: 1,
+          returnType: stringType,
+        ),
+        fileUri: convertUri,
+      ),
+    )
+    ..addConstructor(
+      Constructor(
+        FunctionNode(EmptyStatement()),
+        name: Name(''),
+        fileUri: convertUri,
+        isConst: true,
+      ),
+    );
+  lib
+    ..addClass(utf8CodecClass)
+    ..addField(
+      Field.immutable(
+        Name('utf8'),
+        initializer: NullLiteral(),
+        type: InterfaceType(utf8CodecClass, Nullability.nonNullable),
+        fileUri: convertUri,
+      ),
+    );
 
   return lib;
 }
@@ -135,7 +324,32 @@ Procedure makeProcedure(String name, Class cls) {
 Component makeComponent({
   required Library coreLib,
   required Library userLib,
+  List<Library> extraLibraries = const [],
 }) {
-  return Component(libraries: [coreLib, userLib])
+  return Component(libraries: [coreLib, ...extraLibraries, userLib])
     ..setMainMethodAndMode(null, true);
+}
+
+Expression makePragmaAnnotation(
+  Library coreLib, {
+  required String name,
+}) {
+  final pragmaClass = coreLib.classes.firstWhere((cls) => cls.name == 'pragma');
+  final pragmaNameField = pragmaClass.fields.firstWhere(
+    (field) => field.name.text == 'name',
+  );
+  final pragmaOptionsField = pragmaClass.fields.firstWhere(
+    (field) => field.name.text == 'options',
+  );
+
+  return ConstantExpression(
+    InstanceConstant(
+      pragmaClass.reference,
+      const [],
+      <Reference, Constant>{
+        pragmaNameField.fieldReference: StringConstant(name),
+        pragmaOptionsField.fieldReference: NullConstant(),
+      },
+    ),
+  );
 }

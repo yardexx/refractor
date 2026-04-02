@@ -2,7 +2,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/cli/reporting/text_reporter.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/pass.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -12,8 +11,8 @@ void main() {
     test('renders metrics in report order with human labels', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['rename', 'string_encrypt'],
+        passResults: PassResults(),
         reports: const [
           PassReport(
             passName: 'rename',
@@ -50,8 +49,8 @@ Strings encrypted: 4''',
     test('renders empty successful reports explicitly', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['string_encrypt'],
+        passResults: PassResults(),
         reports: const [
           PassReport(passName: 'string_encrypt'),
         ],
@@ -70,8 +69,8 @@ Strings encrypted: 4''',
     test('renders failures with message and underlying error', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['string_encrypt'],
+        passResults: PassResults(),
         reports: const [
           PassReport(passName: 'string_encrypt', message: 'boom'),
         ],
@@ -98,8 +97,8 @@ Error: Exception: kaboom''',
     test('renders unknown metric keys with readable fallback labels', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: ['custom'],
+        passResults: PassResults(),
         reports: const [
           PassReport(
             passName: 'custom',
@@ -123,8 +122,8 @@ Custom Metric Total: 7''',
     test('renders failure-only records even without a matching report', () {
       final result = BuildResult(
         outputPath: 'build/out.dill',
-        symbolTable: SymbolTable(),
         passesRun: const [],
+        passResults: PassResults(),
         failures: [
           PassFailureRecord(
             passName: 'rename',

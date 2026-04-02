@@ -33,6 +33,8 @@ class PassResults {
   final List<PassReport> reports;
   final List<PassFailureRecord> failures;
 
+  Map<String, PassArtifact> get artifacts => Map.unmodifiable(_artifacts);
+
   void addArtifact(String passName, PassArtifact artifact) {
     _artifacts[passName] = artifact;
   }

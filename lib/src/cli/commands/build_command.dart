@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:ci/ci.dart';
 import 'package:mason_logger/mason_logger.dart' show ExitCode;
 import 'package:refractor/src/cli/commands/refractor_command.dart';
+import 'package:refractor/src/cli/pass_results_io.dart';
 import 'package:refractor/src/cli/reporting/build_reporter.dart';
 import 'package:refractor/src/cli/reporting/github_reporter.dart';
 import 'package:refractor/src/cli/reporting/text_reporter.dart';
-import 'package:refractor/src/cli/symbol_table_io.dart';
 import 'package:refractor/src/config/config_manager.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/dart_compiler.dart';
@@ -30,12 +30,6 @@ class BuildCommand extends RefractorCommand {
         abbr: 'i',
         help: 'Input Dart file or directory',
         defaultsTo: 'lib/main.dart',
-      )
-      ..addOption(
-        'output',
-        abbr: 'o',
-        help: 'Output file path (defaults to build/out.<target-extension>)',
-        defaultsTo: 'build',
       )
       ..addOption(
         'target',
@@ -64,6 +58,7 @@ class BuildCommand extends RefractorCommand {
       compiler: DartCompiler(),
       kernelIO: FileKernelIO(),
     );
+
     return engine.run(request: request, config: config);
   }
 
@@ -71,20 +66,12 @@ class BuildCommand extends RefractorCommand {
   Future<int> run() async {
     final target = Target.fromString(argResults.option('target')!);
     final input = argResults.option('input')!;
-    final outputDir = argResults.option('output')!;
-    Directory(outputDir).createSync(recursive: true);
-    final output = '$outputDir/out${target.extension}';
-
     final config = ConfigManager.loadConfig();
-    final ws = workspace..ensureBuildDirectory();
 
-    final request = BuildRequest(
+    final request = BuildRequest.withWorkspace(
       input: input,
-      output: output,
       target: target,
-      workDirectory: ws.buildDirectory.path,
-      projectRootUri: ws.rootUri,
-      projectPackageName: ws.packageName,
+      workspace: workspace,
     );
 
     try {
@@ -97,9 +84,18 @@ class BuildCommand extends RefractorCommand {
       }
 
       logger.detail('Writing output to ${result.outputPath}...');
-      // TODO(jaroslav): Route symbol maps and other auxiliary outputs through
-      //  dedicated artifact-handling boundary once that feature lands.
-      result.symbolTable.writeToPath(config.symbolMapPath);
+      final artifactPath = workspace.auxiliaryOutputPath(
+        config.artifactJsonPath,
+      );
+      if (result.passResults.hasArtifacts) {
+        result.passResults.writeArtifactsToPath(artifactPath);
+      } else {
+        final artifactFile = File(artifactPath);
+        if (artifactFile.existsSync()) {
+          artifactFile.deleteSync();
+        }
+      }
+
       logger.success('Build complete: ${result.outputPath}');
       return ExitCode.success.code;
     } on Exception catch (e) {
@@ -107,11 +103,7 @@ class BuildCommand extends RefractorCommand {
     }
   }
 
-  BuildReporter _detectReporter() {
-    if (isCI && Vendor.IS_GITHUB_ACTIONS) {
-      return GitHubReporter(logger);
-    }
-
-    return TextReporter(logger);
-  }
+  BuildReporter _detectReporter() => isCI && Vendor.IS_GITHUB_ACTIONS
+      ? GitHubReporter(logger)
+      : TextReporter(logger);
 }

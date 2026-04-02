@@ -1,12 +1,11 @@
 import 'package:mason_logger/mason_logger.dart';
+import 'package:refractor/src/cli/project_workspace.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/engine/pass_runner.dart';
-import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
-import 'package:refractor/src/engine/symbol_table.dart';
 import 'package:refractor/src/policy/policy_resolver.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
@@ -22,6 +21,15 @@ class BuildRequest {
     required this.projectRootUri,
     required this.projectPackageName,
   });
+
+  BuildRequest.withWorkspace({
+    required this.input,
+    required this.target,
+    required ProjectWorkspace workspace,
+  }) : output = workspace.primaryOutputPath(target.extension),
+       workDirectory = workspace.buildDirectory.path,
+       projectRootUri = workspace.root.uri,
+       projectPackageName = workspace.packageName;
 
   final String input;
   final String output;
@@ -39,34 +47,37 @@ class RefractorEngine {
   RefractorEngine({
     required this.compiler,
     required this.kernelIO,
+    PassRegistry passRegistry = defaultPassRegistry,
     Logger? logger,
-  }) : _logger = logger;
+  }) : _passRegistry = passRegistry,
+       _logger = logger;
   final Compiler compiler;
   final KernelIO kernelIO;
+  final PassRegistry _passRegistry;
   final Logger? _logger;
 
   Future<BuildResult> run({
     required RefractorConfig config,
     required BuildRequest request,
   }) async {
-    // 1. Compile source → kernel.
     _logger?.detail('Compiling ${request.input} to kernel...');
     final dillPath = '${request.workDirectory}/app.dill';
     compiler.compileToKernel(request.input, dillPath);
 
-    // 2. Load & obfuscate.
     _logger?.detail('Running obfuscation passes...');
     final component = kernelIO.load(dillPath);
     final projectScope = ProjectScope(
       projectRootUri: request.projectRootUri,
       projectPackageName: request.projectPackageName,
     );
+
     final policy = PolicyResolver().resolve(
       component: component,
       config: config,
       projectScope: projectScope,
     );
-    final enabledPasses = defaultPassRegistry.createAll(
+
+    final enabledPasses = _passRegistry.createAll(
       configs: config.passes,
       policy: policy,
       projectScope: projectScope,
@@ -75,35 +86,24 @@ class RefractorEngine {
     final runner = PassRunner(passes: enabledPasses, logger: _logger);
     final runResult = await runner.run(component);
 
-    // Extract symbol table from rename pass results.
-    final symbolTable = SymbolTable();
-    final mapping = runResult.artifact<RenameArtifact>('rename')?.mapping;
-    if (mapping != null) {
-      // symbolMap is keyed obfuscated → original.
-      for (final entry in mapping.symbolMap.entries) {
-        symbolTable.record(entry.value, entry.key);
-      }
-    }
-
     if (runResult.failures.isNotEmpty) {
       _logger?.detail(
         'Skipping output generation because one or more passes failed.',
       );
+
       return BuildResult(
         outputPath: request.output,
-        symbolTable: symbolTable,
         passesRun: enabledPasses.map((p) => p.name).toList(),
+        passResults: runResult,
         reports: runResult.reports,
         failures: runResult.failures,
       );
     }
 
-    // 3. Write obfuscated kernel.
     _logger?.detail('Writing obfuscated kernel...');
     final obfuscatedDillPath = '${request.workDirectory}/app.obfuscated.dill';
     kernelIO.write(component, obfuscatedDillPath);
 
-    // 4. Compile to target (or write directly for kernel target).
     switch (request.target) {
       case Target.exe:
       case Target.aot:
@@ -125,8 +125,8 @@ class RefractorEngine {
 
     return BuildResult(
       outputPath: request.output,
-      symbolTable: symbolTable,
       passesRun: enabledPasses.map((p) => p.name).toList(),
+      passResults: runResult,
       reports: runResult.reports,
       failures: runResult.failures,
     );
@@ -137,15 +137,15 @@ class RefractorEngine {
 class BuildResult {
   BuildResult({
     required this.outputPath,
-    required this.symbolTable,
     required this.passesRun,
+    required this.passResults,
     this.reports = const [],
     this.failures = const [],
   });
 
   final String outputPath;
-  final SymbolTable symbolTable;
   final List<String> passesRun;
+  final PassResults passResults;
   final List<PassReport> reports;
   final List<PassFailureRecord> failures;
 }
