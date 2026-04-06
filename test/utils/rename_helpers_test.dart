@@ -40,39 +40,40 @@ void main() {
     });
   });
 
-  group('hasEntryPointPragma', () {
+  group('hasRefractorKeepAnnotation', () {
     test(
-      'returns true when annotations contain a pragma ConstantExpression',
+      'returns true for RefractorKeep from refractor_annotation package',
       () {
-        final coreUri = Uri.parse('dart:core');
-        final pragmaClass = Class(name: 'pragma', fileUri: coreUri);
-        final _ = Library(coreUri, fileUri: coreUri)..addClass(pragmaClass);
+        final annotationUri = Uri.parse(
+          'package:refractor_annotation/refractor_annotation.dart',
+        );
+        final annotationLib = Library(annotationUri, fileUri: annotationUri);
+        final keepClass = Class(name: 'RefractorKeep', fileUri: annotationUri);
+        annotationLib.addClass(keepClass);
 
         final annotation = ConstantExpression(
-          InstanceConstant(pragmaClass.reference, [], {}),
+          InstanceConstant(keepClass.reference, const [], const {}),
         );
 
-        expect(hasEntryPointPragma([annotation]), isTrue);
+        expect(hasRefractorKeepAnnotation([annotation]), isTrue);
       },
     );
 
     test('returns false for empty annotation list', () {
-      expect(hasEntryPointPragma([]), isFalse);
+      expect(hasRefractorKeepAnnotation([]), isFalse);
     });
 
-    test('returns false for non-pragma annotations', () {
-      final otherClass = Class(
-        name: 'other',
-        fileUri: Uri.parse('dart:core'),
-      );
-      final coreUri = Uri.parse('dart:core');
-      final _ = Library(coreUri, fileUri: coreUri)..addClass(otherClass);
+    test('returns false for other package classes named RefractorKeep', () {
+      final otherUri = Uri.parse('package:other/annotation.dart');
+      final annotationLib = Library(otherUri, fileUri: otherUri);
+      final keepClass = Class(name: 'RefractorKeep', fileUri: otherUri);
+      annotationLib.addClass(keepClass);
 
       final annotation = ConstantExpression(
-        InstanceConstant(otherClass.reference, [], {}),
+        InstanceConstant(keepClass.reference, const [], const {}),
       );
 
-      expect(hasEntryPointPragma([annotation]), isFalse);
+      expect(hasRefractorKeepAnnotation([annotation]), isFalse);
     });
   });
 }

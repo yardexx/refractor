@@ -119,7 +119,7 @@ final class PolicyResolver {
     Set<Class> stringKeptClasses,
   ) {
     for (final cls in library.classes) {
-      if (hasEntryPointPragma(cls.annotations)) {
+      if (hasRefractorKeepAnnotation(cls.annotations)) {
         renameKeptClasses.add(cls);
       }
       // Future string-encrypt annotations plug in here.
@@ -135,13 +135,13 @@ final class PolicyResolver {
   ) {
     final mainMethod = component.mainMethod;
     for (final procedure in library.procedures) {
-      if (hasEntryPointPragma(procedure.annotations) ||
+      if (hasRefractorKeepAnnotation(procedure.annotations) ||
           identical(mainMethod, procedure)) {
         renameExplicitMembers.add(procedure);
       }
     }
     for (final field in library.fields) {
-      if (hasEntryPointPragma(field.annotations)) {
+      if (hasRefractorKeepAnnotation(field.annotations)) {
         renameExplicitMembers.add(field);
       }
     }
@@ -155,17 +155,17 @@ final class PolicyResolver {
   ) {
     for (final cls in library.classes) {
       for (final procedure in cls.procedures) {
-        if (hasEntryPointPragma(procedure.annotations)) {
+        if (hasRefractorKeepAnnotation(procedure.annotations)) {
           renameExplicitMembers.add(procedure);
         }
       }
       for (final field in cls.fields) {
-        if (hasEntryPointPragma(field.annotations)) {
+        if (hasRefractorKeepAnnotation(field.annotations)) {
           renameExplicitMembers.add(field);
         }
       }
       for (final constructor in cls.constructors) {
-        if (hasEntryPointPragma(constructor.annotations)) {
+        if (hasRefractorKeepAnnotation(constructor.annotations)) {
           renameExplicitMembers.add(constructor);
         }
       }

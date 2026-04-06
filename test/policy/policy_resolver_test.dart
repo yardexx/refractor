@@ -4,11 +4,13 @@ import 'package:refractor/src/policy/policy_resolver.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
+import '../helpers/kernel_helpers.dart';
+
 void main() {
   group('PolicyResolver', () {
     late ProjectScope projectScope;
     late Library coreLib;
-    late Class pragmaClass;
+    late Library annotationLib;
 
     setUp(() {
       projectScope = ProjectScope(
@@ -19,14 +21,18 @@ void main() {
         Uri.parse('dart:core'),
         fileUri: Uri.parse('dart:core'),
       );
-      pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
-      coreLib.addClass(pragmaClass);
+      annotationLib = makeRefractorAnnotationLibrary();
     });
 
     test('keeps globally excluded libraries for all passes', () {
       final excludedLib = _userLibrary('src/excluded.dart');
       final includedLib = _userLibrary('src/included.dart');
-      final component = _component([coreLib, excludedLib, includedLib]);
+      final component = _component([
+        coreLib,
+        annotationLib,
+        excludedLib,
+        includedLib,
+      ]);
       final config = RefractorConfig.fromYaml('''
 refractor:
   exclude:
@@ -50,7 +56,7 @@ refractor:
 
     test('keeps pass-specific exclusions only for the targeted pass', () {
       final excludedLib = _userLibrary('src/rename_only.dart');
-      final component = _component([coreLib, excludedLib]);
+      final component = _component([coreLib, annotationLib, excludedLib]);
       final config = RefractorConfig.fromYaml('''
 refractor:
   passes:
@@ -70,36 +76,42 @@ refractor:
       expect(policy.stringEncrypt.isLibraryKept(excludedLib), isFalse);
     });
 
-    test('class-level pragma keep propagates to members', () {
-      final library = _userLibrary('src/annotated_class.dart');
-      final cls = Class(name: 'Annotated', fileUri: library.fileUri)
-        ..addAnnotation(_pragmaAnnotation(pragmaClass));
-      final method = Procedure(
-        Name('call'),
-        ProcedureKind.Method,
-        FunctionNode(EmptyStatement()),
-        fileUri: library.fileUri,
-      );
-      cls.addProcedure(method);
-      library.addClass(cls);
-      final component = _component([coreLib, library]);
-      final config = RefractorConfig.fromYaml('''
-refractor:
-  passes:
-    rename: true
-''');
+    test(
+      'class-level keep annotation propagates to members and constructors',
+      () {
+        final library = _userLibrary('src/annotated_class.dart');
+        final cls = Class(name: 'Annotated', fileUri: library.fileUri)
+          ..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
+        final method = Procedure(
+          Name('call'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: library.fileUri,
+        );
+        final ctor = Constructor(
+          FunctionNode(EmptyStatement()),
+          name: Name('named'),
+          fileUri: library.fileUri,
+        );
+        cls
+          ..addProcedure(method)
+          ..addConstructor(ctor);
+        library.addClass(cls);
+        final component = _component([coreLib, annotationLib, library]);
 
-      final policy = PolicyResolver().resolve(
-        component: component,
-        config: config,
-        projectScope: projectScope,
-      );
+        final policy = PolicyResolver().resolve(
+          component: component,
+          config: _renameConfig(),
+          projectScope: projectScope,
+        );
 
-      expect(policy.rename.isClassKept(cls), isTrue);
-      expect(policy.rename.isMemberKept(method), isTrue);
-    });
+        expect(policy.rename.isClassKept(cls), isTrue);
+        expect(policy.rename.isMemberKept(method), isTrue);
+        expect(policy.rename.isMemberKept(ctor), isTrue);
+      },
+    );
 
-    test('getter and setter keeps stay independent from field keeps', () {
+    test('member-level keep stays independent from sibling members', () {
       final library = _userLibrary('src/property.dart');
       final cls = Class(name: 'Holder', fileUri: library.fileUri);
       final field = Field.mutable(
@@ -111,7 +123,7 @@ refractor:
         ProcedureKind.Getter,
         FunctionNode(ReturnStatement(IntLiteral(1))),
         fileUri: library.fileUri,
-      )..addAnnotation(_pragmaAnnotation(pragmaClass));
+      )..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
       final setter = Procedure(
         Name('value'),
         ProcedureKind.Setter,
@@ -127,22 +139,71 @@ refractor:
         ..addProcedure(getter)
         ..addProcedure(setter);
       library.addClass(cls);
-      final component = _component([coreLib, library]);
-      final config = RefractorConfig.fromYaml('''
-refractor:
-  passes:
-    rename: true
-''');
+      final component = _component([coreLib, annotationLib, library]);
 
       final policy = PolicyResolver().resolve(
         component: component,
-        config: config,
+        config: _renameConfig(),
         projectScope: projectScope,
       );
 
       expect(policy.rename.isMemberKept(getter), isTrue);
       expect(policy.rename.isMemberKept(field), isFalse);
       expect(policy.rename.isMemberKept(setter), isFalse);
+    });
+
+    test('annotated top-level field is kept', () {
+      final library = _userLibrary('src/top_level_field.dart');
+      final field = Field.mutable(
+        Name('apiKey'),
+        fileUri: library.fileUri,
+      )..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
+      library.addField(field);
+      final component = _component([coreLib, annotationLib, library]);
+
+      final policy = PolicyResolver().resolve(
+        component: component,
+        config: _renameConfig(),
+        projectScope: projectScope,
+      );
+
+      expect(policy.rename.isMemberKept(field), isTrue);
+    });
+
+    test('generic pragma does not keep rename targets', () {
+      final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
+      coreLib.addClass(pragmaClass);
+
+      final library = _userLibrary('src/pragma_only.dart');
+      final cls = Class(name: 'Annotated', fileUri: library.fileUri)
+        ..addAnnotation(
+          ConstantExpression(
+            InstanceConstant(pragmaClass.reference, const [], const {}),
+          ),
+        );
+      final method =
+          Procedure(
+            Name('call'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: library.fileUri,
+          )..addAnnotation(
+            ConstantExpression(
+              InstanceConstant(pragmaClass.reference, const [], const {}),
+            ),
+          );
+      cls.addProcedure(method);
+      library.addClass(cls);
+      final component = _component([coreLib, annotationLib, library]);
+
+      final policy = PolicyResolver().resolve(
+        component: component,
+        config: _renameConfig(),
+        projectScope: projectScope,
+      );
+
+      expect(policy.rename.isClassKept(cls), isFalse);
+      expect(policy.rename.isMemberKept(method), isFalse);
     });
 
     test('keeps the component main method', () {
@@ -164,16 +225,14 @@ refractor:
       library
         ..addProcedure(main)
         ..addProcedure(helper);
-      final component = _component([coreLib, library], mainMethod: main);
-      final config = RefractorConfig.fromYaml('''
-refractor:
-  passes:
-    rename: true
-''');
+      final component = _component(
+        [coreLib, annotationLib, library],
+        mainMethod: main,
+      );
 
       final policy = PolicyResolver().resolve(
         component: component,
-        config: config,
+        config: _renameConfig(),
         projectScope: projectScope,
       );
 
@@ -202,17 +261,13 @@ refractor:
         ..addProcedure(entrypoint)
         ..addClass(cls);
       final component = _component(
-        [coreLib, library],
+        [coreLib, annotationLib, library],
         mainMethod: entrypoint,
       );
 
       final policy = PolicyResolver().resolve(
         component: component,
-        config: RefractorConfig.fromYaml('''
-refractor:
-  passes:
-    rename: true
-'''),
+        config: _renameConfig(),
         projectScope: projectScope,
       );
 
@@ -225,7 +280,7 @@ refractor:
         Uri.parse('file:///virtual/project/lib/src/file_only.dart'),
         fileUri: Uri.parse('file:///virtual/project/lib/src/file_only.dart'),
       );
-      final component = _component([coreLib, fileLibrary]);
+      final component = _component([coreLib, annotationLib, fileLibrary]);
       final config = RefractorConfig.fromYaml('''
 refractor:
   passes:
@@ -245,7 +300,7 @@ refractor:
 
     test('compiles string-encrypt exclude_patterns into literal policy', () {
       final library = _userLibrary('src/strings.dart');
-      final component = _component([coreLib, library]);
+      final component = _component([coreLib, annotationLib, library]);
       final config = RefractorConfig.fromYaml('''
 refractor:
   passes:
@@ -272,6 +327,14 @@ refractor:
   });
 }
 
+RefractorConfig _renameConfig() {
+  return RefractorConfig.fromYaml('''
+refractor:
+  passes:
+    rename: true
+''');
+}
+
 Library _userLibrary(String path) {
   final uri = Uri.parse('package:refractor/$path');
   return Library(uri, fileUri: uri);
@@ -283,10 +346,4 @@ Component _component(
 }) {
   return Component(libraries: libraries)
     ..setMainMethodAndMode(mainMethod?.reference, true);
-}
-
-Expression _pragmaAnnotation(Class pragmaClass) {
-  return ConstantExpression(
-    InstanceConstant(pragmaClass.reference, const [], const {}),
-  );
 }
