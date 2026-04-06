@@ -8,8 +8,20 @@ It exercises:
 - SDK override exclusions
 - local, instance, top-level, static-field, constructor, and factory tear-offs
 - generic instantiations and redirecting factories
-- `@pragma('vm:entry-point')` exclusions
+- `@Refractor.keep()` rename exclusions on entry-point-like surfaces
+- ordinary source annotations alongside Refractor-owned keep annotations
 - string interpolation and annotation-bearing declarations
+
+The example keeps a few rename-sensitive declarations via:
+
+```dart
+import 'package:refractor_annotation/refractor_annotation.dart';
+
+class EntryPointService {
+  @Refractor.keep()
+  String callback({required String label, bool excited = false}) { ... }
+}
+```
 
 Run it with:
 
