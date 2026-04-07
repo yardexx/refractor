@@ -59,6 +59,24 @@ void main() {
       },
     );
 
+    test(
+      'returns true for RefractorKeep from refractor_annotation src library',
+      () {
+        final annotationUri = Uri.parse(
+          'package:refractor_annotation/src/refractor.dart',
+        );
+        final annotationLib = Library(annotationUri, fileUri: annotationUri);
+        final keepClass = Class(name: 'RefractorKeep', fileUri: annotationUri);
+        annotationLib.addClass(keepClass);
+
+        final annotation = ConstantExpression(
+          InstanceConstant(keepClass.reference, const [], const {}),
+        );
+
+        expect(hasRefractorKeepAnnotation([annotation]), isTrue);
+      },
+    );
+
     test('returns false for empty annotation list', () {
       expect(hasRefractorKeepAnnotation([]), isFalse);
     });
