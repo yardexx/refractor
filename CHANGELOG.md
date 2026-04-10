@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-10
+
+### Added
+
+- Refractor-owned rename keep annotations through the new standalone
+  `refractor_annotation` package with the public API `@Refractor.keep()`.
+- Rename-policy and regression coverage for annotation-driven preservation,
+  including class-level propagation, constructor coverage, and package smoke
+  tests for the new annotations package.
+- Example app usage of `@Refractor.keep()` to demonstrate preserving selected
+  rename-sensitive surfaces without relying on compiler pragmas.
+
+### Changed
+
+- Rename policy now recognizes explicit Refractor keep annotations instead of
+  treating generic `@pragma` metadata as a rename keep signal.
+- Keep-annotation detection now accepts the annotation package's public export
+  URI and defining `src` URI so compiled kernels resolve correctly.
+- Example application wiring now depends on `refractor_annotation` directly for
+  source-level keep markers.
+
 ## [0.2.1] - 2026-04-02
 
 ### Added
