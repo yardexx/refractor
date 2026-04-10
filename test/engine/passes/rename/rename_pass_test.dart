@@ -14,12 +14,14 @@ import '../../../helpers/kernel_helpers.dart';
 void main() {
   group('RenamePass', () {
     late Library coreLib;
+    late Library annotationLib;
     late Library userLib;
     late Component component;
     late ProjectScope projectScope;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
+      annotationLib = makeRefractorAnnotationLibrary();
       userLib = makeUserLibrary();
       projectScope = makeProjectScope();
     });
@@ -43,7 +45,11 @@ void main() {
     Future<RenameMapping> runPass([
       RenamePassConfig config = const RenamePassConfig(),
     ]) async {
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeComponent(
+        coreLib: coreLib,
+        userLib: userLib,
+        extraLibraries: [annotationLib],
+      );
       final result = await makePass(component, config: config).run(component);
       expect(result, isA<PassSucceeded>());
       return ((result as PassSucceeded).artifact! as RenameArtifact).mapping;
@@ -53,7 +59,11 @@ void main() {
       final cls = Class(name: 'Tracker', fileUri: userLib.fileUri);
       userLib.addClass(cls);
 
-      component = makeComponent(coreLib: coreLib, userLib: userLib);
+      component = makeComponent(
+        coreLib: coreLib,
+        userLib: userLib,
+        extraLibraries: [annotationLib],
+      );
       final result = await makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
@@ -167,26 +177,18 @@ void main() {
       },
     );
 
-    test('@pragma annotation prevents rename of annotated node', () async {
-      final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
-      coreLib.addClass(pragmaClass);
+    test(
+      'Refractor.keep annotation prevents rename of annotated node',
+      () async {
+        final cls = Class(name: 'KeepMe', fileUri: userLib.fileUri)
+          ..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
+        userLib.addClass(cls);
 
-      final cls = Class(name: 'KeepMe', fileUri: userLib.fileUri)
-        ..addAnnotation(
-          ConstantExpression(
-            InstanceConstant(
-              pragmaClass.reference,
-              [],
-              {},
-            ),
-          ),
-        );
-      userLib.addClass(cls);
+        await runPass();
 
-      await runPass();
-
-      expect(cls.name, equals('KeepMe'));
-    });
+        expect(cls.name, equals('KeepMe'));
+      },
+    );
 
     test('field and getter with same name get same obfuscated name', () async {
       final cls = Class(name: 'Svc', fileUri: userLib.fileUri);
@@ -302,21 +304,13 @@ void main() {
       expect(ctor.name.text, equals(''));
     });
 
-    test('constructor with @pragma is not renamed', () async {
-      final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
-      coreLib.addClass(pragmaClass);
-
+    test('constructor with Refractor.keep is not renamed', () async {
       final cls = Class(name: 'MyClass', fileUri: userLib.fileUri);
-      final ctor =
-          Constructor(
-            FunctionNode(EmptyStatement()),
-            name: Name('kept'),
-            fileUri: userLib.fileUri,
-          )..addAnnotation(
-            ConstantExpression(
-              InstanceConstant(pragmaClass.reference, [], {}),
-            ),
-          );
+      final ctor = Constructor(
+        FunctionNode(EmptyStatement()),
+        name: Name('kept'),
+        fileUri: userLib.fileUri,
+      )..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
       cls.addConstructor(ctor);
       userLib.addClass(cls);
 
@@ -986,21 +980,13 @@ void main() {
       'DynamicInvocation stays unchanged when same selector is '
       'excluded elsewhere',
       () async {
-        final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
-        coreLib.addClass(pragmaClass);
-
         final firstClass = Class(name: 'First', fileUri: userLib.fileUri);
-        final keptMethod =
-            Procedure(
-              Name('foo'),
-              ProcedureKind.Method,
-              FunctionNode(EmptyStatement()),
-              fileUri: userLib.fileUri,
-            )..addAnnotation(
-              ConstantExpression(
-                InstanceConstant(pragmaClass.reference, [], {}),
-              ),
-            );
+        final keptMethod = Procedure(
+          Name('foo'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        )..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
         firstClass.addProcedure(keptMethod);
 
         final secondClass = Class(name: 'Second', fileUri: userLib.fileUri);
@@ -1041,6 +1027,23 @@ void main() {
         expect(call.name.text, 'foo');
       },
     );
+
+    test('generic pragma annotation no longer prevents rename', () async {
+      final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
+      coreLib.addClass(pragmaClass);
+
+      final cls = Class(name: 'KeepMe', fileUri: userLib.fileUri)
+        ..addAnnotation(
+          ConstantExpression(
+            InstanceConstant(pragmaClass.reference, const [], const {}),
+          ),
+        );
+      userLib.addClass(cls);
+
+      await runPass();
+
+      expect(cls.name, isNot('KeepMe'));
+    });
 
     test(
       'DynamicInvocation stays unchanged when selector exists in '

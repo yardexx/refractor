@@ -1,16 +1,27 @@
 import 'package:kernel/kernel.dart';
 
+final Set<Uri> _refractorAnnotationUris = {
+  Uri.parse('package:refractor_annotation/refractor_annotation.dart'),
+  Uri.parse('package:refractor_annotation/src/refractor.dart'),
+};
+
 String memberNameText(Member member) => switch (member) {
   final Procedure p => p.name.text,
   final Field f => f.name.text,
   final Constructor c => c.name.text,
 };
 
-bool hasEntryPointPragma(List<Expression> annotations) {
+bool hasRefractorKeepAnnotation(List<Expression> annotations) {
   for (final ann in annotations) {
     if (ann is ConstantExpression) {
       final c = ann.constant;
-      if (c is InstanceConstant && c.classNode.name == 'pragma') return true;
+      if (c is InstanceConstant &&
+          c.classNode.name == 'RefractorKeep' &&
+          _refractorAnnotationUris.contains(
+            c.classNode.enclosingLibrary.importUri,
+          )) {
+        return true;
+      }
     }
   }
   return false;

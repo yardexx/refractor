@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:refractor_annotation/refractor_annotation.dart';
+
 const String exampleVersion = '0.2.0';
 
 void main() async {
@@ -314,19 +316,19 @@ class RedirectPayload<T> {
 class EntryPointPayload {
   final String value;
 
-  @pragma('vm:entry-point')
+  @Refractor.keep()
   EntryPointPayload.named({required this.value, bool debug = false});
 
   String describe() => 'EntryPointPayload($value)';
 }
 
 class EntryPointService {
-  @pragma('vm:entry-point')
+  @Refractor.keep()
   String callback({required String label, bool excited = false}) {
     return excited ? 'entry:$label!' : 'entry:$label';
   }
 
-  @pragma('vm:entry-point')
+  @Refractor.keep()
   EntryPointPayload createPayload({required String value, bool debug = false}) {
     return EntryPointPayload.named(value: value, debug: debug);
   }

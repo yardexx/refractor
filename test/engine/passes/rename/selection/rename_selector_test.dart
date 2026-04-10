@@ -9,10 +9,12 @@ import '../../../../helpers/kernel_helpers.dart';
 void main() {
   group('RenameSelector', () {
     late Library coreLib;
+    late Library annotationLib;
     late Library userLib;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
+      annotationLib = makeRefractorAnnotationLibrary();
       userLib = makeUserLibrary();
     });
 
@@ -170,21 +172,13 @@ void main() {
     test(
       'kept project supertype members protect overriding subclass members',
       () {
-        final pragmaClass = Class(name: 'pragma', fileUri: coreLib.fileUri);
-        coreLib.addClass(pragmaClass);
-
         final base = Class(name: 'Base', fileUri: userLib.fileUri);
-        final keptMethod =
-            Procedure(
-              Name('render'),
-              ProcedureKind.Method,
-              FunctionNode(EmptyStatement()),
-              fileUri: userLib.fileUri,
-            )..addAnnotation(
-              ConstantExpression(
-                InstanceConstant(pragmaClass.reference, [], {}),
-              ),
-            );
+        final keptMethod = Procedure(
+          Name('render'),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+        )..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
         base.addProcedure(keptMethod);
         userLib.addClass(base);
 
@@ -202,7 +196,11 @@ void main() {
         child.addProcedure(overridingMethod);
         userLib.addClass(child);
 
-        final component = makeComponent(coreLib: coreLib, userLib: userLib);
+        final component = makeComponent(
+          coreLib: coreLib,
+          userLib: userLib,
+          extraLibraries: [annotationLib],
+        );
         final selection = makeSelector(component).select(component);
 
         expect(selection.instanceMembersByClass[child], isNotNull);

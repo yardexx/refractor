@@ -353,3 +353,37 @@ Expression makePragmaAnnotation(
     ),
   );
 }
+
+Library makeRefractorAnnotationLibrary() {
+  final uri = Uri.parse(
+    'package:refractor_annotation/refractor_annotation.dart',
+  );
+  final lib = Library(uri, fileUri: uri);
+
+  final refractorClass = Class(name: 'Refractor', fileUri: uri);
+  final keepClass = Class(name: 'RefractorKeep', fileUri: uri)
+    ..addConstructor(
+      Constructor(
+        FunctionNode(EmptyStatement()),
+        name: Name(''),
+        fileUri: uri,
+        isConst: true,
+      ),
+    );
+
+  lib
+    ..addClass(refractorClass)
+    ..addClass(keepClass);
+
+  return lib;
+}
+
+Expression makeRefractorKeepAnnotation(Library annotationLib) {
+  final keepClass = annotationLib.classes.firstWhere(
+    (cls) => cls.name == 'RefractorKeep',
+  );
+
+  return ConstantExpression(
+    InstanceConstant(keepClass.reference, const [], const {}),
+  );
+}
