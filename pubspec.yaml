@@ -1,6 +1,6 @@
 name: refractor
 description: A Dart kernel (.dill) obfuscation tool.
-version: 0.2.1
+version: 0.2.2
 publish_to: none
 repository: https://github.com/yardexx/refractor
 
@@ -8,6 +8,7 @@ environment:
   sdk: 3.11.3
 
 workspace:
+  - packages/refractor_annotation
   - packages/kernel_model
   - packages/third_party/kernel
 
@@ -35,5 +36,7 @@ dev_dependencies:
   json_serializable: ^6.8.0
   lints: ^3.0.0
   mocktail: ^1.0.4
+  refractor_annotation:
+    path: packages/refractor_annotation
   test: ^1.24.0
   very_good_analysis: ^10.1.0

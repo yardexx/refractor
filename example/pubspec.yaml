@@ -1,7 +1,7 @@
 name: app
 description: A sample command-line application with basic argument parsing.
 version: 0.0.1
-# repository: https://github.com/my_org/my_repo
+publish_to: none
 
 environment:
   sdk: 3.11.3
@@ -9,6 +9,8 @@ environment:
 # Add regular dependencies here.
 dependencies:
   args: ^2.7.0
+  refractor_annotation:
+    path: ../packages/refractor_annotation
 
 dev_dependencies:
   lints: ^6.0.0
