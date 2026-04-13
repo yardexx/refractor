@@ -39,25 +39,32 @@ final class PassRegistry {
     required ResolvedPolicy policy,
     required ProjectScope projectScope,
   }) {
+    final enabledConfigsByName = <String, PassConfig>{};
+
+    for (final config in configs) {
+      if (!config.enabled) {
+        continue;
+      }
+
+      final matchingDefinitions = definitions
+          .where((definition) => definition.supports(config))
+          .toList();
+      if (matchingDefinitions.isEmpty) {
+        throw StateError('No pass definition found for ${config.runtimeType}.');
+      }
+
+      enabledConfigsByName[matchingDefinitions.single.name] = config;
+    }
+
     return [
-      for (final config in configs)
-        if (config.enabled)
-          _definitionFor(config).createPass(
+      for (final definition in definitions)
+        if (enabledConfigsByName[definition.name] case final config?)
+          definition.createPass(
             config: config,
             policy: policy,
             projectScope: projectScope,
           ),
     ];
-  }
-
-  PassDefinition<dynamic> _definitionFor(PassConfig config) {
-    final matches = definitions.where(
-      (definition) => definition.supports(config),
-    );
-    if (matches.isEmpty) {
-      throw StateError('No pass definition found for ${config.runtimeType}.');
-    }
-    return matches.single;
   }
 }
 
