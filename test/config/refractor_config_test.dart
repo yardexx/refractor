@@ -135,7 +135,7 @@ refractor:
       expect(passes[0].name, 'string_encrypt');
     });
 
-    test('preserves YAML pass order', () {
+    test('builds passes in canonical registry order when YAML is reversed', () {
       final config = RefractorConfig.fromYaml('''
 refractor:
   passes:
@@ -159,10 +159,39 @@ refractor:
       );
 
       expect(passes.map((pass) => pass.name).toList(), [
-        'string_encrypt',
         'rename',
+        'string_encrypt',
       ]);
     });
+
+    test(
+      'skips disabled earlier built-in passes without reordering later ones',
+      () {
+        final config = RefractorConfig.fromYaml('''
+refractor:
+  passes:
+    string_encrypt: true
+    rename: false
+''');
+        final projectScope = ProjectScope(
+          projectRootUri: Uri.directory('/virtual/project'),
+          projectPackageName: 'refractor',
+        );
+        final policy = PolicyResolver().resolve(
+          component: _emptyComponent(),
+          config: config,
+          projectScope: projectScope,
+        );
+
+        final passes = defaultPassRegistry.createAll(
+          configs: config.passes,
+          policy: policy,
+          projectScope: projectScope,
+        );
+
+        expect(passes.map((pass) => pass.name).toList(), ['string_encrypt']);
+      },
+    );
   });
 
   group('RefractorConfig.excludePatterns', () {

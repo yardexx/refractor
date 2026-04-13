@@ -89,26 +89,29 @@ void main() {
       },
     );
 
-    test('passesRun reflects YAML pass order', () async {
-      final result = await engine.run(
-        config: RefractorConfig.fromYaml('''
+    test(
+      'passesRun reflects canonical built-in order, not YAML order',
+      () async {
+        final result = await engine.run(
+          config: RefractorConfig.fromYaml('''
 refractor:
   passes:
     string_encrypt: true
     rename: true
 '''),
-        request: BuildRequest(
-          input: 'lib/main.dart',
-          output: 'build/out',
-          target: Target.exe,
-          workDirectory: '.dart_tool/refractor',
-          projectRootUri: Uri(scheme: 'file', path: '/project/'),
-          projectPackageName: 'sample_app',
-        ),
-      );
+          request: BuildRequest(
+            input: 'lib/main.dart',
+            output: 'build/out',
+            target: Target.exe,
+            workDirectory: '.dart_tool/refractor',
+            projectRootUri: Uri(scheme: 'file', path: '/project/'),
+            projectPackageName: 'sample_app',
+          ),
+        );
 
-      expect(result.passesRun, ['string_encrypt', 'rename']);
-    });
+        expect(result.passesRun, ['rename', 'string_encrypt']);
+      },
+    );
 
     test(
       'pass failure is reported and output generation is skipped',
