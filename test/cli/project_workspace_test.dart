@@ -35,6 +35,17 @@ void main() {
       );
     });
 
+    test('resolves nested auxiliary output path inside build directory', () {
+      expect(
+        workspace.auxiliaryOutputPath(
+          'reports${Platform.pathSeparator}artifacts.json',
+        ),
+        '${tempDir.path}${Platform.pathSeparator}build'
+        '${Platform.pathSeparator}reports'
+        '${Platform.pathSeparator}artifacts.json',
+      );
+    });
+
     test('preserves absolute auxiliary output path', () {
       final absolutePath =
           '${tempDir.path}${Platform.pathSeparator}artifacts.json';

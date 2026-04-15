@@ -181,6 +181,66 @@ refractor:
       },
     );
 
+    test(
+      'preserves configured artifact json on failure',
+      () async {
+        runner = CommandRunner<int>('test', 'test')
+          ..addCommand(
+            _FakeBuildCommand(
+              logger: logger,
+              result: BuildResult(
+                outputPath: 'build/out.dill',
+                passesRun: ['string_encrypt'],
+                passResults: PassResults()
+                  ..addArtifact(
+                    'string_encrypt',
+                    const _JsonArtifact({'records': []}),
+                  ),
+                reports: const [
+                  PassReport(
+                    passName: 'string_encrypt',
+                    message: 'boom',
+                  ),
+                ],
+                failures: [
+                  PassFailureRecord(
+                    passName: 'string_encrypt',
+                    error: Exception('kaboom'),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+        File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+        File('refractor.yaml').writeAsStringSync('''
+refractor:
+  artifact_json: reports/artifacts.json
+  passes:
+    rename: false
+    string_encrypt: true
+''');
+        Directory('build/reports').createSync(recursive: true);
+        Directory('lib').createSync(recursive: true);
+        File(
+          'lib/main.dart',
+        ).writeAsStringSync('void main() { print("ok"); }\n');
+        final artifactFile = File('build/reports/artifacts.json')
+          ..writeAsStringSync('stale artifact data');
+
+        final exitCode = await runner.run([
+          'build',
+          '--target',
+          'kernel',
+          '--input',
+          'lib/main.dart',
+        ]);
+
+        expect(exitCode, ExitCode.software.code);
+        expect(artifactFile.readAsStringSync(), 'stale artifact data');
+      },
+    );
+
     test('writes GitHub summary when GITHUB_STEP_SUMMARY is set', () async {
       runner = CommandRunner<int>('test', 'test')
         ..addCommand(
@@ -566,6 +626,171 @@ refractor:
         },
       });
     });
+
+    test(
+      'writes generic artifact json to configured relative path',
+      () async {
+        final passResults = PassResults()
+          ..addArtifact(
+            'rename',
+            const _JsonArtifact({
+              'symbol_map': {'a': 'b'},
+            }),
+          );
+
+        runner = CommandRunner<int>('test', 'test')
+          ..addCommand(
+            _FakeBuildCommand(
+              logger: logger,
+              result: BuildResult(
+                outputPath: 'build/out.dill',
+                passesRun: ['rename'],
+                passResults: passResults,
+                reports: const [PassReport(passName: 'rename')],
+              ),
+            ),
+          );
+
+        File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+        File('refractor.yaml').writeAsStringSync('''
+refractor:
+  artifact_json: reports/artifacts.json
+  passes:
+    rename: true
+    string_encrypt: false
+''');
+        Directory('lib').createSync(recursive: true);
+        File(
+          'lib/main.dart',
+        ).writeAsStringSync('void main() { print("ok"); }\n');
+
+        final exitCode = await runner.run([
+          'build',
+          '--target',
+          'kernel',
+          '--input',
+          'lib/main.dart',
+        ]);
+
+        expect(exitCode, ExitCode.success.code);
+        expect(File('build/build_artifacts.json').existsSync(), isFalse);
+        final json =
+            jsonDecode(
+                  File('build/reports/artifacts.json').readAsStringSync(),
+                )
+                as Map<String, dynamic>;
+        expect(json, {
+          'passes': {
+            'rename': {
+              'symbol_map': {'a': 'b'},
+            },
+          },
+        });
+      },
+    );
+
+    test('writes generic artifact json to absolute path', () async {
+      final passResults = PassResults()
+        ..addArtifact(
+          'rename',
+          const _JsonArtifact({
+            'symbol_map': {'a': 'b'},
+          }),
+        );
+
+      runner = CommandRunner<int>('test', 'test')
+        ..addCommand(
+          _FakeBuildCommand(
+            logger: logger,
+            result: BuildResult(
+              outputPath: 'build/out.dill',
+              passesRun: ['rename'],
+              passResults: passResults,
+              reports: const [PassReport(passName: 'rename')],
+            ),
+          ),
+        );
+
+      final artifactPath =
+          '${tempDir.path}${Platform.pathSeparator}artifacts'
+          '${Platform.pathSeparator}refractor.json';
+      File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+      File('refractor.yaml').writeAsStringSync('''
+refractor:
+  artifact_json: $artifactPath
+  passes:
+    rename: true
+    string_encrypt: false
+''');
+      Directory('lib').createSync(recursive: true);
+      File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
+
+      final exitCode = await runner.run([
+        'build',
+        '--target',
+        'kernel',
+        '--input',
+        'lib/main.dart',
+      ]);
+
+      expect(exitCode, ExitCode.success.code);
+      expect(File('build/build_artifacts.json').existsSync(), isFalse);
+      final json =
+          jsonDecode(File(artifactPath).readAsStringSync())
+              as Map<String, dynamic>;
+      expect(json, {
+        'passes': {
+          'rename': {
+            'symbol_map': {'a': 'b'},
+          },
+        },
+      });
+    });
+
+    test(
+      'removes stale configured relative artifact json without artifacts',
+      () async {
+        runner = CommandRunner<int>('test', 'test')
+          ..addCommand(
+            _FakeBuildCommand(
+              logger: logger,
+              result: BuildResult(
+                outputPath: 'build/out.dill',
+                passesRun: const [],
+                passResults: PassResults(),
+              ),
+            ),
+          );
+
+        File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+        File('refractor.yaml').writeAsStringSync('''
+refractor:
+  artifact_json: reports/artifacts.json
+  passes:
+    rename: false
+    string_encrypt: false
+''');
+        Directory('build/reports').createSync(recursive: true);
+        Directory('lib').createSync(recursive: true);
+        File(
+          'lib/main.dart',
+        ).writeAsStringSync('void main() { print("ok"); }\n');
+        File(
+          'build/reports/artifacts.json',
+        ).writeAsStringSync('stale artifact data');
+
+        final exitCode = await runner.run([
+          'build',
+          '--target',
+          'kernel',
+          '--input',
+          'lib/main.dart',
+        ]);
+
+        expect(exitCode, ExitCode.success.code);
+        expect(File('build/reports/artifacts.json').existsSync(), isFalse);
+      },
+    );
   });
 }
 
