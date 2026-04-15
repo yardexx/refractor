@@ -110,6 +110,36 @@ refractor:
       expect(result.passesRun, ['string_encrypt', 'rename']);
     });
 
+    test('returns pass artifacts without artifact file IO', () async {
+      engine = RefractorEngine(
+        compiler: compiler,
+        kernelIO: kernelIo,
+        passRegistry: PassRegistry([_ArtifactDefinition()]),
+      );
+
+      final result = await engine.run(
+        config: RefractorConfig(passes: [const _ArtifactPassConfig()]),
+        request: BuildRequest(
+          input: 'lib/main.dart',
+          output: 'build/out',
+          target: Target.exe,
+          workDirectory: '.dart_tool/refractor',
+          projectRootUri: Uri(scheme: 'file', path: '/project/'),
+          projectPackageName: 'sample_app',
+        ),
+      );
+
+      expect(result.passesRun, ['artifact_pass']);
+      expect(
+        result.passResults.artifact<_EngineArtifact>('artifact_pass')?.value,
+        'tracked',
+      );
+      expect(
+        kernelIo.writeCalls.map((call) => call.path),
+        isNot(contains('build_artifacts.json')),
+      );
+    });
+
     test(
       'pass failure is reported and output generation is skipped',
       () async {
@@ -188,6 +218,54 @@ class _WriteCall {
 
   final Component component;
   final String path;
+}
+
+final class _ArtifactPassConfig extends PassConfig {
+  const _ArtifactPassConfig();
+}
+
+final class _ArtifactDefinition implements PassDefinition<_ArtifactPassConfig> {
+  @override
+  String get name => 'artifact_pass';
+
+  @override
+  Pass createPass({
+    required _ArtifactPassConfig config,
+    required ResolvedPolicy policy,
+    required ProjectScope projectScope,
+  }) {
+    return _ArtifactPass();
+  }
+
+  @override
+  _ArtifactPassConfig parseConfig(Map<String, dynamic> json) {
+    return const _ArtifactPassConfig();
+  }
+
+  @override
+  bool supports(PassConfig config) => config is _ArtifactPassConfig;
+}
+
+final class _ArtifactPass extends Pass {
+  @override
+  String get name => 'artifact_pass';
+
+  @override
+  Future<PassResult> run(Component component) async {
+    return const PassSucceeded(
+      artifact: _EngineArtifact('tracked'),
+      report: PassReport(passName: 'artifact_pass'),
+    );
+  }
+}
+
+final class _EngineArtifact extends PassArtifact {
+  const _EngineArtifact(this.value);
+
+  final String value;
+
+  @override
+  Map<String, Object?> toJson() => {'value': value};
 }
 
 final class _FailingPassConfig extends PassConfig {
