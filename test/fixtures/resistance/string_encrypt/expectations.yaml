@@ -1,8 +1,7 @@
 denylist:
   - SecretLaunchCode
   - AuditBanner
-allowlist:
-  - VISIBLE_MARKER
+allowlist: []
 rename_helpers: []
 required_metrics:
   string_encrypt.strings_encrypted: 1

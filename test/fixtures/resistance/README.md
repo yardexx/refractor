@@ -54,8 +54,7 @@ Example:
 ```yaml
 denylist:
   - SecretAlgorithm
-allowlist:
-  - VISIBLE_MARKER
+allowlist: []
 rename_helpers:
   - processConfidentialData
 required_metrics:
@@ -69,6 +68,10 @@ required_metrics:
 - Keep config exclusions minimal so the resistance check stays meaningful.
 - Use `allowlist` for deliberate preserved markers or tolerated values, not as a
   broad escape hatch.
+- Do not use `allowlist` to assert that an excluded string literal remains
+  visible in the final native executable. Exclusion only guarantees Refractor
+  will not rewrite that literal; the downstream Dart compiler may still omit or
+  reshape the plaintext in the artifact scanned by `strings`.
 - For `rename`, focus the first fixtures on externally visible identifiers.
 - For `string_encrypt`, use pass metrics only as a sanity signal alongside the
   real artifact scan.
