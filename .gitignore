@@ -6,6 +6,11 @@ pubspec.lock
 # Refractor shadow workspace
 .refractor/
 
+# Generated local verification outputs
+example/lib/*_out.txt
+test/fixtures/resistance/**/*.jit
+test/fixtures/resistance/**/*.aot
+
 # IDE
 .idea/
 *.iml
