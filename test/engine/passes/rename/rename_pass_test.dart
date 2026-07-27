@@ -79,7 +79,10 @@ void main() {
       final mapping = await runPass();
 
       expect(RenameArtifact(mapping: mapping).toJson(), {
-        'symbol_map': mapping.symbolMap,
+        'symbol_map': {
+          for (final entry in mapping.symbolMap.entries)
+            entry.key: entry.value.single,
+        },
       });
     });
 
@@ -254,7 +257,7 @@ void main() {
       final mapping = await runPass();
 
       expect(mapping.symbolMap, isNotEmpty);
-      expect(mapping.symbolMap[cls.name], equals('Tracker'));
+      expect(mapping.originalsFor(cls.name), contains('Tracker'));
     });
 
     test('returns report metrics for renamed declarations', () async {
@@ -705,6 +708,118 @@ void main() {
 
       expect(method.name.text, isNot('run'));
       expect(method.name.text, matches(RegExp(r'^[a-zA-Z]+$')));
+    });
+
+    test('overloading is disabled by default for unrelated families', () async {
+      final left = Class(name: 'Left', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('alpha'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      final right = Class(name: 'Right', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('beta'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      userLib
+        ..addClass(left)
+        ..addClass(right);
+
+      await runPass();
+
+      expect(
+        left.procedures.single.name.text,
+        isNot(equals(right.procedures.single.name.text)),
+      );
+    });
+
+    test('overloading reuses names for unrelated instance families', () async {
+      final left = Class(name: 'Left', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('alpha'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      final right = Class(name: 'Right', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('beta'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      userLib
+        ..addClass(left)
+        ..addClass(right);
+
+      final mapping = await runPass(const RenamePassConfig(overloading: true));
+
+      expect(
+        left.procedures.single.name.text,
+        equals(right.procedures.single.name.text),
+      );
+      expect(mapping.symbolMap, isNotEmpty);
+      expect(
+        mapping.originalsFor(left.procedures.single.name.text).toList(),
+        containsAll(['alpha', 'beta']),
+      );
+      expect(
+        RenameArtifact(mapping: mapping).toJson()['symbol_map'],
+        containsPair(
+          left.procedures.single.name.text,
+          containsAll(['alpha', 'beta']),
+        ),
+      );
+    });
+
+    test('overloading never pulls singleton members into slot reuse', () async {
+      final topLevel = Procedure(
+        Name('topLevel'),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+      );
+      final cls = Class(name: 'Svc', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('instanceWork'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        )
+        ..addProcedure(
+          Procedure(
+            Name('helper'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+            isStatic: true,
+          ),
+        );
+      userLib
+        ..addProcedure(topLevel)
+        ..addClass(cls);
+
+      await runPass(const RenamePassConfig(overloading: true));
+
+      expect(topLevel.name.text, isNot(equals(cls.procedures.first.name.text)));
+      expect(
+        cls.procedures[1].name.text,
+        isNot(equals(cls.procedures.first.name.text)),
+      );
     });
 
     // --- TFA compatibility tests ---

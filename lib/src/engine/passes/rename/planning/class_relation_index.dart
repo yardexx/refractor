@@ -54,6 +54,15 @@ class ClassRelationIndex {
     return false;
   }
 
+  /// Whether [a] and [b] have any common in-scope subtype, treating each
+  /// class as its own subtype.
+  bool shareScopedSubtype(Class a, Class b) {
+    final subsA = _allSubtypes[a];
+    final subsB = _allSubtypes[b];
+    if (subsA == null || subsB == null) return false;
+    return subsA.intersection(subsB).isNotEmpty;
+  }
+
   static Set<Class> _collectDirectSupertypes(Class cls) {
     final supertypes = <Class>{};
     if (cls.supertype != null) supertypes.add(cls.supertype!.classNode);

@@ -5,6 +5,7 @@ final class RenamePassConfig extends PassConfig {
     super.enabled,
     super.exclude,
     this.seed,
+    this.overloading = false,
   });
 
   factory RenamePassConfig.fromJson(Map<String, dynamic> json) {
@@ -14,8 +15,10 @@ final class RenamePassConfig extends PassConfig {
           .map((value) => value.toString())
           .toList(),
       seed: json['seed'] as int?,
+      overloading: json['overloading'] as bool? ?? false,
     );
   }
 
   final int? seed;
+  final bool overloading;
 }

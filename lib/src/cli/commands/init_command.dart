@@ -56,6 +56,7 @@ refractor:
   passes:
     rename:
       enabled: true
+      # overloading: false
       # exclude:
       #   - "lib/src/public_api/**"
 

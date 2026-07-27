@@ -12,8 +12,6 @@ import 'package:refractor/src/engine/passes/rename/validation/rename_validator.d
 import 'package:refractor/src/policy/rename_policy_view.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
-typedef NameGeneratorFactory = NameGenerator Function();
-
 /// Obfuscation pass that renames user-defined identifiers.
 ///
 /// Safety note: named parameters on non-static instance methods are preserved.
@@ -31,14 +29,13 @@ class RenamePass extends Pass {
     required this.config,
     required this.policy,
     required this.projectScope,
-    NameGeneratorFactory? generatorFactory,
-  }) : _generatorFactory =
-           generatorFactory ?? (() => ShuffledGenerator(seed: config.seed));
+    NameGenerator? nameGenerator,
+  }) : _nameGenerator = nameGenerator ?? ShuffledGenerator(seed: config.seed);
 
   final RenamePassConfig config;
   final RenamePolicyView policy;
   final ProjectScope projectScope;
-  final NameGeneratorFactory _generatorFactory;
+  final NameGenerator _nameGenerator;
 
   @override
   String get name => 'rename';
@@ -50,13 +47,10 @@ class RenamePass extends Pass {
         policy: policy,
         projectScope: projectScope,
       ).select(component);
-      final plan =
-          RenamePlanner(
-            generator: _generatorFactory(),
-          ).plan(
-            component,
-            selection,
-          );
+      final plan = RenamePlanner(
+        generator: _nameGenerator,
+        overloading: config.overloading,
+      ).plan(component, selection);
       final resolvedPlan = await plan;
       final output = await RenameTransformer(
         projectScope: projectScope,

@@ -13,10 +13,12 @@ import 'package:refractor/src/utils/rename_helpers.dart';
 final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
   RenamePlanner({
     required this.generator,
+    this.overloading = false,
     RenameSafetyNormalizer? safetyNormalizer,
   }) : _safetyNormalizer = safetyNormalizer ?? const RenameSafetyNormalizer();
 
   final NameGenerator generator;
+  final bool overloading;
   final RenameSafetyNormalizer _safetyNormalizer;
 
   @override
@@ -24,14 +26,30 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
     Component component,
     RenameSelection selection,
   ) async {
+    final hierarchy = ClassRelationIndex.build(
+      selection.instanceMembersByClass.keys,
+    );
     final memberFamilies = _buildMemberFamilies(
       selection.instanceMembersByClass,
+      hierarchy,
     );
-    final requests = _buildRequests(selection, memberFamilies);
-    final generatedNames = await generator.generateNames(requests);
+    final requests = _buildRequests(
+      selection,
+      memberFamilies,
+      hierarchy,
+    );
+    final generatedNames = await generator.generateNames(requests.requests);
+    final familyNames = <_MemberFamily, String>{
+      for (final entry in requests.familyRequests.entries)
+        entry.key: generatedNames[entry.value]!,
+    };
+    _validateNoDuplicateFamilyNames(familyNames);
     final mapping = _safetyNormalizer.normalize(
       component,
-      _materialize(generatedNames),
+      _materialize(
+        familyNames: familyNames,
+        assignedNames: generatedNames,
+      ),
     );
 
     return RenamePlan(
@@ -42,73 +60,205 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
     );
   }
 
-  List<RenameNameRequest> _buildRequests(
+  _PlannerRequests _buildRequests(
     RenameSelection selection,
     List<_MemberFamily> memberFamilies,
+    ClassRelationIndex hierarchy,
   ) {
-    return [
-      for (final family in memberFamilies)
-        FamilyRenameNameRequest(
+    final familyRequests = overloading
+        ? _buildOverloadedFamilyRequests(memberFamilies, hierarchy)
+        : {
+            for (final family in memberFamilies)
+              family: FamilyRenameNameRequest(
+                members: family.members,
+                originalName: family.originalName,
+                privacyScope: family.privacyScope,
+              ),
+          };
+
+    final uniqueFamilyRequests = <RenameNameRequest>{
+      ...familyRequests.values,
+    }.toList();
+
+    return _PlannerRequests(
+      requests: [
+        ...uniqueFamilyRequests,
+        for (final member in selection.singletonMembers)
+          MemberRenameNameRequest(
+            member: member,
+            originalName: memberNameText(member),
+            privacyScope: memberNameText(member).startsWith('_')
+                ? member.enclosingLibrary
+                : null,
+          ),
+        for (final cls in selection.classes)
+          ClassRenameNameRequest(
+            cls: cls,
+            originalName: cls.name,
+          ),
+        for (final variable in selection.variables)
+          if (variable.name != null && variable.name!.isNotEmpty)
+            VariableRenameNameRequest(
+              variable: variable,
+              originalName: variable.name!,
+            ),
+      ],
+      familyRequests: familyRequests,
+    );
+  }
+
+  Map<_MemberFamily, RenameNameRequest> _buildOverloadedFamilyRequests(
+    List<_MemberFamily> memberFamilies,
+    ClassRelationIndex hierarchy,
+  ) {
+    final familySlots = _assignFamilySlots(memberFamilies, hierarchy);
+    final slotRequests = <(Uri?, int), RenameNameRequest>{};
+    final familyRequests = <_MemberFamily, RenameNameRequest>{};
+
+    for (final family in memberFamilies) {
+      final slotKey = (_familyNamespace(family), familySlots[family]!);
+      final request = slotRequests.putIfAbsent(
+        slotKey,
+        () => FamilyRenameNameRequest(
           members: family.members,
           originalName: family.originalName,
           privacyScope: family.privacyScope,
         ),
-      for (final member in selection.singletonMembers)
-        MemberRenameNameRequest(
-          member: member,
-          originalName: memberNameText(member),
-          privacyScope: memberNameText(member).startsWith('_')
-              ? member.enclosingLibrary
-              : null,
-        ),
-      for (final cls in selection.classes)
-        ClassRenameNameRequest(
-          cls: cls,
-          originalName: cls.name,
-        ),
-      for (final variable in selection.variables)
-        if (variable.name != null && variable.name!.isNotEmpty)
-          VariableRenameNameRequest(
-            variable: variable,
-            originalName: variable.name!,
-          ),
-    ];
+      );
+      familyRequests[family] = request;
+    }
+
+    return familyRequests;
   }
 
-  RenameMapping _materialize(Map<RenameNameRequest, String> assignedNames) {
+  Map<_MemberFamily, int> _assignFamilySlots(
+    List<_MemberFamily> memberFamilies,
+    ClassRelationIndex hierarchy,
+  ) {
+    final familiesByNamespace = <Uri?, List<_MemberFamily>>{};
+    for (final family in memberFamilies) {
+      (familiesByNamespace[_familyNamespace(family)] ??= <_MemberFamily>[]).add(
+        family,
+      );
+    }
+
+    final assignments = <_MemberFamily, int>{};
+    for (final entry in familiesByNamespace.entries) {
+      final families = [...entry.value];
+      final conflicts = <_MemberFamily, Set<_MemberFamily>>{
+        for (final family in families) family: <_MemberFamily>{},
+      };
+
+      for (var i = 0; i < families.length; i++) {
+        final familyA = families[i];
+        for (var j = i + 1; j < families.length; j++) {
+          final familyB = families[j];
+          if (_familiesConflict(familyA, familyB, hierarchy)) {
+            conflicts[familyA]!.add(familyB);
+            conflicts[familyB]!.add(familyA);
+          }
+        }
+      }
+
+      families.sort((a, b) {
+        final degreeCompare = conflicts[b]!.length.compareTo(
+          conflicts[a]!.length,
+        );
+        if (degreeCompare != 0) return degreeCompare;
+        return _compareFamilies(a, b);
+      });
+
+      for (final family in families) {
+        final usedSlots = {
+          for (final neighbor in conflicts[family]!)
+            if (assignments.containsKey(neighbor)) assignments[neighbor]!,
+        };
+        var slot = 0;
+        while (usedSlots.contains(slot)) {
+          slot++;
+        }
+        assignments[family] = slot;
+      }
+    }
+
+    return assignments;
+  }
+
+  bool _familiesConflict(
+    _MemberFamily a,
+    _MemberFamily b,
+    ClassRelationIndex hierarchy,
+  ) {
+    if (a.declaringClasses.intersection(b.declaringClasses).isNotEmpty) {
+      return true;
+    }
+
+    for (final classA in a.declaringClasses) {
+      for (final classB in b.declaringClasses) {
+        if (hierarchy.areRelated(classA, classB) ||
+            hierarchy.shareScopedSubtype(classA, classB)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  RenameMapping _materialize({
+    required Map<_MemberFamily, String> familyNames,
+    required Map<RenameNameRequest, String> assignedNames,
+  }) {
     final members = <Member, Name>{};
     final classes = <Class, String>{};
     final variables = <VariableDeclaration, String>{};
-    final symbolMap = <String, String>{};
+    final symbolMap = <String, Set<String>>{};
     final privateLegacyKeys = <String, Set<String>>{};
+
+    for (final entry in familyNames.entries) {
+      final family = entry.key;
+      final rawName = entry.value;
+      final name = family.privacyScope == null
+          ? Name(rawName)
+          : Name('_$rawName', family.privacyScope);
+      for (final member in family.members) {
+        members[member] = name;
+      }
+      if (family.originalName.isNotEmpty) {
+        _recordSymbolName(
+          symbolMap,
+          symbolKeyForName(name),
+          family.originalName,
+        );
+        if (name.library != null) {
+          (privateLegacyKeys[name.text] ??= <String>{}).add(
+            family.originalName,
+          );
+        }
+      }
+    }
 
     for (final entry in assignedNames.entries) {
       final request = entry.key;
       final rawName = entry.value;
+      if (request is FamilyRenameNameRequest) {
+        continue;
+      }
 
       switch (request) {
         case FamilyRenameNameRequest():
-          final name = request.privacyScope == null
-              ? Name(rawName)
-              : Name('_$rawName', request.privacyScope);
-          for (final member in request.members) {
-            members[member] = name;
-          }
-          if (request.originalName.isNotEmpty) {
-            symbolMap[symbolKeyForName(name)] = request.originalName;
-            if (name.library != null) {
-              (privateLegacyKeys[name.text] ??= <String>{}).add(
-                request.originalName,
-              );
-            }
-          }
+          break;
         case MemberRenameNameRequest():
           final name = request.privacyScope == null
               ? Name(rawName)
               : Name('_$rawName', request.privacyScope);
           members[request.member] = name;
           if (request.originalName.isNotEmpty) {
-            symbolMap[symbolKeyForName(name)] = request.originalName;
+            _recordSymbolName(
+              symbolMap,
+              symbolKeyForName(name),
+              request.originalName,
+            );
             if (name.library != null) {
               (privateLegacyKeys[name.text] ??= <String>{}).add(
                 request.originalName,
@@ -118,19 +268,19 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
         case ClassRenameNameRequest():
           classes[request.cls] = rawName;
           if (request.originalName.isNotEmpty) {
-            symbolMap[rawName] = request.originalName;
+            _recordSymbolName(symbolMap, rawName, request.originalName);
           }
         case VariableRenameNameRequest():
           variables[request.variable] = rawName;
           if (request.originalName.isNotEmpty) {
-            symbolMap[rawName] = request.originalName;
+            _recordSymbolName(symbolMap, rawName, request.originalName);
           }
       }
     }
 
     for (final entry in privateLegacyKeys.entries) {
       if (entry.value.length == 1) {
-        symbolMap[entry.key] = entry.value.single;
+        _recordSymbolName(symbolMap, entry.key, entry.value.single);
       }
     }
 
@@ -138,7 +288,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
       members: members,
       classes: classes,
       variables: variables,
-      symbolMap: symbolMap,
+      symbolMap: _freezeSymbolMap(symbolMap),
     );
   }
 
@@ -166,12 +316,11 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
 
   List<_MemberFamily> _buildMemberFamilies(
     Map<Class, List<Member>> instanceMembersByClass,
+    ClassRelationIndex hierarchy,
   ) {
-    final classes = instanceMembersByClass.keys.toList();
-    final hierarchy = ClassRelationIndex.build(classes);
     final grouped = <(String, Uri?), List<(Member, Class)>>{};
 
-    for (final cls in classes) {
+    for (final cls in instanceMembersByClass.keys) {
       for (final member in instanceMembersByClass[cls] ?? const <Member>[]) {
         final name = memberNameText(member);
         if (name.isEmpty) continue;
@@ -212,7 +361,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
       }
     }
 
-    return [
+    final families = [
       for (final entry in rootToMembers.entries)
         _MemberFamily(
           members: entry.value,
@@ -220,8 +369,85 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
           privacyScope: memberNameText(entry.key).startsWith('_')
               ? entry.key.enclosingLibrary
               : null,
+          declaringClasses: {
+            for (final member in entry.value)
+              if (member.enclosingClass != null) member.enclosingClass!,
+          },
         ),
-    ];
+    ]..sort(_compareFamilies);
+    return families;
+  }
+
+  void _validateNoDuplicateFamilyNames(Map<_MemberFamily, String> familyNames) {
+    final classNames = <Class, Map<(String, Uri?), _MemberFamily>>{};
+
+    for (final entry in familyNames.entries) {
+      final family = entry.key;
+      final effectiveName = (
+        family.privacyScope == null ? entry.value : '_${entry.value}',
+        family.privacyScope?.importUri,
+      );
+
+      for (final declaringClass in family.declaringClasses) {
+        final usedNames = classNames.putIfAbsent(
+          declaringClass,
+          () => <(String, Uri?), _MemberFamily>{},
+        );
+        final existing = usedNames[effectiveName];
+        if (existing != null && !identical(existing, family)) {
+          throw StateError(
+            'Overloaded rename would assign duplicate member name '
+            '"${effectiveName.$1}" in class ${declaringClass.name}.',
+          );
+        }
+        usedNames[effectiveName] = family;
+      }
+    }
+  }
+
+  Uri? _familyNamespace(_MemberFamily family) => family.privacyScope?.importUri;
+
+  void _recordSymbolName(
+    Map<String, Set<String>> symbolMap,
+    String obfuscatedName,
+    String originalName,
+  ) {
+    (symbolMap[obfuscatedName] ??= <String>{}).add(originalName);
+  }
+
+  Map<String, List<String>> _freezeSymbolMap(
+    Map<String, Set<String>> symbolMap,
+  ) {
+    return {
+      for (final entry in symbolMap.entries)
+        entry.key: List<String>.unmodifiable(entry.value.toList()..sort()),
+    };
+  }
+
+  int _compareFamilies(_MemberFamily a, _MemberFamily b) {
+    final nameCompare = a.originalName.compareTo(b.originalName);
+    if (nameCompare != 0) return nameCompare;
+
+    final privacyA = a.privacyScope?.importUri.toString() ?? '';
+    final privacyB = b.privacyScope?.importUri.toString() ?? '';
+    final privacyCompare = privacyA.compareTo(privacyB);
+    if (privacyCompare != 0) return privacyCompare;
+
+    return _familySignature(a).compareTo(_familySignature(b));
+  }
+
+  String _familySignature(_MemberFamily family) {
+    final classNames =
+        family.declaringClasses
+            .map((cls) => '${cls.name}@${cls.fileUri}')
+            .toList()
+          ..sort();
+    final memberNames =
+        family.members
+            .map((member) => '${memberNameText(member)}@${member.fileUri}')
+            .toList()
+          ..sort();
+    return '${classNames.join(',')}|${memberNames.join(',')}';
   }
 }
 
@@ -229,10 +455,22 @@ final class _MemberFamily {
   const _MemberFamily({
     required this.members,
     required this.originalName,
+    required this.declaringClasses,
     this.privacyScope,
   });
 
   final Set<Member> members;
   final String originalName;
+  final Set<Class> declaringClasses;
   final Library? privacyScope;
+}
+
+final class _PlannerRequests {
+  const _PlannerRequests({
+    required this.requests,
+    required this.familyRequests,
+  });
+
+  final List<RenameNameRequest> requests;
+  final Map<_MemberFamily, RenameNameRequest> familyRequests;
 }

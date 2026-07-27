@@ -147,6 +147,38 @@ void main() {
     });
 
     test(
+      'shareScopedSubtype returns true for interfaces with common subtype',
+      () {
+        final ifaceA = Class(name: 'IA', fileUri: fileUri);
+        final ifaceB = Class(name: 'IB', fileUri: fileUri);
+        final lib = _makeLib([ifaceA, ifaceB]);
+        final concrete = Class(
+          name: 'Concrete',
+          fileUri: fileUri,
+          implementedTypes: [ifaceA.asThisSupertype, ifaceB.asThisSupertype],
+        );
+        lib.addClass(concrete);
+
+        final index = ClassRelationIndex.build([ifaceA, ifaceB, concrete]);
+
+        expect(index.shareScopedSubtype(ifaceA, ifaceB), isTrue);
+      },
+    );
+
+    test(
+      'shareScopedSubtype returns false without common in-scope subtype',
+      () {
+        final ifaceA = Class(name: 'IA', fileUri: fileUri);
+        final ifaceB = Class(name: 'IB', fileUri: fileUri);
+        _makeLib([ifaceA, ifaceB]);
+
+        final index = ClassRelationIndex.build([ifaceA, ifaceB]);
+
+        expect(index.shareScopedSubtype(ifaceA, ifaceB), isFalse);
+      },
+    );
+
+    test(
       'shareDeclaringSupertypeForName returns true when common supertype '
       'declares member',
       () {

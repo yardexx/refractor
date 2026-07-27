@@ -74,6 +74,34 @@ refractor:
       );
     });
 
+    test('parses rename overloading when configured explicitly', () {
+      final config = RefractorConfig.fromYaml('''
+refractor:
+  passes:
+    rename:
+      enabled: true
+      overloading: true
+''');
+
+      expect(
+        config.passes.whereType<RenamePassConfig>().single.overloading,
+        isTrue,
+      );
+    });
+
+    test('rename overloading defaults to false when omitted', () {
+      final config = RefractorConfig.fromYaml('''
+refractor:
+  passes:
+    rename: true
+''');
+
+      expect(
+        config.passes.whereType<RenamePassConfig>().single.overloading,
+        isFalse,
+      );
+    });
+
     test('parses global excludes under refractor.exclude', () {
       final config = RefractorConfig.fromYaml('''
 refractor:

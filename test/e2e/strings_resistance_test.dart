@@ -43,7 +43,7 @@ void main() {
 
       for (final originalName in fixture.expectations.renameHelpers) {
         expect(
-          renameArtifact?.mapping.symbolMap.containsValue(originalName),
+          renameArtifact?.mapping.containsOriginalName(originalName),
           isTrue,
           reason: 'Expected $originalName to be present in the rename map.',
         );

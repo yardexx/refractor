@@ -65,11 +65,15 @@ final class RenameSafetyNormalizer {
       }
     }
 
-    final symbolMap = <String, String>{};
+    final symbolMap = <String, Set<String>>{};
     for (final entry in normalizedMembers.entries) {
       if (entry.key.name.text.isNotEmpty &&
           !_sameName(entry.key.name, entry.value)) {
-        symbolMap[symbolKeyForName(entry.value)] = entry.key.name.text;
+        _recordSymbolName(
+          symbolMap,
+          symbolKeyForName(entry.value),
+          entry.key.name.text,
+        );
         if (entry.value.library != null) {
           (privateLegacyKeys[entry.value.text] ??= <String>{}).add(
             entry.key.name.text,
@@ -79,7 +83,7 @@ final class RenameSafetyNormalizer {
     }
     for (final entry in mapping.classes.entries) {
       if (entry.key.name.isNotEmpty) {
-        symbolMap[entry.value] = entry.key.name;
+        _recordSymbolName(symbolMap, entry.value, entry.key.name);
       }
     }
     for (final entry in mapping.variables.entries) {
@@ -87,12 +91,12 @@ final class RenameSafetyNormalizer {
       if (obfuscatedName == null) continue;
       final originalName = entry.key.name;
       if (originalName != null && originalName.isNotEmpty) {
-        symbolMap[obfuscatedName] = originalName;
+        _recordSymbolName(symbolMap, obfuscatedName, originalName);
       }
     }
     for (final entry in privateLegacyKeys.entries) {
       if (entry.value.length == 1) {
-        symbolMap[entry.key] = entry.value.single;
+        _recordSymbolName(symbolMap, entry.key, entry.value.single);
       }
     }
 
@@ -100,8 +104,19 @@ final class RenameSafetyNormalizer {
       members: normalizedMembers,
       classes: mapping.classes,
       variables: normalizedVariables,
-      symbolMap: symbolMap,
+      symbolMap: {
+        for (final entry in symbolMap.entries)
+          entry.key: List<String>.unmodifiable(entry.value.toList()..sort()),
+      },
     );
+  }
+
+  void _recordSymbolName(
+    Map<String, Set<String>> symbolMap,
+    String obfuscatedName,
+    String originalName,
+  ) {
+    (symbolMap[obfuscatedName] ??= <String>{}).add(originalName);
   }
 
   void _preserveFirstClassCallableSurfaces(

@@ -35,8 +35,11 @@ void main() {
       );
     }
 
-    RenamePlanner makePlanner() {
-      return RenamePlanner(generator: SequentialGenerator());
+    RenamePlanner makePlanner({bool overloading = false}) {
+      return RenamePlanner(
+        generator: SequentialGenerator(),
+        overloading: overloading,
+      );
     }
 
     test('assigns the same mapped name to related instance members', () async {
@@ -187,5 +190,201 @@ void main() {
         expect(first.mapping.classes[cls], equals(second.mapping.classes[cls]));
       },
     );
+
+    test('overloading reuses names for unrelated instance families', () async {
+      final left = Class(name: 'Left', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('alpha'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      final right = Class(name: 'Right', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('beta'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      userLib
+        ..addClass(left)
+        ..addClass(right);
+
+      final component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final selection = makeSelector(component).select(component);
+
+      final plan = await makePlanner(
+        overloading: true,
+      ).plan(component, selection);
+
+      expect(
+        plan.mapping.members[left.procedures.single]!.text,
+        equals(plan.mapping.members[right.procedures.single]!.text),
+      );
+    });
+
+    test('overloading keeps same-class families in separate slots', () async {
+      final cls = Class(name: 'Svc', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('alpha'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        )
+        ..addProcedure(
+          Procedure(
+            Name('beta'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      userLib.addClass(cls);
+
+      final component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final selection = makeSelector(component).select(component);
+
+      final plan = await makePlanner(
+        overloading: true,
+      ).plan(component, selection);
+
+      expect(
+        plan.mapping.members[cls.procedures[0]]!.text,
+        isNot(equals(plan.mapping.members[cls.procedures[1]]!.text)),
+      );
+    });
+
+    test('overloading does not merge interface-connected families', () async {
+      final ifaceA = Class(name: 'IA', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('alpha'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      final ifaceB = Class(name: 'IB', fileUri: userLib.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('beta'),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: userLib.fileUri,
+          ),
+        );
+      userLib
+        ..addClass(ifaceA)
+        ..addClass(ifaceB);
+      final impl =
+          Class(
+              name: 'Impl',
+              fileUri: userLib.fileUri,
+              implementedTypes: [
+                ifaceA.asThisSupertype,
+                ifaceB.asThisSupertype,
+              ],
+            )
+            ..addProcedure(
+              Procedure(
+                Name('alpha'),
+                ProcedureKind.Method,
+                FunctionNode(EmptyStatement()),
+                fileUri: userLib.fileUri,
+              ),
+            )
+            ..addProcedure(
+              Procedure(
+                Name('beta'),
+                ProcedureKind.Method,
+                FunctionNode(EmptyStatement()),
+                fileUri: userLib.fileUri,
+              ),
+            );
+      userLib.addClass(impl);
+
+      final component = makeComponent(coreLib: coreLib, userLib: userLib);
+      final selection = makeSelector(component).select(component);
+
+      final plan = await makePlanner(
+        overloading: true,
+      ).plan(component, selection);
+
+      expect(
+        plan.mapping.members[ifaceA.procedures.single]!.text,
+        isNot(equals(plan.mapping.members[ifaceB.procedures.single]!.text)),
+      );
+      expect(
+        plan.mapping.members[impl.procedures[0]]!.text,
+        isNot(equals(plan.mapping.members[impl.procedures[1]]!.text)),
+      );
+    });
+
+    test('overloading keeps private families isolated by library', () async {
+      final libA = makeUserLibrary('src/a.dart');
+      final libB = makeUserLibrary('src/b.dart');
+
+      final classA = Class(name: 'A', fileUri: libA.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('_alpha', libA),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: libA.fileUri,
+          ),
+        )
+        ..addProcedure(
+          Procedure(
+            Name('_beta', libA),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: libA.fileUri,
+          ),
+        );
+      final classB = Class(name: 'B', fileUri: libB.fileUri)
+        ..addProcedure(
+          Procedure(
+            Name('_gamma', libB),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: libB.fileUri,
+          ),
+        )
+        ..addProcedure(
+          Procedure(
+            Name('_delta', libB),
+            ProcedureKind.Method,
+            FunctionNode(EmptyStatement()),
+            fileUri: libB.fileUri,
+          ),
+        );
+      libA.addClass(classA);
+      libB.addClass(classB);
+
+      final component = Component(libraries: [coreLib, libA, libB])
+        ..setMainMethodAndMode(null, true);
+      final selection = makeSelector(component).select(component);
+
+      final plan = await makePlanner(
+        overloading: true,
+      ).plan(component, selection);
+
+      expect(
+        plan.mapping.members[classA.procedures[0]]!.text,
+        isNot(equals(plan.mapping.members[classA.procedures[1]]!.text)),
+      );
+      expect(
+        plan.mapping.members[classB.procedures[0]]!.text,
+        isNot(equals(plan.mapping.members[classB.procedures[1]]!.text)),
+      );
+      expect(plan.mapping.members[classA.procedures[0]]!.library, same(libA));
+      expect(plan.mapping.members[classB.procedures[0]]!.library, same(libB));
+    });
   });
 }
