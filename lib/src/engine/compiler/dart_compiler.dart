@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:refractor/src/engine/compiler/compiler.dart';
+import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:refractor/src/utils/process_runner.dart';
 
 /// Compiles Dart source to kernel and to target formats using the `dart` CLI.
@@ -10,20 +11,12 @@ class DartCompiler implements Compiler {
 
   @override
   void compileToKernel(String sourcePath, String outputPath) {
-    runProcess(
-      'dart',
-      ['compile', 'kernel', sourcePath, '-o', outputPath],
-      verbose: verbose,
-    );
+    _run(['compile', 'kernel', sourcePath, '-o', outputPath]);
   }
 
   @override
   void compileToTarget(String dillPath, String outputPath, Target target) {
-    runProcess(
-      'dart',
-      ['compile', target.value, dillPath, '-o', outputPath],
-      verbose: verbose,
-    );
+    _run(['compile', target.value, dillPath, '-o', outputPath]);
 
     // `dart compile` for snapshot targets may ignore `-o` when the input is a
     // `.dill` file and instead emit next to the kernel path.
@@ -35,6 +28,14 @@ class DartCompiler implements Compiler {
     final fallbackOutput = File('$dillPath${target.extension}');
     if (fallbackOutput.existsSync()) {
       fallbackOutput.renameSync(outputPath);
+    }
+  }
+
+  void _run(List<String> arguments) {
+    try {
+      runProcess('dart', arguments, verbose: verbose);
+    } on ProcessException catch (e) {
+      throw CompilationException('Compilation failed: $e', cause: e);
     }
   }
 }
