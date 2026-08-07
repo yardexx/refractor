@@ -1,6 +1,6 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:test/test.dart';
 
 import '../../helpers/kernel_helpers.dart';
@@ -9,12 +9,12 @@ void main() {
   group('ScopedKernelTransformer', () {
     late Library coreLib;
     late Library userLib;
-    late ProjectScope projectScope;
+    late ObfuscationScope scope;
 
     setUp(() {
       coreLib = makeDartCoreLibrary();
       userLib = makeUserLibrary();
-      projectScope = makeProjectScope();
+      scope = makeObfuscationScope();
     });
 
     test('inConstContext is true while visiting constants', () {
@@ -33,7 +33,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       final component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final transformer = _RecordingTransformer(projectScope: projectScope);
+      final transformer = _RecordingTransformer(scope: scope);
 
       component.transformChildren(transformer);
 
@@ -73,7 +73,7 @@ void main() {
         userLib.addClass(cls);
 
         final component = makeComponent(coreLib: coreLib, userLib: userLib);
-        final transformer = _RecordingTransformer(projectScope: projectScope);
+        final transformer = _RecordingTransformer(scope: scope);
 
         component.transformChildren(transformer);
 
@@ -88,7 +88,7 @@ void main() {
 }
 
 final class _RecordingTransformer extends ScopedKernelTransformer {
-  _RecordingTransformer({required super.projectScope});
+  _RecordingTransformer({required super.scope});
 
   final Map<String, bool> contextByString = {};
   final Map<String, bool> constContextByConstant = {};

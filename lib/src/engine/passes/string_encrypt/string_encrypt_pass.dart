@@ -5,8 +5,7 @@ import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encry
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encrypt_artifact.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transformer.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 /// Obfuscation pass that replaces plaintext [StringLiteral] nodes with a
 /// call to an injected decode helper, so strings are not visible in the binary.
@@ -17,13 +16,17 @@ import 'package:refractor/src/project/project_scope.dart';
 class StringEncryptPass extends Pass {
   StringEncryptPass({
     required this.config,
-    required this.policy,
-    required this.projectScope,
-  });
+    required this.scope,
+  }) : _excludedLiteralPatterns = config.excludePatterns
+           .map(RegExp.new)
+           .toList(growable: false);
 
   final StringEncryptPassConfig config;
-  final StringEncryptPolicyView policy;
-  final ProjectScope projectScope;
+  final ObfuscationScope scope;
+
+  /// Literals matching any of these stay in plaintext. Built from the pass
+  /// config — a pass parameter, not a keep policy.
+  final List<RegExp> _excludedLiteralPatterns;
 
   @override
   String get name => 'string_encrypt';
@@ -32,16 +35,15 @@ class StringEncryptPass extends Pass {
   Future<PassResult> run(Component component) async {
     try {
       final selection = StringEncryptSelector(
-        projectScope: projectScope,
-        policy: policy,
+        scope: scope,
+        excludedLiteralPatterns: _excludedLiteralPatterns,
       ).select(component);
       final plan = await StringEncryptPlanner(
         seed: config.xorKey,
       ).plan(component, selection);
 
       final output = StringEncryptTransformer(
-        projectScope: projectScope,
-        policy: policy,
+        scope: scope,
       ).apply(component, plan);
       final transformOutput = await output;
 

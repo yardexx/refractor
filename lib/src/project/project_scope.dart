@@ -1,7 +1,7 @@
 import 'package:kernel/ast.dart';
 
 final class ProjectScope {
-  const ProjectScope({
+  ProjectScope({
     required this.projectRootUri,
     required this.projectPackageName,
   });
@@ -9,11 +9,25 @@ final class ProjectScope {
   final Uri projectRootUri;
   final String? projectPackageName;
 
+  /// Memoizes the workspace path per library. Membership is queried once per
+  /// node during selection/transformation, so caching turns each check into an
+  /// O(1) lookup instead of recomputing the URI path every time. Keyed by
+  /// [Library] identity, which is stable for the lifetime of one build.
+  final Map<Library, String?> _workspacePathCache = {};
+
   bool containsLibrary(Library library) {
     return workspacePathForLibrary(library) != null;
   }
 
   String? workspacePathForLibrary(Library library) {
+    final cached = _workspacePathCache[library];
+    if (cached != null || _workspacePathCache.containsKey(library)) {
+      return cached;
+    }
+    return _workspacePathCache[library] = _computeWorkspacePath(library);
+  }
+
+  String? _computeWorkspacePath(Library library) {
     final uri = library.importUri;
     if (uri.scheme == 'dart') {
       return null;

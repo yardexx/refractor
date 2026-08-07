@@ -1,7 +1,9 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selector.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/policy/keep_resolver.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:test/test.dart';
 
 import '../../../../helpers/kernel_helpers.dart';
@@ -24,14 +26,21 @@ void main() {
     }) {
       final resolvedConfig = config ?? const RenamePassConfig();
       final projectScope = makeProjectScope();
-      final policy = PolicyResolver().resolve(
+      final keepResolver = KeepResolver(
         component: component,
-        config: RefractorConfig(passes: [resolvedConfig]),
         projectScope: projectScope,
+        globalExcludes: RefractorConfig(
+          passes: [resolvedConfig],
+        ).excludePatterns,
       );
       return RenameSelector(
-        policy: policy.rename,
-        projectScope: projectScope,
+        scope: ObfuscationScope(
+          project: projectScope,
+          keep: keepResolver.resolve(
+            const RenameDefinition().keepSources,
+            resolvedConfig.exclude,
+          ),
+        ),
       );
     }
 

@@ -1,40 +1,26 @@
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/pass/selection/pass_selector.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selection.dart';
-import 'package:refractor/src/policy/rename_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/utils/rename_helpers.dart';
 
 final class RenameSelector implements PassSelector<RenameSelection> {
-  RenameSelector({
-    required RenamePolicyView policy,
-    required ProjectScope projectScope,
-  }) : _policy = policy,
-       _projectScope = projectScope;
+  RenameSelector({required ObfuscationScope scope}) : _scope = scope;
 
-  final RenamePolicyView _policy;
-  final ProjectScope _projectScope;
+  final ObfuscationScope _scope;
 
   @override
   RenameSelection select(Component component) {
-    final collector = _RenameSelectionCollector(
-      policy: _policy,
-      projectScope: _projectScope,
-    );
+    final collector = _RenameSelectionCollector(scope: _scope);
     component.accept(collector);
     return collector.build();
   }
 }
 
 final class _RenameSelectionCollector extends RecursiveVisitor {
-  _RenameSelectionCollector({
-    required RenamePolicyView policy,
-    required ProjectScope projectScope,
-  }) : _policy = policy,
-       _projectScope = projectScope;
+  _RenameSelectionCollector({required ObfuscationScope scope}) : _scope = scope;
 
-  final RenamePolicyView _policy;
-  final ProjectScope _projectScope;
+  final ObfuscationScope _scope;
 
   final List<Class> _classes = [];
   final List<Member> _singletonMembers = [];
@@ -55,7 +41,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitLibrary(Library node) {
-    if (_policy.isLibraryKept(node)) {
+    if (!_scope.shouldObfuscateLibrary(node)) {
       return;
     }
 
@@ -76,7 +62,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitClass(Class node) {
-    if (_policy.isClassKept(node)) {
+    if (!_scope.shouldObfuscateClass(node)) {
       return;
     }
 
@@ -130,7 +116,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitProcedure(Procedure node) {
-    if (_policy.isMemberKept(node)) {
+    if (!_scope.shouldObfuscateMember(node)) {
       return;
     }
     super.visitProcedure(node);
@@ -138,7 +124,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitConstructor(Constructor node) {
-    if (_policy.isMemberKept(node)) {
+    if (!_scope.shouldObfuscateMember(node)) {
       return;
     }
     super.visitConstructor(node);
@@ -146,7 +132,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitField(Field node) {
-    if (_policy.isMemberKept(node)) {
+    if (!_scope.shouldObfuscateMember(node)) {
       return;
     }
     super.visitField(node);
@@ -168,7 +154,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
   }
 
   bool _isRenameableMember(Member member) {
-    return !_policy.isMemberKept(member);
+    return _scope.shouldObfuscateMember(member);
   }
 
   bool _isSyntheticMixinClass(Class cls) {
@@ -183,7 +169,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
       return true;
     }
 
-    if (_policy.isMemberKept(enclosingMember)) {
+    if (!_scope.shouldObfuscateMember(enclosingMember)) {
       return false;
     }
 
@@ -237,9 +223,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
       final current = stack.removeLast();
       if (!visited.add(current)) continue;
 
-      final isProjectLibrary = _projectScope.containsLibrary(
-        current.enclosingLibrary,
-      );
+      final isProjectLibrary = _scope.isInProject(current.enclosingLibrary);
       if (!isProjectLibrary) {
         for (final procedure in current.procedures) {
           if (!procedure.isStatic) {
@@ -253,12 +237,12 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
         }
       } else {
         for (final procedure in current.procedures) {
-          if (!procedure.isStatic && _policy.isMemberKept(procedure)) {
+          if (!procedure.isStatic && _scope.keep.isMemberKept(procedure)) {
             names.add(procedure.name.text);
           }
         }
         for (final field in current.fields) {
-          if (!field.isStatic && _policy.isMemberKept(field)) {
+          if (!field.isStatic && _scope.keep.isMemberKept(field)) {
             names.add(field.name.text);
           }
         }

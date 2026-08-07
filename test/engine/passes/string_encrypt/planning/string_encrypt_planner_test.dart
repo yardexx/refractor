@@ -4,7 +4,6 @@ import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encry
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selection.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_codec.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
 import 'package:test/test.dart';
 
 import '../../../../helpers/kernel_helpers.dart';
@@ -39,8 +38,8 @@ void main() {
       );
 
       final selection = StringEncryptSelector(
-        projectScope: makeProjectScope(),
-        policy: const StringEncryptPolicyView(),
+        scope: makeObfuscationScope(),
+        excludedLiteralPatterns: const [],
       ).select(component);
       final plan = await StringEncryptPlanner(seed: 42).plan(
         component,

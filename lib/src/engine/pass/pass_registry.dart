@@ -1,10 +1,13 @@
+import 'package:glob/glob.dart';
+import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
 import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_definition.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
-import 'package:refractor/src/policy/resolved_policy.dart';
+import 'package:refractor/src/policy/keep_resolver.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
 const defaultPassRegistry = PassRegistry([
@@ -36,18 +39,32 @@ final class PassRegistry {
 
   List<Pass> createAll({
     required Iterable<PassConfig> configs,
-    required ResolvedPolicy policy,
+    required Component component,
+    required List<Glob> globalExcludes,
     required ProjectScope projectScope,
   }) {
+    final keepResolver = KeepResolver(
+      component: component,
+      projectScope: projectScope,
+      globalExcludes: globalExcludes,
+    );
     return [
       for (final config in configs)
-        if (config.enabled)
-          _definitionFor(config).createPass(
-            config: config,
-            policy: policy,
-            projectScope: projectScope,
-          ),
+        if (config.enabled) _createPass(config, keepResolver, projectScope),
     ];
+  }
+
+  Pass _createPass(
+    PassConfig config,
+    KeepResolver keepResolver,
+    ProjectScope projectScope,
+  ) {
+    final definition = _definitionFor(config);
+    final keep = keepResolver.resolve(definition.keepSources, config.exclude);
+    return definition.createPass(
+      config: config,
+      scope: ObfuscationScope(project: projectScope, keep: keep),
+    );
   }
 
   PassDefinition<dynamic> _definitionFor(PassConfig config) {

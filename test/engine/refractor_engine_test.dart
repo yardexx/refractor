@@ -7,8 +7,8 @@ import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
-import 'package:refractor/src/policy/resolved_policy.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/keep_source.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -199,10 +199,12 @@ final class _FailingDefinition implements PassDefinition<_FailingPassConfig> {
   String get name => 'string_encrypt';
 
   @override
+  Set<KeepSource> get keepSources => const {};
+
+  @override
   Pass createPass({
     required _FailingPassConfig config,
-    required ResolvedPolicy policy,
-    required ProjectScope projectScope,
+    required ObfuscationScope scope,
   }) {
     return _FailingPass();
   }
