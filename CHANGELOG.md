@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `DartCompiler` now wraps subprocess failures in `CompilationException`
+  instead of letting the low-level `ProcessException` escape uncaught.
+
+### Removed
+
+- Dropped the unused `ProcessRunException` (never thrown; process failures now
+  surface as `CompilationException`).
+- Dropped the dead `SymbolTable`/`symbol_table_io` mechanism and its public
+  export from the `refractor` barrel. The rename pass's symbol map already
+  flows through its pass artifact; this was an unused parallel path.
+- Dropped the unused `Result<T>`/`runCatching` utility. The codebase is
+  exception-based throughout; this had no call sites.
+
 ## [0.2.2] - 2026-04-10
 
 ### Added

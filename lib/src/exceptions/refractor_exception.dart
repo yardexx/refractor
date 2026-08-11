@@ -51,14 +51,6 @@ class CompilationException extends RefractorException {
   int get exitCode => ExitCode.software.code;
 }
 
-/// Thrown when an underlying shell command or process execution fails.
-class ProcessRunException extends RefractorException {
-  const ProcessRunException(super.message, {super.cause});
-
-  @override
-  int get exitCode => ExitCode.software.code;
-}
-
 /// Thrown when a file operation fails (e.g., missing input file, inaccessible
 /// temp directory).
 class FileIoException extends RefractorException {
