@@ -111,6 +111,33 @@ void main() {
       },
     );
 
+    test('@Refractor.keep() class is exempt from string encryption', () async {
+      final annotationLib = makeRefractorAnnotationLibrary();
+      final keptString = StringLiteral('secret_in_kept_class');
+      final cls = Class(name: 'Keeper', fileUri: userLib.fileUri)
+        ..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
+      final method = Procedure(
+        Name('run'),
+        ProcedureKind.Method,
+        FunctionNode(Block([ReturnStatement(keptString)])),
+        fileUri: userLib.fileUri,
+      );
+      cls.addProcedure(method);
+      userLib.addClass(cls);
+
+      final comp = makeComponent(
+        coreLib: coreLib,
+        userLib: userLib,
+        extraLibraries: [convertLib, annotationLib],
+      );
+      await makePass(comp).run(comp);
+
+      final body = method.function.body! as Block;
+      final ret = body.statements.first as ReturnStatement;
+      expect(ret.expression, isA<StringLiteral>());
+      expect((ret.expression! as StringLiteral).value, 'secret_in_kept_class');
+    });
+
     test('string literal inside ConstantExpression is NOT replaced', () async {
       final constExpr = ConstantExpression(StringConstant('keep'));
       final proc = Procedure(

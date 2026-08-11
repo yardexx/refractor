@@ -13,10 +13,15 @@ final class StringEncryptDefinition
   @override
   String get name => 'string_encrypt';
 
-  // String encryption rewrites literals, not identifiers, so annotation and
-  // entry-point keeps (which preserve names) do not apply — only excludes.
+  // Honors glob excludes and @Refractor.keep() (a kept declaration is left
+  // entirely alone, strings included). It does NOT honor the entry point:
+  // keeping main's *name* is a rename concern and says nothing about the
+  // string literals inside it, which are fine to encrypt.
   @override
-  Set<KeepSource> get keepSources => const {KeepSource.excludes};
+  Set<KeepSource> get keepSources => const {
+    KeepSource.excludes,
+    KeepSource.annotations,
+  };
 
   @override
   StringEncryptPassConfig parseConfig(Map<String, dynamic> json) {

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `@Refractor.keep()` now also exempts annotated code from **string
+  encryption**, not just from renaming — a kept class/member is left entirely
+  alone. (The program entry point remains rename-only: keeping `main`'s name
+  does not affect the string literals inside it.)
 - `DartCompiler` now wraps subprocess failures in `CompilationException`
   instead of letting the low-level `ProcessException` escape uncaught.
 
