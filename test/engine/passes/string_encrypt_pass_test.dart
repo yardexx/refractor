@@ -1,10 +1,12 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encrypt_artifact.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_codec.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/policy/keep_resolver.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
@@ -68,15 +70,20 @@ void main() {
       Component component, {
       StringEncryptPassConfig config = const StringEncryptPassConfig(),
     }) {
-      final policy = PolicyResolver().resolve(
+      final keepResolver = KeepResolver(
         component: component,
-        config: RefractorConfig(passes: [config]),
         projectScope: projectScope,
+        globalExcludes: RefractorConfig(passes: [config]).excludePatterns,
       );
       return StringEncryptPass(
         config: config,
-        policy: policy.stringEncrypt,
-        projectScope: projectScope,
+        scope: ObfuscationScope(
+          project: projectScope,
+          keep: keepResolver.resolve(
+            const StringEncryptDefinition().keepSources,
+            config.exclude,
+          ),
+        ),
       );
     }
 

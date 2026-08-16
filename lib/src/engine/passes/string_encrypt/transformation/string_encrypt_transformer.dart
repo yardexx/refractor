@@ -5,20 +5,16 @@ import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encry
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encryption_record.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_helper_injector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transform_output.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 class StringEncryptTransformer
     implements
         PassTransformer<StringEncryptPlan, StringEncryptTransformOutput> {
   StringEncryptTransformer({
-    required ProjectScope projectScope,
-    required StringEncryptPolicyView policy,
-  }) : _projectScope = projectScope,
-       _policy = policy;
+    required ObfuscationScope scope,
+  }) : _scope = scope;
 
-  final ProjectScope _projectScope;
-  final StringEncryptPolicyView _policy;
+  final ObfuscationScope _scope;
 
   @override
   Future<StringEncryptTransformOutput> apply(
@@ -33,8 +29,7 @@ class StringEncryptTransformer
     }
 
     final setupResult = DecodeHelperInjector(
-      projectScope: _projectScope,
-      policy: _policy,
+      scope: _scope,
     ).injectIntoFirstEligibleLibrary(component);
     if (setupResult == null) {
       return const StringEncryptTransformOutput(
@@ -45,7 +40,7 @@ class StringEncryptTransformer
 
     final visitor = _StringEncryptVisitor(
       decodeProcedure: setupResult.decodeProcedure,
-      projectScope: _projectScope,
+      scope: _scope,
       plan: plan,
     );
     component.transformChildren(visitor);
@@ -60,7 +55,7 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
   _StringEncryptVisitor({
     required this.decodeProcedure,
     required this.plan,
-    required super.projectScope,
+    required super.scope,
   });
 
   final Procedure decodeProcedure;

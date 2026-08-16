@@ -1,11 +1,12 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
-import 'package:refractor/src/policy/rename_policy_view.dart';
+import 'package:refractor/src/policy/keep_resolver.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
@@ -30,15 +31,20 @@ void main() {
       Component component, {
       RenamePassConfig config = const RenamePassConfig(),
     }) {
-      final policy = PolicyResolver().resolve(
+      final keepResolver = KeepResolver(
         component: component,
-        config: RefractorConfig(passes: [config]),
         projectScope: projectScope,
+        globalExcludes: RefractorConfig(passes: [config]).excludePatterns,
       );
       return RenamePass(
         config: config,
-        policy: policy.rename,
-        projectScope: projectScope,
+        scope: ObfuscationScope(
+          project: projectScope,
+          keep: keepResolver.resolve(
+            const RenameDefinition().keepSources,
+            config.exclude,
+          ),
+        ),
       );
     }
 
@@ -619,17 +625,20 @@ void main() {
           userLib: lib,
         );
         final projectScope = makeProjectScope();
-        final policy = PolicyResolver().resolve(
+        final keepResolver = KeepResolver(
           component: comp,
-          config: RefractorConfig(
-            passes: [RenamePassConfig(seed: seed)],
-          ),
           projectScope: projectScope,
+          globalExcludes: const [],
         );
         await RenamePass(
           config: RenamePassConfig(seed: seed),
-          policy: policy.rename,
-          projectScope: projectScope,
+          scope: ObfuscationScope(
+            project: projectScope,
+            keep: keepResolver.resolve(
+              const RenameDefinition().keepSources,
+              const [],
+            ),
+          ),
         ).run(comp);
         return method.name.text;
       }
@@ -660,11 +669,9 @@ void main() {
         return method.name.text;
       }
 
-      final scope = makeProjectScope();
       final pass = RenamePass(
         config: const RenamePassConfig(seed: 42),
-        policy: const RenamePolicyView(),
-        projectScope: scope,
+        scope: makeObfuscationScope(),
       );
 
       final firstName = await runWithSharedPass(pass);

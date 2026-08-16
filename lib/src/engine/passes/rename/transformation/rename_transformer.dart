@@ -5,7 +5,7 @@ import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dar
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
 import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 /// Applies a [RenameMapping] to the kernel AST.
 ///
@@ -13,10 +13,10 @@ import 'package:refractor/src/project/project_scope.dart';
 class RenameTransformer
     implements PassTransformer<RenamePlan, RenameTransformOutput> {
   RenameTransformer({
-    required ProjectScope projectScope,
-  }) : _projectScope = projectScope;
+    required ObfuscationScope scope,
+  }) : _scope = scope;
 
-  final ProjectScope _projectScope;
+  final ObfuscationScope _scope;
 
   /// Applies the mapping to [component]: transforms the AST and
   /// unbinds canonical names for renamed user libraries.
@@ -26,12 +26,12 @@ class RenameTransformer
     RenamePlan plan,
   ) async {
     final visitor = _RenameTransformVisitor(
-      projectScope: _projectScope,
+      scope: _scope,
       mapping: plan.mapping,
     );
     component.transformChildren(visitor);
     for (final lib in component.libraries) {
-      if (_projectScope.containsLibrary(lib)) {
+      if (_scope.isInProject(lib)) {
         lib.reference.canonicalName?.unbindAll();
       }
     }
@@ -47,7 +47,7 @@ class RenameTransformer
 
 final class _RenameTransformVisitor extends ScopedKernelTransformer {
   _RenameTransformVisitor({
-    required super.projectScope,
+    required super.scope,
     required RenameMapping mapping,
   }) : _mapping = mapping,
        _originalVarNames = {

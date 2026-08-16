@@ -1,7 +1,6 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
@@ -119,15 +118,10 @@ refractor:
         projectRootUri: Uri.directory('/virtual/project'),
         projectPackageName: 'refractor',
       );
-      final policy = PolicyResolver().resolve(
-        component: _emptyComponent(),
-        config: config,
-        projectScope: projectScope,
-      );
-
       final passes = defaultPassRegistry.createAll(
         configs: config.passes,
-        policy: policy,
+        component: _emptyComponent(),
+        globalExcludes: config.excludePatterns,
         projectScope: projectScope,
       );
 
@@ -146,15 +140,10 @@ refractor:
         projectRootUri: Uri.directory('/virtual/project'),
         projectPackageName: 'refractor',
       );
-      final policy = PolicyResolver().resolve(
-        component: _emptyComponent(),
-        config: config,
-        projectScope: projectScope,
-      );
-
       final passes = defaultPassRegistry.createAll(
         configs: config.passes,
-        policy: policy,
+        component: _emptyComponent(),
+        globalExcludes: config.excludePatterns,
         projectScope: projectScope,
       );
 

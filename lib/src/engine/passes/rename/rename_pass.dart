@@ -9,8 +9,7 @@ import 'package:refractor/src/engine/passes/rename/selection/rename_selector.dar
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transformer.dart';
 import 'package:refractor/src/engine/passes/rename/validation/rename_validator.dart';
-import 'package:refractor/src/policy/rename_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 typedef NameGeneratorFactory = NameGenerator Function();
 
@@ -29,15 +28,13 @@ typedef NameGeneratorFactory = NameGenerator Function();
 class RenamePass extends Pass {
   RenamePass({
     required this.config,
-    required this.policy,
-    required this.projectScope,
+    required this.scope,
     NameGeneratorFactory? generatorFactory,
   }) : _generatorFactory =
            generatorFactory ?? (() => ShuffledGenerator(seed: config.seed));
 
   final RenamePassConfig config;
-  final RenamePolicyView policy;
-  final ProjectScope projectScope;
+  final ObfuscationScope scope;
   final NameGeneratorFactory _generatorFactory;
 
   @override
@@ -46,10 +43,7 @@ class RenamePass extends Pass {
   @override
   Future<PassResult> run(Component component) async {
     try {
-      final selection = RenameSelector(
-        policy: policy,
-        projectScope: projectScope,
-      ).select(component);
+      final selection = RenameSelector(scope: scope).select(component);
       final plan =
           RenamePlanner(
             generator: _generatorFactory(),
@@ -59,7 +53,7 @@ class RenamePass extends Pass {
           );
       final resolvedPlan = await plan;
       final output = await RenameTransformer(
-        projectScope: projectScope,
+        scope: scope,
       ).apply(component, resolvedPlan);
       const RenameValidator().validate(
         component,

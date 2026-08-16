@@ -1,10 +1,10 @@
 import 'package:kernel/ast.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 abstract class ScopedKernelTransformer extends Transformer {
-  ScopedKernelTransformer({required this.projectScope});
+  ScopedKernelTransformer({required this.scope});
 
-  final ProjectScope projectScope;
+  final ObfuscationScope scope;
   int _constDepth = 0;
   int _annotationDepth = 0;
 
@@ -12,7 +12,7 @@ abstract class ScopedKernelTransformer extends Transformer {
 
   @override
   TreeNode visitLibrary(Library node) {
-    if (!projectScope.containsLibrary(node)) return node;
+    if (!scope.shouldObfuscateLibrary(node)) return node;
     return super.visitLibrary(node);
   }
 

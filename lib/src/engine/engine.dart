@@ -6,7 +6,6 @@ import 'package:refractor/src/engine/kernel/kernel_io.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/engine/pass_runner.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
 export 'package:refractor/src/engine/compiler/compiler.dart' show Target;
@@ -71,15 +70,10 @@ class RefractorEngine {
       projectPackageName: request.projectPackageName,
     );
 
-    final policy = PolicyResolver().resolve(
-      component: component,
-      config: config,
-      projectScope: projectScope,
-    );
-
     final enabledPasses = _passRegistry.createAll(
       configs: config.passes,
-      policy: policy,
+      component: component,
+      globalExcludes: config.excludePatterns,
       projectScope: projectScope,
     );
 

@@ -1,4 +1,6 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/policy/keep_policy.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
 /// Creates a user library with a `package:refractor/...` URI so that
@@ -306,6 +308,12 @@ ProjectScope makeProjectScope() {
     projectRootUri: Uri.directory('/virtual/project'),
     projectPackageName: 'refractor',
   );
+}
+
+/// Creates an [ObfuscationScope] over the default test project scope with the
+/// given [keep] policy (defaults to keeping nothing).
+ObfuscationScope makeObfuscationScope({KeepPolicy keep = KeepPolicy.empty}) {
+  return ObfuscationScope(project: makeProjectScope(), keep: keep);
 }
 
 /// Creates a [Procedure] with the given [name] and adds it to [cls].

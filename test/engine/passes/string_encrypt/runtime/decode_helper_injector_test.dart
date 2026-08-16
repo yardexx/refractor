@@ -1,6 +1,6 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_helper_injector.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
+import 'package:refractor/src/policy/keep_policy.dart';
 import 'package:test/test.dart';
 
 import '../../../../helpers/kernel_helpers.dart';
@@ -19,12 +19,9 @@ void main() {
       secondUserLib = makeUserLibrary('src/second.dart');
     });
 
-    DecodeHelperInjector makeInjector({
-      StringEncryptPolicyView policy = const StringEncryptPolicyView(),
-    }) {
+    DecodeHelperInjector makeInjector({KeepPolicy keep = KeepPolicy.empty}) {
       return DecodeHelperInjector(
-        projectScope: makeProjectScope(),
-        policy: policy,
+        scope: makeObfuscationScope(keep: keep),
       );
     }
 

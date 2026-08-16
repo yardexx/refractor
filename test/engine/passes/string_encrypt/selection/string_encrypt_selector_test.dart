@@ -1,6 +1,5 @@
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selector.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
 import 'package:test/test.dart';
 
 import '../../../../helpers/kernel_helpers.dart';
@@ -23,11 +22,11 @@ void main() {
     });
 
     StringEncryptSelector makeSelector({
-      StringEncryptPolicyView policy = const StringEncryptPolicyView(),
+      List<RegExp> excludedLiteralPatterns = const [],
     }) {
       return StringEncryptSelector(
-        projectScope: makeProjectScope(),
-        policy: policy,
+        scope: makeObfuscationScope(),
+        excludedLiteralPatterns: excludedLiteralPatterns,
       );
     }
 
@@ -52,9 +51,7 @@ void main() {
       );
 
       final selection = makeSelector(
-        policy: StringEncryptPolicyView(
-          excludedLiteralPatterns: [RegExp('KEEP_ME')],
-        ),
+        excludedLiteralPatterns: [RegExp('KEEP_ME')],
       ).select(component);
 
       expect(selection.contains(selectedLiteral), isTrue);

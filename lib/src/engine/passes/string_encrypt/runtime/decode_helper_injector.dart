@@ -1,19 +1,15 @@
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/runtime/string_encrypt_setup_result.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 final class DecodeHelperInjector {
   DecodeHelperInjector({
-    required ProjectScope projectScope,
-    required StringEncryptPolicyView policy,
-  }) : _projectScope = projectScope,
-       _policy = policy;
+    required ObfuscationScope scope,
+  }) : _scope = scope;
 
   static const String helperBaseName = r'_obfDecode$';
 
-  final ProjectScope _projectScope;
-  final StringEncryptPolicyView _policy;
+  final ObfuscationScope _scope;
 
   StringEncryptSetupResult? injectIntoFirstEligibleLibrary(
     Component component,
@@ -32,8 +28,7 @@ final class DecodeHelperInjector {
 
   Library? _findFirstEligibleLibrary(Component component) {
     for (final library in component.libraries) {
-      if (_projectScope.containsLibrary(library) &&
-          !_policy.isLibraryKept(library)) {
+      if (_scope.shouldObfuscateLibrary(library)) {
         return library;
       }
     }
