@@ -150,7 +150,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
 
   int _countPlannedMemberRenames(RenameMapping mapping) {
     return mapping.members.entries
-        .where((entry) => !_sameName(entry.key.name, entry.value))
+        .where((entry) => !sameName(entry.key.name, entry.value))
         .length;
   }
 
@@ -158,10 +158,6 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
     return mapping.variables.entries
         .where((entry) => entry.key.name != entry.value)
         .length;
-  }
-
-  bool _sameName(Name a, Name b) {
-    return a.text == b.text && identical(a.library, b.library);
   }
 
   List<_MemberFamily> _buildMemberFamilies(

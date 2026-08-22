@@ -23,7 +23,7 @@ final class PassRegistry {
   List<PassConfig> parseAll(Map<String, dynamic> json) {
     return [
       for (final entry in json.entries)
-        parse(entry.key, _normalizePassConfigValue(entry.key, entry.value)),
+        parse(entry.key, normalizePassConfigValue(entry.key, entry.value)),
     ];
   }
 
@@ -85,8 +85,4 @@ Map<String, dynamic> normalizePassConfigValue(String name, Object? value) {
     Map() => Map<String, dynamic>.from(value),
     _ => throw ConfigException('Invalid config for pass "$name": $value'),
   };
-}
-
-Map<String, dynamic> _normalizePassConfigValue(String name, Object? value) {
-  return normalizePassConfigValue(name, value);
 }
