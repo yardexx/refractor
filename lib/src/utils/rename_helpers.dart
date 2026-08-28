@@ -32,3 +32,10 @@ String symbolKeyForName(Name name) {
   if (library == null) return name.text;
   return '${library.importUri}::${name.text}';
 }
+
+/// Whether two kernel [Name]s are the same identifier in the same privacy
+/// scope. Private names are only equal when they share the same library, so
+/// text equality alone is insufficient.
+bool sameName(Name a, Name b) {
+  return a.text == b.text && identical(a.library, b.library);
+}

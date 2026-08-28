@@ -2,6 +2,7 @@ import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/pass/validation/pass_validator.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
+import 'package:refractor/src/utils/rename_helpers.dart';
 
 final class RenameValidator
     implements PassValidator<RenamePlan, RenameTransformOutput> {
@@ -43,7 +44,7 @@ final class RenameValidator
     }
 
     for (final entry in mapping.members.entries) {
-      if (!_sameName(entry.key.name, entry.value)) {
+      if (!sameName(entry.key.name, entry.value)) {
         throw StateError(
           'Member ${entry.key} was not renamed to the planned name '
           '${entry.value}.',
@@ -59,9 +60,5 @@ final class RenameValidator
         );
       }
     }
-  }
-
-  bool _sameName(Name a, Name b) {
-    return a.text == b.text && identical(a.library, b.library);
   }
 }
