@@ -1,5 +1,3 @@
-import 'package:refractor/refractor.dart' show RefractorEngine;
-import 'package:refractor/src/engine/engine.dart' show RefractorEngine;
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 
 /// Valid compilation targets for `dart compile`.
@@ -34,7 +32,7 @@ enum Target {
 /// Abstract interface for compiling Dart source to kernel and to target
 /// formats.
 ///
-/// Defined in the engine layer (pure) so that [RefractorEngine] can depend on
+/// Defined in the engine layer (pure) so that `RefractorEngine` can depend on
 /// it without importing dart:io. Implemented in the IO layer by `DartCompiler`.
 abstract class Compiler {
   /// Compile Dart source at [sourcePath] to kernel `.dill` at [outputPath].
