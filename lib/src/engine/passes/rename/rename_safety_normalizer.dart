@@ -68,7 +68,7 @@ final class RenameSafetyNormalizer {
     final symbolMap = <String, String>{};
     for (final entry in normalizedMembers.entries) {
       if (entry.key.name.text.isNotEmpty &&
-          !_sameName(entry.key.name, entry.value)) {
+          !sameName(entry.key.name, entry.value)) {
         symbolMap[symbolKeyForName(entry.value)] = entry.key.name.text;
         if (entry.value.library != null) {
           (privateLegacyKeys[entry.value.text] ??= <String>{}).add(
@@ -115,7 +115,7 @@ final class RenameSafetyNormalizer {
     for (final member in collector.members) {
       final originalName = member.name;
       final renamedName = normalizedMembers[member];
-      if (renamedName == null || _sameName(originalName, renamedName)) {
+      if (renamedName == null || sameName(originalName, renamedName)) {
         continue;
       }
 
@@ -155,10 +155,6 @@ final class RenameSafetyNormalizer {
       Field(isStatic: false) => true,
       _ => false,
     };
-  }
-
-  bool _sameName(Name a, Name b) {
-    return a.text == b.text && identical(a.library, b.library);
   }
 
   int _compareMembers(Member a, Member b) {

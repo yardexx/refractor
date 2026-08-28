@@ -6,6 +6,7 @@ import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
 import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
+import 'package:refractor/src/utils/rename_helpers.dart';
 
 /// Applies a [RenameMapping] to the kernel AST.
 ///
@@ -100,7 +101,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitProcedure(Procedure node) {
     final newName = _mapping.members[node];
-    if (newName != null && !_sameName(node.name, newName)) {
+    if (newName != null && !sameName(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -110,7 +111,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitField(Field node) {
     final newName = _mapping.members[node];
-    if (newName != null && !_sameName(node.name, newName)) {
+    if (newName != null && !sameName(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -120,7 +121,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitConstructor(Constructor node) {
     final newName = _mapping.members[node];
-    if (newName != null && !_sameName(node.name, newName)) {
+    if (newName != null && !sameName(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -371,9 +372,5 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
       Field(isStatic: false) => true,
       _ => false,
     };
-  }
-
-  bool _sameName(Name a, Name b) {
-    return a.text == b.text && identical(a.library, b.library);
   }
 }
