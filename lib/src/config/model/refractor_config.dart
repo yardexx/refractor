@@ -54,10 +54,6 @@ final class RefractorConfig {
 
   /// Parses a YAML string into a [RefractorConfig].
   factory RefractorConfig.fromYaml(String yamlString) {
-    if (yamlString.trim().isEmpty) {
-      throw const ConfigException('Configuration YAML is empty.');
-    }
-
     try {
       final yaml = loadYaml(yamlString);
       if (yaml == null) {
