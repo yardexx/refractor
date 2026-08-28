@@ -112,7 +112,7 @@ refractor:
   passes:
     rename: false
     string_encrypt:
-      xor_key: 23
+      seed: 23
 ''');
       final projectScope = ProjectScope(
         projectRootUri: Uri.directory('/virtual/project'),

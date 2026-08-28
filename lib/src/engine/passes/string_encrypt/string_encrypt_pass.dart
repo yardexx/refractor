@@ -39,7 +39,7 @@ class StringEncryptPass extends Pass {
         excludedLiteralPatterns: _excludedLiteralPatterns,
       ).select(component);
       final plan = await StringEncryptPlanner(
-        seed: config.xorKey,
+        seed: config.seed,
       ).plan(component, selection);
 
       final output = StringEncryptTransformer(

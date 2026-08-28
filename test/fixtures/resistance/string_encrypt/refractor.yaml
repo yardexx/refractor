@@ -3,6 +3,6 @@ refractor:
   passes:
     rename: false
     string_encrypt:
-      xor_key: 42
+      seed: 42
       exclude_patterns:
         - VISIBLE_MARKER
