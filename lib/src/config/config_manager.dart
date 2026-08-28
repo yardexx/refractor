@@ -24,19 +24,7 @@ class ConfigManager {
     }
 
     final file = File(resolvedPath);
-    if (!file.existsSync()) {
-      throw ConfigException(
-        'Configuration file not found: ${file.absolute.path}\n'
-        'Run "refractor init" to create one.',
-      );
-    }
-
     final content = file.readAsStringSync();
-    if (content.trim().isEmpty) {
-      throw ConfigException(
-        'Configuration file is empty: ${file.absolute.path}',
-      );
-    }
 
     try {
       return RefractorConfig.fromYaml(content);
