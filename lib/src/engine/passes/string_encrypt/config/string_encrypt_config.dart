@@ -4,7 +4,7 @@ final class StringEncryptPassConfig extends PassConfig {
   const StringEncryptPassConfig({
     super.enabled,
     super.exclude,
-    this.xorKey = 0x5A,
+    this.seed = 0x5A,
     this.excludePatterns = const [],
   });
 
@@ -14,13 +14,13 @@ final class StringEncryptPassConfig extends PassConfig {
       exclude: (json['exclude'] as List<dynamic>? ?? const [])
           .map((value) => value.toString())
           .toList(),
-      xorKey: json['xor_key'] as int? ?? 0x5A,
+      seed: json['seed'] as int? ?? 0x5A,
       excludePatterns: (json['exclude_patterns'] as List<dynamic>? ?? const [])
           .map((value) => value.toString())
           .toList(),
     );
   }
 
-  final int xorKey;
+  final int seed;
   final List<String> excludePatterns;
 }

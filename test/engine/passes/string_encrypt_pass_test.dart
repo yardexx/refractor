@@ -21,7 +21,7 @@ void main() {
       expect(decoded, equals(input));
     });
 
-    test('with custom xorKey', () {
+    test('with custom key', () {
       const input = 'abc';
       final encoded = StringEncryptCodec.encodeWithKey(input, 0xFF);
       final decoded = StringEncryptCodec.decodeWithKey(encoded, 0xFF);

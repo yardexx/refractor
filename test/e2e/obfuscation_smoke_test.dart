@@ -240,7 +240,7 @@ refractor:
   passes:
     rename: true
     string_encrypt:
-      xor_key: 42
+      seed: 42
 ''',
         );
         expect(output, equals(_expectedOutput.trim()));
@@ -259,7 +259,7 @@ refractor:
   passes:
     rename: true
     string_encrypt:
-      xor_key: 42
+      seed: 42
 ''',
         );
         expect(output, equals(_expectedOutput.trim()));
@@ -278,7 +278,7 @@ refractor:
   passes:
     rename: true
     string_encrypt:
-      xor_key: 42
+      seed: 42
 ''',
         );
         expect(output, equals(_expectedOutput.trim()));

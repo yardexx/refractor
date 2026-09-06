@@ -92,7 +92,7 @@ refractor:
     rename: true
 
     string_encrypt:
-      xor_key: 0x5A
+      seed: 0x5A
       exclude_patterns:
         - "^https://"
 ```

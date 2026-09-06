@@ -22,6 +22,6 @@ refractor:
 
       # Disable unrelated passes while debugging rename/analyzer behavior.
     string_encrypt:
-      xor_key: 0x5A
+      seed: 0x5A
       exclude_patterns:
         - "^https://"
