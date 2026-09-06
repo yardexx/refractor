@@ -2,6 +2,7 @@ import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/kernel_toolkit/location/enclosing.dart';
 import 'package:refractor/src/engine/kernel_toolkit/relations/class_relations.dart';
 import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_visiting.dart';
 import 'package:refractor/src/engine/pass/selection/pass_selector.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selection.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
@@ -19,10 +20,12 @@ final class RenameSelector implements PassSelector<RenameSelection> {
   }
 }
 
-final class _RenameSelectionCollector extends RecursiveVisitor {
-  _RenameSelectionCollector({required ObfuscationScope scope}) : _scope = scope;
+final class _RenameSelectionCollector extends RecursiveVisitor
+    with ScopedVisiting {
+  _RenameSelectionCollector({required this.scope});
 
-  final ObfuscationScope _scope;
+  @override
+  final ObfuscationScope scope;
 
   final List<Class> _classes = [];
   final List<Member> _singletonMembers = [];
@@ -43,7 +46,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitLibrary(Library node) {
-    if (!_scope.shouldObfuscateLibrary(node)) {
+    if (!isScopedLibrary(node)) {
       return;
     }
 
@@ -64,7 +67,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitClass(Class node) {
-    if (!_scope.shouldObfuscateClass(node)) {
+    if (!isScopedClass(node)) {
       return;
     }
 
@@ -119,7 +122,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitProcedure(Procedure node) {
-    if (!_scope.shouldObfuscateMember(node)) {
+    if (!isScopedMember(node)) {
       return;
     }
     super.visitProcedure(node);
@@ -127,7 +130,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitConstructor(Constructor node) {
-    if (!_scope.shouldObfuscateMember(node)) {
+    if (!isScopedMember(node)) {
       return;
     }
     super.visitConstructor(node);
@@ -135,7 +138,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitField(Field node) {
-    if (!_scope.shouldObfuscateMember(node)) {
+    if (!isScopedMember(node)) {
       return;
     }
     super.visitField(node);
@@ -157,7 +160,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
   }
 
   bool _isRenameableMember(Member member) {
-    return _scope.shouldObfuscateMember(member);
+    return isScopedMember(member);
   }
 
   bool _isSyntheticMixinClass(Class cls) {
@@ -172,7 +175,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
       return true;
     }
 
-    if (!_scope.shouldObfuscateMember(enclosingMember)) {
+    if (!isScopedMember(enclosingMember)) {
       return false;
     }
 
@@ -209,7 +212,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
       final current = stack.removeLast();
       if (!visited.add(current)) continue;
 
-      final isProjectLibrary = _scope.isInProject(current.enclosingLibrary);
+      final isProjectLibrary = scope.isInProject(current.enclosingLibrary);
       if (!isProjectLibrary) {
         for (final procedure in current.procedures) {
           if (!procedure.isStatic) {
@@ -223,12 +226,12 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
         }
       } else {
         for (final procedure in current.procedures) {
-          if (!procedure.isStatic && _scope.keep.isMemberKept(procedure)) {
+          if (!procedure.isStatic && scope.keep.isMemberKept(procedure)) {
             names.add(procedure.name.text);
           }
         }
         for (final field in current.fields) {
-          if (!field.isStatic && _scope.keep.isMemberKept(field)) {
+          if (!field.isStatic && scope.keep.isMemberKept(field)) {
             names.add(field.name.text);
           }
         }
