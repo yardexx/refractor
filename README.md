@@ -43,14 +43,6 @@ appends a Markdown summary to `GITHUB_STEP_SUMMARY`.
 
 ## Commands
 
-All commands accept a global `-v, --verbose` flag that enables detailed logging
-(the underlying `dart compile` commands and per-pass progress). For `build`,
-setting `verbose: true` in `refractor.yaml` enables the same output.
-
-```bash
-refractor --verbose build
-```
-
 ### `refractor build`
 
 Compile, obfuscate, and build.

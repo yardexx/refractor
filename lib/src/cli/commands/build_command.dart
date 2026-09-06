@@ -69,8 +69,6 @@ class BuildCommand extends RefractorCommand {
     final input = argResults.option('input')!;
     final config = ConfigManager.loadConfig();
 
-    // A config-level `verbose: true` enables detailed logging even without the
-    // top-level `--verbose` flag.
     if (config.verbose) {
       logger.level = Level.verbose;
     }
