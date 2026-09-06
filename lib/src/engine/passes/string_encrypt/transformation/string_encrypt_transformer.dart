@@ -1,6 +1,6 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
-import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_plan.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encryption_record.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_helper_injector.dart';

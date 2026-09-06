@@ -1,5 +1,5 @@
 import 'package:kernel/ast.dart';
-import 'package:refractor/src/engine/passes/rename/planning/class_relation_index.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/class_relations.dart';
 import 'package:test/test.dart';
 
 /// Adds all [classes] to a fresh library so that `asThisSupertype` works.

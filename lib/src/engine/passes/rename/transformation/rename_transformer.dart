@@ -1,10 +1,10 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
-import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/utils/rename_helpers.dart';
 

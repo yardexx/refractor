@@ -1,9 +1,9 @@
 import 'package:kernel/kernel.dart';
-import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:test/test.dart';
 
-import '../../helpers/kernel_helpers.dart';
+import '../../../helpers/kernel_helpers.dart';
 
 void main() {
   group('ScopedKernelTransformer', () {
