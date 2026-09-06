@@ -13,6 +13,34 @@ Library _makeLib(List<Class> classes) {
 void main() {
   final fileUri = Uri.parse('test:test');
 
+  group('ClassRelations.directSupertypesOf', () {
+    test('collects superclass, interfaces, and mixed-in type', () {
+      final superclass = Class(name: 'S', fileUri: fileUri);
+      final iface = Class(name: 'I', fileUri: fileUri);
+      final mixin = Class(name: 'M', fileUri: fileUri);
+      final cls = Class(
+        name: 'C',
+        fileUri: fileUri,
+        supertype: Supertype(superclass, const []),
+        mixedInType: Supertype(mixin, const []),
+        implementedTypes: [Supertype(iface, const [])],
+      );
+      _makeLib([superclass, iface, mixin, cls]);
+
+      expect(
+        ClassRelations.directSupertypesOf(cls),
+        {superclass, iface, mixin},
+      );
+    });
+
+    test('is empty for a class with no declared supertypes', () {
+      final cls = Class(name: 'C', fileUri: fileUri);
+      _makeLib([cls]);
+
+      expect(ClassRelations.directSupertypesOf(cls), isEmpty);
+    });
+  });
+
   group('ClassRelationIndex', () {
     test('lone class has empty subtypes', () {
       final a = Class(name: 'A', fileUri: fileUri);

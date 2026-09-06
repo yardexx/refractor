@@ -1,14 +1,16 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/naming.dart';
 import 'package:refractor/src/engine/kernel_toolkit/relations/class_relations.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
 import 'package:refractor/src/engine/pass/planning/pass_planner.dart';
 import 'package:refractor/src/engine/passes/rename/planning/name_generator/name_generator.dart';
 import 'package:refractor/src/engine/passes/rename/planning/name_generator/rename_name_request.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
 import 'package:refractor/src/engine/passes/rename/rename_safety_normalizer.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/symbol_map_key.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selection.dart';
 import 'package:refractor/src/utils/disjoint_set.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
 
 final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
   RenamePlanner({
@@ -56,8 +58,8 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
       for (final member in selection.singletonMembers)
         MemberRenameNameRequest(
           member: member,
-          originalName: memberNameText(member),
-          privacyScope: memberNameText(member).startsWith('_')
+          originalName: MemberModel.nameText(member),
+          privacyScope: MemberModel.nameText(member).startsWith('_')
               ? member.enclosingLibrary
               : null,
         ),
@@ -95,7 +97,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
             members[member] = name;
           }
           if (request.originalName.isNotEmpty) {
-            symbolMap[symbolKeyForName(name)] = request.originalName;
+            symbolMap[SymbolMapKey.forName(name)] = request.originalName;
             if (name.library != null) {
               (privateLegacyKeys[name.text] ??= <String>{}).add(
                 request.originalName,
@@ -108,7 +110,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
               : Name('_$rawName', request.privacyScope);
           members[request.member] = name;
           if (request.originalName.isNotEmpty) {
-            symbolMap[symbolKeyForName(name)] = request.originalName;
+            symbolMap[SymbolMapKey.forName(name)] = request.originalName;
             if (name.library != null) {
               (privateLegacyKeys[name.text] ??= <String>{}).add(
                 request.originalName,
@@ -150,7 +152,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
 
   int _countPlannedMemberRenames(RenameMapping mapping) {
     return mapping.members.entries
-        .where((entry) => !sameName(entry.key.name, entry.value))
+        .where((entry) => !KernelNames.same(entry.key.name, entry.value))
         .length;
   }
 
@@ -169,7 +171,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
 
     for (final cls in classes) {
       for (final member in instanceMembersByClass[cls] ?? const <Member>[]) {
-        final name = memberNameText(member);
+        final name = MemberModel.nameText(member);
         if (name.isEmpty) continue;
         final privacyScope = name.startsWith('_')
             ? member.enclosingLibrary.importUri
@@ -212,8 +214,8 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
       for (final entry in rootToMembers.entries)
         _MemberFamily(
           members: entry.value,
-          originalName: memberNameText(entry.key),
-          privacyScope: memberNameText(entry.key).startsWith('_')
+          originalName: MemberModel.nameText(entry.key),
+          privacyScope: MemberModel.nameText(entry.key).startsWith('_')
               ? entry.key.enclosingLibrary
               : null,
         ),

@@ -1,9 +1,10 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/kernel_toolkit/naming.dart';
 import 'package:refractor/src/engine/pass/validation/pass_validator.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/symbol_map_key.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
 
 final class RenameValidator
     implements PassValidator<RenamePlan, RenameTransformOutput> {
@@ -45,7 +46,7 @@ final class RenameValidator
     }
 
     for (final entry in mapping.members.entries) {
-      if (!sameName(entry.key.name, entry.value)) {
+      if (!KernelNames.same(entry.key.name, entry.value)) {
         throw StateError(
           'Member ${entry.key} was not renamed to the planned name '
           '${entry.value}.',
@@ -81,7 +82,7 @@ final class RenameValidator
     for (final entry in mapping.members.entries) {
       final scope = _enclosingScope(entry.key);
       if (scope == null) continue;
-      final key = symbolKeyForName(entry.value);
+      final key = SymbolMapKey.forName(entry.value);
       ((byScope[scope] ??= {})[key] ??= <Member>[]).add(entry.key);
     }
 
