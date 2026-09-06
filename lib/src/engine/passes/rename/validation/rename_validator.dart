@@ -122,24 +122,19 @@ final class RenameValidator
     }
   }
 
-  /// The nearest enclosing [Class] or [Library], or null for an unparented
-  /// node.
+  /// The enclosing [Class] or [Library] of [member], or null when it is
+  /// unparented (e.g. an isolated node in a test). Kernel members are parented
+  /// directly to their class or library.
   TreeNode? _enclosingScope(Member member) {
-    var node = member.parent;
-    while (node != null) {
-      if (node is Class || node is Library) return node;
-      node = node.parent;
-    }
-    return null;
+    final parent = member.parent;
+    return (parent is Class || parent is Library) ? parent : null;
   }
 
+  /// The enclosing [Library] of [node], or null when it has no library parent.
+  /// Kernel classes are parented directly to their library.
   Library? _enclosingLibrary(TreeNode node) {
-    var current = node.parent;
-    while (current != null) {
-      if (current is Library) return current;
-      current = current.parent;
-    }
-    return null;
+    final parent = node.parent;
+    return parent is Library ? parent : null;
   }
 
   /// Whether [members] form at most one property surface: a single field
