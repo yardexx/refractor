@@ -1,6 +1,6 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/class_relations.dart';
 import 'package:refractor/src/engine/pass/planning/pass_planner.dart';
-import 'package:refractor/src/engine/passes/rename/planning/class_relation_index.dart';
 import 'package:refractor/src/engine/passes/rename/planning/name_generator/name_generator.dart';
 import 'package:refractor/src/engine/passes/rename/planning/name_generator/rename_name_request.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
