@@ -9,9 +9,6 @@ import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
 
-/// Applies a [RenameMapping] to the kernel AST.
-///
-/// Pure AST mutation: renames declarations and updates call sites.
 class RenameTransformer
     implements PassTransformer<RenamePlan, RenameTransformOutput> {
   RenameTransformer({
@@ -20,8 +17,6 @@ class RenameTransformer
 
   final ObfuscationScope _scope;
 
-  /// Applies the mapping to [component]: transforms the AST and
-  /// unbinds canonical names for renamed user libraries.
   @override
   Future<RenameTransformOutput> apply(
     Component component,

@@ -1,6 +1,5 @@
 import 'package:kernel/ast.dart';
 
-/// Stateless structural relation queries over kernel classes.
 final class ClassRelations {
   const ClassRelations._();
 

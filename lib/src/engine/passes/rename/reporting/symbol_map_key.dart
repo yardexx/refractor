@@ -7,7 +7,6 @@ import 'package:kernel/ast.dart';
 final class SymbolMapKey {
   const SymbolMapKey._();
 
-  /// The symbol-map key for [name].
   static String forName(Name name) {
     final library = name.library;
     if (library == null) return name.text;

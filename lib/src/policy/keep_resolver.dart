@@ -5,7 +5,6 @@ import 'package:refractor/src/policy/keep_source.dart';
 import 'package:refractor/src/policy/refractor_keep_annotation.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
-/// Classes and members preserved by `@Refractor.keep()` annotations.
 typedef KeepAnnotations = ({Set<Class> classes, Set<Member> members});
 
 /// Builds a [KeepPolicy] for a pass from the keep sources it declares.
