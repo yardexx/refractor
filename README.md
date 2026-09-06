@@ -50,11 +50,12 @@ Compile, obfuscate, and build.
 | Flag           | Description                                  | Default         |
 |----------------|----------------------------------------------|-----------------|
 | `-i, --input`  | Dart entrypoint file                         | `lib/main.dart` |
-| `-o, --output` | Output directory                             | `build`         |
 | `-t, --target` | Output format: `exe`, `aot`, `jit`, `kernel` | `exe`           |
 
+The build output is always written to `build/out.<ext>` in the project root.
+
 ```bash
-refractor build --target kernel --output build
+refractor build --target kernel
 ```
 
 ### `refractor inspect <path.dill>`
