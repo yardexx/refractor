@@ -23,7 +23,7 @@ final class PassRegistry {
   List<PassConfig> parseAll(Map<String, dynamic> json) {
     return [
       for (final entry in json.entries)
-        parse(entry.key, normalizePassConfigValue(entry.key, entry.value)),
+        parse(entry.key, _normalizePassConfigValue(entry.key, entry.value)),
     ];
   }
 
@@ -78,7 +78,7 @@ final class PassRegistry {
   }
 }
 
-Map<String, dynamic> normalizePassConfigValue(String name, Object? value) {
+Map<String, dynamic> _normalizePassConfigValue(String name, Object? value) {
   return switch (value) {
     true => <String, dynamic>{},
     false => <String, dynamic>{'enabled': false},

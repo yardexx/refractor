@@ -10,10 +10,6 @@ class PassReport {
   final Map<String, String> metadata;
   final String? message;
 
-  int get totalCount => metadata.values.fold(0, (sum, value) {
-    return sum + (int.tryParse(value) ?? 0);
-  });
-
   bool get isEmpty => metadata.isEmpty && message == null;
 
   Map<String, Object?> toJson() => {

@@ -24,19 +24,6 @@ void main() {
       expect(report.isEmpty, isFalse);
     });
 
-    test('totalCount sums integer metadata values', () {
-      const report = PassReport(
-        passName: 'rename',
-        metadata: {
-          'classes': '1',
-          'members': '2',
-          'variables': '3',
-        },
-      );
-
-      expect(report.totalCount, 6);
-    });
-
     test('toJson exposes serializable pass report data', () {
       const report = PassReport(
         passName: 'rename',
