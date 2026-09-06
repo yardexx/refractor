@@ -1,4 +1,6 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/naming.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
 import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
@@ -6,7 +8,6 @@ import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dar
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
 
 /// Applies a [RenameMapping] to the kernel AST.
 ///
@@ -82,7 +83,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   static Map<Name, Name> _buildDynamicNameMapping(RenameMapping mapping) {
     final candidates = <Name, Name>{};
     for (final entry in mapping.members.entries) {
-      if (!_isDynamicDispatchMember(entry.key)) continue;
+      if (!MemberModel.isInstanceDispatch(entry.key)) continue;
       candidates[entry.key.name] = entry.value;
     }
     return candidates;
@@ -101,7 +102,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitProcedure(Procedure node) {
     final newName = _mapping.members[node];
-    if (newName != null && !sameName(node.name, newName)) {
+    if (newName != null && !KernelNames.same(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -111,7 +112,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitField(Field node) {
     final newName = _mapping.members[node];
-    if (newName != null && !sameName(node.name, newName)) {
+    if (newName != null && !KernelNames.same(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -121,7 +122,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitConstructor(Constructor node) {
     final newName = _mapping.members[node];
-    if (newName != null && !sameName(node.name, newName)) {
+    if (newName != null && !KernelNames.same(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -363,14 +364,6 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
         seenFields,
       ),
       _ => _functionTargetFromReceiver(receiver),
-    };
-  }
-
-  static bool _isDynamicDispatchMember(Member member) {
-    return switch (member) {
-      Procedure(isStatic: false) => true,
-      Field(isStatic: false) => true,
-      _ => false,
     };
   }
 }

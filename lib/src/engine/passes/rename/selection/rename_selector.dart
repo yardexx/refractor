@@ -1,8 +1,10 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/location/enclosing.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/class_relations.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
 import 'package:refractor/src/engine/pass/selection/pass_selector.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selection.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
 
 final class RenameSelector implements PassSelector<RenameSelection> {
   RenameSelector({required ObfuscationScope scope}) : _scope = scope;
@@ -77,7 +79,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
       if (!_isRenameableMember(procedure) ||
           procedure.name.text.isEmpty ||
           (!procedure.isStatic &&
-              externalNames.contains(memberNameText(procedure)))) {
+              externalNames.contains(MemberModel.nameText(procedure)))) {
         continue;
       }
 
@@ -91,7 +93,8 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
     for (final field in node.fields) {
       if (!_isRenameableMember(field) ||
           field.name.text.isEmpty ||
-          (!field.isStatic && externalNames.contains(memberNameText(field)))) {
+          (!field.isStatic &&
+              externalNames.contains(MemberModel.nameText(field)))) {
         continue;
       }
 
@@ -164,7 +167,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
   }
 
   bool _shouldCollectVariable(VariableDeclaration variable) {
-    final enclosingMember = _findEnclosingMember(variable);
+    final enclosingMember = Enclosing.member(variable);
     if (enclosingMember == null) {
       return true;
     }
@@ -178,15 +181,6 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
     }
 
     return true;
-  }
-
-  Member? _findEnclosingMember(TreeNode node) {
-    var current = node.parent;
-    while (current != null) {
-      if (current is Member) return current;
-      current = current.parent;
-    }
-    return null;
   }
 
   bool _isDynamicDispatchNamedParameter(
@@ -206,15 +200,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
     final stack = <Class>[];
 
     void addSupertypes(Class current) {
-      if (current.supertype != null) {
-        stack.add(current.supertype!.classNode);
-      }
-      for (final iface in current.implementedTypes) {
-        stack.add(iface.classNode);
-      }
-      if (current.mixedInType != null) {
-        stack.add(current.mixedInType!.classNode);
-      }
+      stack.addAll(ClassRelations.directSupertypesOf(current));
     }
 
     addSupertypes(cls);

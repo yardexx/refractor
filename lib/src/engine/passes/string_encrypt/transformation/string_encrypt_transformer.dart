@@ -1,4 +1,6 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/location/enclosing.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
 import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_plan.dart';
@@ -75,10 +77,10 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
     records.add(
       StringEncryptionRecord.fromPlanned(
         planned: rewrite,
-        libraryUri: _findEnclosingLibrary(node)?.importUri.toString() ?? '',
-        enclosingMemberName: _findEnclosingMember(node)?.name.text,
-        enclosingMemberKind: _memberKind(_findEnclosingMember(node)),
-        fileUri: _findFileUri(node)?.toString(),
+        libraryUri: Enclosing.library(node)?.importUri.toString() ?? '',
+        enclosingMemberName: Enclosing.member(node)?.name.text,
+        enclosingMemberKind: MemberModel.kindLabel(Enclosing.member(node)),
+        fileUri: Enclosing.fileUri(node)?.toString(),
       ),
     );
 
@@ -93,44 +95,5 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
         IntLiteral(rewrite.key),
       ]),
     );
-  }
-
-  Library? _findEnclosingLibrary(TreeNode node) {
-    var current = node.parent;
-    while (current != null) {
-      if (current is Library) return current;
-      current = current.parent;
-    }
-    return null;
-  }
-
-  Member? _findEnclosingMember(TreeNode node) {
-    var current = node.parent;
-    while (current != null) {
-      if (current is Member) return current;
-      current = current.parent;
-    }
-    return null;
-  }
-
-  Uri? _findFileUri(TreeNode node) {
-    final member = _findEnclosingMember(node);
-    if (member?.fileUri != null) {
-      return member!.fileUri;
-    }
-    final library = _findEnclosingLibrary(node);
-    if (library?.fileUri != null) {
-      return library!.fileUri;
-    }
-    return null;
-  }
-
-  String? _memberKind(Member? member) {
-    return switch (member) {
-      Procedure() => 'procedure',
-      Field() => 'field',
-      Constructor() => 'constructor',
-      _ => null,
-    };
   }
 }

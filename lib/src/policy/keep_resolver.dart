@@ -2,8 +2,8 @@ import 'package:glob/glob.dart';
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/policy/keep_policy.dart';
 import 'package:refractor/src/policy/keep_source.dart';
+import 'package:refractor/src/policy/refractor_keep_annotation.dart';
 import 'package:refractor/src/project/project_scope.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
 
 /// Classes and members preserved by `@Refractor.keep()` annotations.
 typedef KeepAnnotations = ({Set<Class> classes, Set<Member> members});
@@ -88,7 +88,7 @@ final class KeepResolver {
     final classes = <Class>{};
 
     bool isKept(Annotatable node) {
-      return hasRefractorKeepAnnotation(node.annotations);
+      return RefractorKeepAnnotation.isPresentOn(node.annotations);
     }
 
     final libs = _component.libraries;

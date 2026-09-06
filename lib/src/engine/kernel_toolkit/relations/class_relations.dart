@@ -1,5 +1,22 @@
 import 'package:kernel/ast.dart';
 
+/// Stateless structural relation queries over kernel classes.
+final class ClassRelations {
+  const ClassRelations._();
+
+  /// The direct supertypes of [cls]: its superclass, implemented interfaces,
+  /// and mixed-in type (external classes included).
+  static Set<Class> directSupertypesOf(Class cls) {
+    final supertypes = <Class>{};
+    if (cls.supertype != null) supertypes.add(cls.supertype!.classNode);
+    for (final iface in cls.implementedTypes) {
+      supertypes.add(iface.classNode);
+    }
+    if (cls.mixedInType != null) supertypes.add(cls.mixedInType!.classNode);
+    return supertypes;
+  }
+}
+
 /// Precomputed class relations for a bounded class scope.
 ///
 /// - Supertypes include external classes reachable through inheritance.
@@ -54,15 +71,8 @@ class ClassRelationIndex {
     return false;
   }
 
-  static Set<Class> _collectDirectSupertypes(Class cls) {
-    final supertypes = <Class>{};
-    if (cls.supertype != null) supertypes.add(cls.supertype!.classNode);
-    for (final iface in cls.implementedTypes) {
-      supertypes.add(iface.classNode);
-    }
-    if (cls.mixedInType != null) supertypes.add(cls.mixedInType!.classNode);
-    return supertypes;
-  }
+  static Set<Class> _collectDirectSupertypes(Class cls) =>
+      ClassRelations.directSupertypesOf(cls);
 
   static bool _declaresOverridableMemberNamed(Class cls, String name) {
     for (final p in cls.procedures) {

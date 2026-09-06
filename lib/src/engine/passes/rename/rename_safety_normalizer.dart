@@ -1,6 +1,8 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/kernel_toolkit/naming.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/symbol_map_key.dart';
 
 /// Applies rename-specific safety normalization after name allocation.
 ///
@@ -29,7 +31,7 @@ final class RenameSafetyNormalizer {
     for (final library in component.libraries) {
       for (final cls in library.classes) {
         for (final member in [...cls.procedures, ...cls.fields]) {
-          if (!_isDynamicDispatchMember(member)) continue;
+          if (!MemberModel.isInstanceDispatch(member)) continue;
           (dynamicGroups[member.name] ??= <Member>[]).add(member);
         }
       }
@@ -68,8 +70,8 @@ final class RenameSafetyNormalizer {
     final symbolMap = <String, String>{};
     for (final entry in normalizedMembers.entries) {
       if (entry.key.name.text.isNotEmpty &&
-          !sameName(entry.key.name, entry.value)) {
-        symbolMap[symbolKeyForName(entry.value)] = entry.key.name.text;
+          !KernelNames.same(entry.key.name, entry.value)) {
+        symbolMap[SymbolMapKey.forName(entry.value)] = entry.key.name.text;
         if (entry.value.library != null) {
           (privateLegacyKeys[entry.value.text] ??= <String>{}).add(
             entry.key.name.text,
@@ -115,7 +117,7 @@ final class RenameSafetyNormalizer {
     for (final member in collector.members) {
       final originalName = member.name;
       final renamedName = normalizedMembers[member];
-      if (renamedName == null || sameName(originalName, renamedName)) {
+      if (renamedName == null || KernelNames.same(originalName, renamedName)) {
         continue;
       }
 
@@ -147,14 +149,6 @@ final class RenameSafetyNormalizer {
     final collector = _DynamicSelectorCollector();
     component.accept(collector);
     return collector.names;
-  }
-
-  bool _isDynamicDispatchMember(Member member) {
-    return switch (member) {
-      Procedure(isStatic: false) => true,
-      Field(isStatic: false) => true,
-      _ => false,
-    };
   }
 
   int _compareMembers(Member a, Member b) {
