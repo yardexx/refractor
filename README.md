@@ -83,7 +83,8 @@ Obfuscation scope is always the current project: libraries matching the `name` i
 
 ```yaml
 refractor:
-  symbol_map: symbol_map.json
+  # Path for the build artifacts JSON (includes the rename symbol map).
+  artifact_json: build_artifacts.json
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
