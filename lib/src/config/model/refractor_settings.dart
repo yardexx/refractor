@@ -4,6 +4,7 @@ part 'refractor_settings.g.dart';
 
 @JsonSerializable(
   checked: true,
+  disallowUnrecognizedKeys: true,
   fieldRename: FieldRename.snake,
   createToJson: false,
 )
