@@ -1,6 +1,7 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
+import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
@@ -24,6 +25,18 @@ void main() {
       expect(
         () => RefractorConfig.fromYaml('- rename\n- string_encrypt'),
         throwsA(isA<Exception>()),
+      );
+    });
+
+    test('rejects an unknown key under refractor', () {
+      expect(
+        () => RefractorConfig.fromYaml('''
+refractor:
+  symbol_map: symbol_map.json
+  passes:
+    rename: true
+'''),
+        throwsA(isA<ConfigException>()),
       );
     });
 
