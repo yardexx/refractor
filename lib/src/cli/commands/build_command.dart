@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:ci/ci.dart';
-import 'package:mason_logger/mason_logger.dart' show ExitCode;
+import 'package:mason_logger/mason_logger.dart' show ExitCode, Level;
 import 'package:refractor/src/cli/commands/refractor_command.dart';
 import 'package:refractor/src/cli/pass_results_io.dart';
 import 'package:refractor/src/cli/reporting/build_reporter.dart';
@@ -55,8 +55,9 @@ class BuildCommand extends RefractorCommand {
     required RefractorConfig config,
   }) {
     final engine = RefractorEngine(
-      compiler: DartCompiler(),
+      compiler: DartCompiler(logger: logger),
       kernelIO: FileKernelIO(),
+      logger: logger,
     );
 
     return engine.run(request: request, config: config);
@@ -67,6 +68,12 @@ class BuildCommand extends RefractorCommand {
     final target = Target.fromString(argResults.option('target')!);
     final input = argResults.option('input')!;
     final config = ConfigManager.loadConfig();
+
+    // A config-level `verbose: true` enables detailed logging even without the
+    // top-level `--verbose` flag.
+    if (config.verbose) {
+      logger.level = Level.verbose;
+    }
 
     final request = BuildRequest.withWorkspace(
       input: input,
