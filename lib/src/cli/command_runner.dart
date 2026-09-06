@@ -15,6 +15,12 @@ class RefractorCommandRunner extends CompletionCommandRunner<int> {
   RefractorCommandRunner({Logger? logger})
     : _logger = logger ?? Logger(),
       super(packageName, packageDescription) {
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      negatable: false,
+      help: 'Enable verbose (detailed) logging.',
+    );
     addCommand(BuildCommand(logger: _logger));
     addCommand(InitCommand(logger: _logger));
     addCommand(InspectCommand(logger: _logger));
@@ -27,6 +33,10 @@ class RefractorCommandRunner extends CompletionCommandRunner<int> {
 
   @override
   Future<int?> runCommand(ArgResults topLevelResults) async {
+    if (topLevelResults.flag('verbose')) {
+      _logger.level = Level.verbose;
+    }
+
     if (topLevelResults.command?.name == 'completion') {
       await super.runCommand(topLevelResults);
       return ExitCode.success.code;

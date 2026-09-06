@@ -1,13 +1,17 @@
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:refractor/src/utils/process_runner.dart';
 
 /// Compiles Dart source to kernel and to target formats using the `dart` CLI.
 class DartCompiler implements Compiler {
-  DartCompiler({this.verbose = false});
-  final bool verbose;
+  DartCompiler({Logger? logger}) : _logger = logger;
+
+  /// When set, the underlying `dart compile` commands and their output are
+  /// logged at the verbose level.
+  final Logger? _logger;
 
   @override
   void compileToKernel(String sourcePath, String outputPath) {
@@ -33,7 +37,7 @@ class DartCompiler implements Compiler {
 
   void _run(List<String> arguments) {
     try {
-      runProcess('dart', arguments, verbose: verbose);
+      runProcess('dart', arguments, logger: _logger);
     } on ProcessException catch (e) {
       throw CompilationException('Compilation failed: $e', cause: e);
     }

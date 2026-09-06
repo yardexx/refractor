@@ -84,6 +84,24 @@ refractor:
       ).called(1);
     });
 
+    test('raises logger level to verbose when config enables it', () async {
+      File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+      File('refractor.yaml').writeAsStringSync('''
+refractor:
+  verbose: true
+  passes:
+    rename: false
+    string_encrypt: false
+''');
+      Directory('lib').createSync(recursive: true);
+      File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
+
+      final exitCode = await runner.run(['build', '--target', 'kernel']);
+
+      expect(exitCode, ExitCode.success.code);
+      verify(() => logger.level = Level.verbose).called(1);
+    });
+
     test(
       'removes stale artifact json when a successful build has no artifacts',
       () async {

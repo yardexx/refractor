@@ -33,6 +33,14 @@ void main() {
       expect(exitCode, ExitCode.usage.code);
     });
 
+    test('raises logger level to verbose when --verbose is passed', () async {
+      final runner = RefractorCommandRunner(logger: logger);
+
+      await runner.run(['--verbose']);
+
+      verify(() => logger.level = Level.verbose).called(1);
+    });
+
     test('returns config exit code when build config is missing', () async {
       final tempDir = await Directory.systemTemp.createTemp(
         'refractor_runner_',
