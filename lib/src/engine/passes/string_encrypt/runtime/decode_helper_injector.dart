@@ -1,20 +1,22 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/sdk/helper_injector.dart';
+import 'package:refractor/src/engine/kernel_toolkit/sdk/sdk_index.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/runtime/string_encrypt_setup_result.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 final class DecodeHelperInjector {
   DecodeHelperInjector({
     required ObfuscationScope scope,
-  }) : _scope = scope;
+  }) : _injector = KernelHelperInjector(scope: scope);
 
   static const String helperBaseName = r'_obfDecode$';
 
-  final ObfuscationScope _scope;
+  final KernelHelperInjector _injector;
 
   StringEncryptSetupResult? injectIntoFirstEligibleLibrary(
     Component component,
   ) {
-    final targetLibrary = _findFirstEligibleLibrary(component);
+    final targetLibrary = _injector.firstEligibleLibrary(component);
     if (targetLibrary == null) {
       return null;
     }
@@ -26,120 +28,72 @@ final class DecodeHelperInjector {
     );
   }
 
-  Library? _findFirstEligibleLibrary(Component component) {
-    for (final library in component.libraries) {
-      if (_scope.shouldObfuscateLibrary(library)) {
-        return library;
-      }
-    }
-    return null;
-  }
-
   Procedure _injectHelper(Library library, Component component) {
-    final context = _resolveKernelContext(component);
+    final sdk = SdkIndex(component);
+    final context = _resolveKernelContext(sdk);
 
-    // String _obfDecode$(List<int> bytes, int key)
     final bytesParam = VariableDeclaration('bytes', type: context.listIntType);
     final keyParam = VariableDeclaration('key', type: context.intType);
-
-    // var shift = 0;
     final shiftVar = VariableDeclaration(
       'shift',
       type: context.intType,
       initializer: IntLiteral(0),
     );
 
-    final procedure = _buildDecodeProcedure(
-      library: library,
+    final function = _buildDecodeFunction(
       context: context,
       bytesParam: bytesParam,
       keyParam: keyParam,
       shiftVar: shiftVar,
     );
-    library.addProcedure(procedure);
-    return procedure;
+
+    return _injector.addStaticProcedure(
+      library,
+      name: Name(_injector.freshTopLevelName(library, helperBaseName), library),
+      function: function,
+      annotations: [_injector.pragma(sdk, 'vm:never-inline')],
+    );
   }
 
-  // Resolves the SDK members needed to build:
-  // Utf8Codec().decode(List<int>.of(bytes.reversed.map(...)))
-  _DecodeHelperKernelContext _resolveKernelContext(Component component) {
-    final coreLibrary = component.libraries.firstWhere(
-      (candidate) => candidate.importUri.toString() == 'dart:core',
-    );
-    final convertLibrary = component.libraries.firstWhere(
-      (candidate) => candidate.importUri.toString() == 'dart:convert',
-    );
-    final intClass = coreLibrary.classes.firstWhere((cls) => cls.name == 'int');
-    final numClass = coreLibrary.classes.firstWhere((cls) => cls.name == 'num');
-    final stringClass = coreLibrary.classes.firstWhere(
-      (cls) => cls.name == 'String',
-    );
-    final iterableClass = coreLibrary.classes.firstWhere(
-      (cls) => cls.name == 'Iterable',
-    );
-    final listClass = coreLibrary.classes.firstWhere(
-      (cls) => cls.name == 'List',
-    );
-    final pragmaClass = coreLibrary.classes.firstWhere(
-      (cls) => cls.name == 'pragma',
-    );
-    final utf8CodecClass = convertLibrary.classes.firstWhere(
-      (cls) => cls.name == 'Utf8Codec',
-    );
+  _DecodeHelperKernelContext _resolveKernelContext(SdkIndex sdk) {
+    final intClass = sdk.requireClass('dart:core', 'int');
+    final numClass = sdk.requireClass('dart:core', 'num');
+    final stringClass = sdk.requireClass('dart:core', 'String');
+    final iterableClass = sdk.requireClass('dart:core', 'Iterable');
+    final listClass = sdk.requireClass('dart:core', 'List');
+    final utf8CodecClass = sdk.requireClass('dart:convert', 'Utf8Codec');
 
-    final intType = InterfaceType(intClass, Nullability.nonNullable);
-    final stringType = InterfaceType(stringClass, Nullability.nonNullable);
-    final iterableIntType = InterfaceType(
+    final intType = sdk.interfaceType(intClass);
+    final stringType = sdk.interfaceType(stringClass);
+    final iterableIntType = sdk.interfaceType(
       iterableClass,
-      Nullability.nonNullable,
-      [intType],
+      typeArguments: [intType],
     );
-    final listIntType = InterfaceType(listClass, Nullability.nonNullable, [
-      intType,
-    ]);
+    final listIntType = sdk.interfaceType(listClass, typeArguments: [intType]);
 
     return _DecodeHelperKernelContext(
       intType: intType,
       stringType: stringType,
       iterableIntType: iterableIntType,
       listIntType: listIntType,
-      shiftRightMethod: intClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == '>>',
-      ),
-      bitAndMethod: intClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == '&',
-      ),
-      xorMethod: intClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == '^',
-      ),
-      addMethod: numClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == '+',
-      ),
-      reversedGetter: listClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == 'reversed',
-      ),
-      mapMethod: iterableClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == 'map',
-      ),
-      listOfFactory: listClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == 'of',
-      ),
-      decodeMethod: utf8CodecClass.procedures.firstWhere(
-        (procedure) => procedure.name.text == 'decode',
-      ),
-      utf8CodecConstructor: utf8CodecClass.constructors.single,
-      pragmaClass: pragmaClass,
-      pragmaNameField: pragmaClass.fields.firstWhere(
-        (field) => field.name.text == 'name',
-      ),
-      pragmaOptionsField: pragmaClass.fields.firstWhere(
-        (field) => field.name.text == 'options',
-      ),
+      shiftRightMethod: sdk.requireProcedure(intClass, '>>'),
+      bitAndMethod: sdk.requireProcedure(intClass, '&'),
+      xorMethod: sdk.requireProcedure(intClass, '^'),
+      addMethod: sdk.requireProcedure(numClass, '+'),
+      reversedGetter: sdk.requireProcedure(listClass, 'reversed'),
+      mapMethod: sdk.requireProcedure(iterableClass, 'map'),
+      listOfFactory: sdk.requireProcedure(listClass, 'of'),
+      decodeMethod: sdk.requireProcedure(utf8CodecClass, 'decode'),
+      utf8CodecConstructor: sdk.requireSingleConstructor(utf8CodecClass),
     );
   }
 
-  Procedure _buildDecodeProcedure({
-    required Library library,
+  // @pragma('vm:never-inline')
+  // String _obfDecode$(List<int> bytes, int key) {
+  //   var shift = 0;
+  //   return Utf8Codec().decode(List<int>.of(bytes.reversed.map(...)));
+  // }
+  FunctionNode _buildDecodeFunction({
     required _DecodeHelperKernelContext context,
     required VariableDeclaration bytesParam,
     required VariableDeclaration keyParam,
@@ -152,26 +106,15 @@ final class DecodeHelperInjector {
       shiftVar: shiftVar,
     );
 
-    // @pragma('vm:never-inline')
-    // String _obfDecode$(List<int> bytes, int key) {
-    //   var shift = 0;
-    //   return Utf8Codec().decode(List<int>.of(bytes.reversed.map(...)));
-    // }
-    return Procedure(
-      Name(_freshHelperName(library), library),
-      ProcedureKind.Method,
-      FunctionNode(
-        Block([
-          shiftVar,
-          ReturnStatement(decodeCall),
-        ]),
-        positionalParameters: [bytesParam, keyParam],
-        requiredParameterCount: 2,
-        returnType: context.stringType,
-      ),
-      fileUri: library.fileUri,
-      isStatic: true,
-    )..addAnnotation(_buildNeverInlineAnnotation(context));
+    return FunctionNode(
+      Block([
+        shiftVar,
+        ReturnStatement(decodeCall),
+      ]),
+      positionalParameters: [bytesParam, keyParam],
+      requiredParameterCount: 2,
+      returnType: context.stringType,
+    );
   }
 
   // Utf8Codec().decode(List<int>.of(bytes.reversed.map((byte) { ... })))
@@ -188,20 +131,17 @@ final class DecodeHelperInjector {
       shiftVar: shiftVar,
     );
 
-    // List<int>.of(mappedBytes)
     final byteList = StaticInvocation(
       context.listOfFactory,
       Arguments([mappedBytes], types: [context.intType]),
     );
 
-    // The function type for Utf8Codec().decode(List<int>)
     final decodeFunctionType = FunctionType(
       [context.listIntType],
       context.stringType,
       Nullability.nonNullable,
     );
 
-    // Utf8Codec().decode(...)
     return InstanceInvocation(
       InstanceAccessKind.Instance,
       ConstructorInvocation(
@@ -215,18 +155,13 @@ final class DecodeHelperInjector {
     );
   }
 
-  // bytes.reversed.map((byte) {
-  //    final decoded = ...;
-  //    shift = ...;
-  //    return decoded;
-  // })`
+  // bytes.reversed.map((byte) { ... })
   InstanceInvocation _buildMappedDecodedBytes({
     required _DecodeHelperKernelContext context,
     required VariableDeclaration bytesParam,
     required VariableDeclaration keyParam,
     required VariableDeclaration shiftVar,
   }) {
-    // bytes.reversed
     final reversedBytes = InstanceGet(
       InstanceAccessKind.Instance,
       VariableGet(bytesParam),
@@ -235,21 +170,18 @@ final class DecodeHelperInjector {
       resultType: context.iterableIntType,
     );
 
-    // The function type for the map lambda: (int) -> int
     final lambdaType = FunctionType(
       [context.intType],
       context.intType,
       Nullability.nonNullable,
     );
 
-    // The function type for the map method: (int) -> int
     final mapFunctionType = FunctionType(
       [lambdaType],
       context.iterableIntType,
       Nullability.nonNullable,
     );
 
-    // bytes.reversed.map(...)
     return InstanceInvocation(
       InstanceAccessKind.Instance,
       reversedBytes,
@@ -279,10 +211,8 @@ final class DecodeHelperInjector {
     required VariableDeclaration keyParam,
     required VariableDeclaration shiftVar,
   }) {
-    // The parameter for the lambda: (int byte)
     final byteParam = VariableDeclaration('byte', type: context.intType);
 
-    // The variable declaration for the decoded byte: final decoded = ...
     final decodedVar = VariableDeclaration(
       'decoded',
       type: context.intType,
@@ -294,11 +224,6 @@ final class DecodeHelperInjector {
       ),
     );
 
-    // {
-    //   final decoded = byte ^ ((key >> shift) & 0xFF);
-    //   shift = (shift + 8) & 24;
-    //   return decoded;
-    // }
     return FunctionExpression(
       FunctionNode(
         Block([
@@ -329,7 +254,6 @@ final class DecodeHelperInjector {
       Nullability.nonNullable,
     );
 
-    // key >> shift
     final shiftedKey = InstanceInvocation(
       InstanceAccessKind.Instance,
       VariableGet(keyParam),
@@ -339,7 +263,6 @@ final class DecodeHelperInjector {
       functionType: intBinaryFunctionType,
     );
 
-    // (key >> shift) & 0xFF
     final maskedKeyByte = InstanceInvocation(
       InstanceAccessKind.Instance,
       shiftedKey,
@@ -349,7 +272,6 @@ final class DecodeHelperInjector {
       functionType: intBinaryFunctionType,
     );
 
-    // byte ^ ((key >> shift) & 0xFF)
     return InstanceInvocation(
       InstanceAccessKind.Instance,
       VariableGet(byteParam),
@@ -371,7 +293,6 @@ final class DecodeHelperInjector {
       Nullability.nonNullable,
     );
 
-    // shift + 8
     final advancedShift = InstanceInvocation(
       InstanceAccessKind.Instance,
       VariableGet(shiftVar),
@@ -381,7 +302,6 @@ final class DecodeHelperInjector {
       functionType: intBinaryFunctionType,
     );
 
-    // shift = (shift + 8) & 24
     return ExpressionStatement(
       VariableSet(
         shiftVar,
@@ -395,42 +315,6 @@ final class DecodeHelperInjector {
         ),
       ),
     );
-  }
-
-  // @pragma('vm:never-inline')
-  ConstantExpression _buildNeverInlineAnnotation(
-    _DecodeHelperKernelContext context,
-  ) {
-    // @pragma('vm:never-inline')
-    return ConstantExpression(
-      InstanceConstant(
-        context.pragmaClass.reference,
-        const [],
-        <Reference, Constant>{
-          context.pragmaNameField.fieldReference: StringConstant(
-            'vm:never-inline',
-          ),
-          context.pragmaOptionsField.fieldReference: NullConstant(),
-        },
-      ),
-    );
-  }
-
-  String _freshHelperName(Library library) {
-    final usedNames = <String>{
-      for (final procedure in library.procedures) procedure.name.text,
-      for (final field in library.fields) field.name.text,
-    };
-
-    if (!usedNames.contains(helperBaseName)) {
-      return helperBaseName;
-    }
-
-    var suffix = 1;
-    while (usedNames.contains('$helperBaseName$suffix')) {
-      suffix++;
-    }
-    return '$helperBaseName$suffix';
   }
 }
 
@@ -449,9 +333,6 @@ final class _DecodeHelperKernelContext {
     required this.listOfFactory,
     required this.decodeMethod,
     required this.utf8CodecConstructor,
-    required this.pragmaClass,
-    required this.pragmaNameField,
-    required this.pragmaOptionsField,
   });
 
   final InterfaceType intType;
@@ -467,7 +348,4 @@ final class _DecodeHelperKernelContext {
   final Procedure listOfFactory;
   final Procedure decodeMethod;
   final Constructor utf8CodecConstructor;
-  final Class pragmaClass;
-  final Field pragmaNameField;
-  final Field pragmaOptionsField;
 }
