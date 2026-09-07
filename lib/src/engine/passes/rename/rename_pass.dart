@@ -3,7 +3,9 @@ import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/rename/config/rename_config.dart';
 import 'package:refractor/src/engine/passes/rename/planning/name_generator/name_generator.dart';
 import 'package:refractor/src/engine/passes/rename/planning/name_generator/shuffled_generator.dart';
+import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selection.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selector.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
@@ -19,13 +21,10 @@ typedef NameGeneratorFactory = NameGenerator Function();
 /// Kernel dynamic invocations do not have enough target information to rewrite
 /// those labels soundly once the receiver type becomes `dynamic`.
 ///
-/// Orchestrates the rename pass internal pipeline:
-///   1. Select eligible declarations.
-///   2. Plan exact rename decisions.
-///   3. Apply the planned mutations.
-///   4. Validate post-mutation invariants.
-///   5. Report stable pass output.
-class RenamePass extends Pass {
+/// Each stage delegates to its own class under this pass's directory; the
+/// methods below are the pipeline seam.
+class RenamePass
+    extends StagedPass<RenameSelection, RenamePlan, RenameTransformOutput> {
   RenamePass({
     required this.config,
     required this.scope,
@@ -41,52 +40,47 @@ class RenamePass extends Pass {
   String get name => 'rename';
 
   @override
-  Future<PassResult> run(Component component) async {
-    try {
-      final selection = RenameSelector(scope: scope).select(component);
-      final plan =
-          RenamePlanner(
-            generator: _generatorFactory(),
-          ).plan(
-            component,
-            selection,
-          );
-      final resolvedPlan = await plan;
-      final output = await RenameTransformer(
-        scope: scope,
-      ).apply(component, resolvedPlan);
-      const RenameValidator().validate(
-        component,
-        plan: resolvedPlan,
-        output: output,
-      );
-      final artifact = output.artifact;
-      final report = PassReport(
-        passName: name,
-        message: _buildMessage(selection, output),
-        metadata: {
-          'classes': output.renamedClasses.toString(),
-          'members': output.renamedMembers.toString(),
-          'variables': output.renamedVariables.toString(),
-        },
-      );
+  RenameSelection select(Component component) =>
+      RenameSelector(scope: scope).select(component);
 
-      return PassSucceeded(
-        artifact: artifact,
-        report: report,
-      );
-    } on Object catch (error) {
-      final exception = error is Exception
-          ? error
-          : Exception(error.toString());
-      return PassFailed(
-        error: exception,
-        report: PassReport(
-          passName: name,
-          message: error.toString(),
-        ),
-      );
-    }
+  @override
+  Future<RenamePlan> plan(Component component, RenameSelection selection) =>
+      RenamePlanner(generator: _generatorFactory()).plan(component, selection);
+
+  @override
+  Future<RenameTransformOutput> transform(
+    Component component,
+    RenamePlan plan,
+  ) => RenameTransformer(scope: scope).apply(component, plan);
+
+  @override
+  void validate(
+    Component component, {
+    required RenamePlan plan,
+    required RenameTransformOutput output,
+  }) => const RenameValidator().validate(
+    component,
+    plan: plan,
+    output: output,
+  );
+
+  @override
+  RenameArtifact buildArtifact(RenameTransformOutput output) => output.artifact;
+
+  @override
+  PassReport buildReport(
+    RenameSelection selection,
+    RenameTransformOutput output,
+  ) {
+    return PassReport(
+      passName: name,
+      message: _buildMessage(selection, output),
+      metadata: {
+        'classes': output.renamedClasses.toString(),
+        'members': output.renamedMembers.toString(),
+        'variables': output.renamedVariables.toString(),
+      },
+    );
   }
 
   String _buildMessage(
