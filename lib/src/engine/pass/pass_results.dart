@@ -26,12 +26,18 @@ class PassResults {
   PassResults({
     List<PassReport>? reports,
     List<PassFailureRecord>? failures,
+    List<String>? skipped,
   }) : reports = reports ?? [],
-       failures = failures ?? [];
+       failures = failures ?? [],
+       skipped = skipped ?? [];
 
   final Map<String, PassArtifact> _artifacts = {};
   final List<PassReport> reports;
   final List<PassFailureRecord> failures;
+
+  /// Names of passes that were not run because an earlier pass failed
+  /// (fail-fast). Distinct from [failures]: a skipped pass never executed.
+  final List<String> skipped;
 
   Map<String, PassArtifact> get artifacts => Map.unmodifiable(_artifacts);
 
@@ -52,11 +58,16 @@ class PassResults {
     failures.add(failure);
   }
 
+  void addSkipped(String passName) {
+    skipped.add(passName);
+  }
+
   Map<String, Object?> toJson() => {
     'artifacts': {
       for (final entry in _artifacts.entries) entry.key: entry.value.toJson(),
     },
     'reports': [for (final report in reports) report.toJson()],
     'failures': [for (final failure in failures) failure.toJson()],
+    'skipped': skipped,
   };
 }

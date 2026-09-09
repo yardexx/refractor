@@ -142,5 +142,30 @@ Custom Metric Total: 7''',
 Error: Exception: missing report''',
       );
     });
+
+    test('renders skipped passes distinctly from failed ones', () {
+      final result = BuildResult(
+        outputPath: 'build/out.dill',
+        passesRun: const ['rename', 'string_encrypt'],
+        passResults: PassResults(),
+        failures: [
+          PassFailureRecord(passName: 'rename', error: Exception('boom')),
+        ],
+        skipped: const ['string_encrypt'],
+      );
+
+      expect(
+        reporter.render(result),
+        '''
+⚠️ Build report: 0 pass(es) succeeded, 1 pass(es) failed, 1 skipped.
+
+❌ rename:
+(Nothing to report)
+Error: Exception: boom
+
+⏭️ string_encrypt:
+Skipped: an earlier pass failed.''',
+      );
+    });
   });
 }

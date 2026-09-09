@@ -91,6 +91,7 @@ class RefractorEngine {
         passResults: runResult,
         reports: runResult.reports,
         failures: runResult.failures,
+        skipped: runResult.skipped,
       );
     }
 
@@ -123,6 +124,7 @@ class RefractorEngine {
       passResults: runResult,
       reports: runResult.reports,
       failures: runResult.failures,
+      skipped: runResult.skipped,
     );
   }
 }
@@ -135,6 +137,7 @@ class BuildResult {
     required this.passResults,
     this.reports = const [],
     this.failures = const [],
+    this.skipped = const [],
   });
 
   final String outputPath;
@@ -142,4 +145,7 @@ class BuildResult {
   final PassResults passResults;
   final List<PassReport> reports;
   final List<PassFailureRecord> failures;
+
+  /// Passes not run because an earlier pass failed (fail-fast).
+  final List<String> skipped;
 }

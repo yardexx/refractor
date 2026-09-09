@@ -22,6 +22,7 @@ final class TextReporter implements BuildReporter {
     _writeSummary(buffer, result);
     _writeReportedPasses(buffer, result, failureByPass);
     _writeFailureOnlyPasses(buffer, result);
+    _writeSkippedPasses(buffer, result);
 
     return buffer.toString().trimRight();
   }
@@ -64,6 +65,15 @@ final class TextReporter implements BuildReporter {
         metadata: const {},
         error: failure.error.toString(),
       );
+    }
+  }
+
+  void _writeSkippedPasses(StringBuffer buffer, BuildResult result) {
+    for (final passName in result.skipped) {
+      buffer
+        ..writeln()
+        ..writeln('⏭️ $passName:')
+        ..writeln('Skipped: an earlier pass failed.');
     }
   }
 
@@ -115,7 +125,9 @@ final class TextReporter implements BuildReporter {
       return '✅ Build report: $totalSucceeded pass(es) succeeded.';
     }
 
+    final totalSkipped = result.skipped.length;
+    final skippedClause = totalSkipped == 0 ? '' : ', $totalSkipped skipped';
     return '⚠️ Build report: $totalSucceeded pass(es) succeeded, '
-        '$totalFailures pass(es) failed.';
+        '$totalFailures pass(es) failed$skippedClause.';
   }
 }

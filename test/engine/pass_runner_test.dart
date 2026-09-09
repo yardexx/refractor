@@ -38,16 +38,25 @@ class _MutatingPass extends Pass {
 
   @override
   Future<PassResult> run(Component component) async {
-    for (final lib in component.libraries) {
-      if (lib.importUri.scheme == 'package' &&
-          lib.importUri.pathSegments.isNotEmpty &&
-          lib.importUri.pathSegments.first == 'refractor') {
-        lib.addClass(Class(name: 'Injected', fileUri: lib.fileUri));
-        break;
-      }
-    }
+    _injectClass(component);
     return const PassSucceeded(
       report: PassReport(passName: 'mutating'),
+    );
+  }
+}
+
+/// A pass that partially mutates the component and then fails, modelling an
+/// error encountered mid-transformation.
+class _MutatingFailingPass extends Pass {
+  @override
+  String get name => 'mutating-failing';
+
+  @override
+  Future<PassResult> run(Component component) async {
+    _injectClass(component);
+    return PassFailed(
+      error: Exception('boom after mutation'),
+      report: PassReport(passName: name, message: 'boom after mutation'),
     );
   }
 }
@@ -65,6 +74,24 @@ class _FailingPass extends Pass {
       report: PassReport(passName: name, message: 'boom'),
     );
   }
+}
+
+void _injectClass(Component component) {
+  for (final lib in component.libraries) {
+    if (lib.importUri.scheme == 'package' &&
+        lib.importUri.pathSegments.isNotEmpty &&
+        lib.importUri.pathSegments.first == 'refractor') {
+      lib.addClass(Class(name: 'Injected', fileUri: lib.fileUri));
+      break;
+    }
+  }
+}
+
+bool _hasInjectedClass(Component component) {
+  final userLib = component.libraries.firstWhere(
+    (l) => l.importUri.toString().contains('refractor'),
+  );
+  return userLib.classes.any((c) => c.name == 'Injected');
 }
 
 void main() {
@@ -96,6 +123,7 @@ void main() {
         'second',
         'third',
       ]);
+      expect(result.skipped, isEmpty);
     });
 
     test('empty pass list returns component unchanged', () async {
@@ -114,53 +142,75 @@ void main() {
       final runner = PassRunner(passes: [mutating, tracker]);
       await runner.run(component);
 
-      // Mutating pass should have added a class.
-      final userLib = component.libraries.firstWhere(
-        (l) => l.importUri.toString().contains('refractor'),
-      );
-      expect(
-        userLib.classes.any((c) => c.name == 'Injected'),
-        isTrue,
-      );
-      // Tracker should have also run.
+      expect(_hasInjectedClass(component), isTrue);
       expect(tracker.wasRun, isTrue);
     });
 
-    test('later passes still run after a failure', () async {
+    test('stops at the first failure and does not run later passes', () async {
       final failing = _FailingPass('failing');
       final tracker = _TrackingPass('after');
 
       final runner = PassRunner(passes: [failing, tracker]);
       final result = await runner.run(component);
 
-      expect(tracker.wasRun, isTrue);
+      expect(tracker.wasRun, isFalse);
       expect(result.failures, hasLength(1));
       expect(result.failures.single.passName, 'failing');
-      expect(result.reports.map((report) => report.passName), [
-        'failing',
-        'after',
-      ]);
+      expect(result.reports.map((report) => report.passName), ['failing']);
+      expect(result.skipped, ['after']);
     });
 
-    test(
-      'successful artifacts are collected after an earlier failure',
-      () async {
-        final failing = _FailingPass('failing');
-        final tracker = _TrackingPass(
-          'after',
-          artifact: const _TrackingArtifact('tracked'),
-        );
+    test('records every remaining pass as skipped after a failure', () async {
+      final failing = _FailingPass('failing');
+      final first = _TrackingPass('first-after');
+      final second = _TrackingPass('second-after');
 
-        final runner = PassRunner(passes: [failing, tracker]);
-        final result = await runner.run(component);
+      final runner = PassRunner(passes: [failing, first, second]);
+      final result = await runner.run(component);
 
-        expect(result.failures, hasLength(1));
-        expect(
-          result.artifact<_TrackingArtifact>('after')?.value,
-          'tracked',
-        );
-      },
-    );
+      expect(first.wasRun, isFalse);
+      expect(second.wasRun, isFalse);
+      expect(result.skipped, ['first-after', 'second-after']);
+    });
+
+    test('failure after partial mutation stops later passes', () async {
+      final mutatingFailing = _MutatingFailingPass();
+      final tracker = _TrackingPass('after');
+
+      final runner = PassRunner(passes: [mutatingFailing, tracker]);
+      final result = await runner.run(component);
+
+      expect(tracker.wasRun, isFalse);
+      expect(result.failures.single.passName, 'mutating-failing');
+      expect(result.skipped, ['after']);
+    });
+
+    test('retains the primary failure without collecting later ones', () async {
+      final first = _FailingPass('first-fail');
+      final second = _FailingPass('second-fail');
+
+      final runner = PassRunner(passes: [first, second]);
+      final result = await runner.run(component);
+
+      expect(result.failures, hasLength(1));
+      expect(result.failures.single.passName, 'first-fail');
+      expect(result.skipped, ['second-fail']);
+    });
+
+    test('artifacts from passes before a failure are retained', () async {
+      final before = _TrackingPass(
+        'before',
+        artifact: const _TrackingArtifact('tracked'),
+      );
+      final failing = _FailingPass('failing');
+
+      final runner = PassRunner(passes: [before, failing]);
+      final result = await runner.run(component);
+
+      expect(result.failures.single.passName, 'failing');
+      expect(result.artifact<_TrackingArtifact>('before')?.value, 'tracked');
+      expect(result.skipped, isEmpty);
+    });
   });
 }
 

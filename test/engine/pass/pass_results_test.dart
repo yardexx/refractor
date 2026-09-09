@@ -72,7 +72,7 @@ void main() {
       );
     });
 
-    test('toJson serializes artifacts, reports, and failures', () {
+    test('toJson serializes artifacts, reports, failures, and skipped', () {
       results
         ..addArtifact('rename', const _StringArtifact('mapping-data'))
         ..addReport(
@@ -83,7 +83,8 @@ void main() {
         )
         ..addFailure(
           PassFailureRecord(passName: 'string_encrypt', error: Exception('x')),
-        );
+        )
+        ..addSkipped('literal_encode');
 
       expect(results.toJson(), {
         'artifacts': {
@@ -102,6 +103,7 @@ void main() {
             'error': 'Exception: x',
           },
         ],
+        'skipped': ['literal_encode'],
       });
     });
 

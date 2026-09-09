@@ -26,6 +26,7 @@ final class GitHubReporter implements BuildReporter {
     _writeTextSummary(buffer, result);
     _writeTextReportedPasses(buffer, result, failureByPass);
     _writeTextFailureOnlyPasses(buffer, result);
+    _writeTextSkippedPasses(buffer, result);
 
     return buffer.toString().trimRight();
   }
@@ -37,6 +38,7 @@ final class GitHubReporter implements BuildReporter {
     _writeGitHubSummary(buffer, result);
     _writeGitHubReportedPasses(buffer, result, failureByPass);
     _writeGitHubFailureOnlyPasses(buffer, result);
+    _writeGitHubSkippedPasses(buffer, result);
 
     return buffer.toString().trimRight();
   }
@@ -80,9 +82,11 @@ final class GitHubReporter implements BuildReporter {
       return;
     }
 
+    final totalSkipped = result.skipped.length;
+    final skippedClause = totalSkipped == 0 ? '' : ', $totalSkipped skipped';
     buffer.writeln(
       '⚠️ Build report: $totalSucceeded pass(es) succeeded, '
-      '$totalFailures pass(es) failed.',
+      '$totalFailures pass(es) failed$skippedClause.',
     );
   }
 
@@ -104,6 +108,9 @@ final class GitHubReporter implements BuildReporter {
       ..writeln(
         'Passes succeeded: $totalSucceeded. Passes failed: $totalFailures.',
       );
+    if (result.skipped.isNotEmpty) {
+      buffer.writeln('Passes skipped: ${result.skipped.length}.');
+    }
   }
 
   void _writeTextReportedPasses(
@@ -165,6 +172,24 @@ final class GitHubReporter implements BuildReporter {
         metadata: const {},
         error: failure.error.toString(),
       );
+    }
+  }
+
+  void _writeTextSkippedPasses(StringBuffer buffer, BuildResult result) {
+    for (final passName in result.skipped) {
+      buffer
+        ..writeln()
+        ..writeln('⏭️ $passName:')
+        ..writeln('Skipped: an earlier pass failed.');
+    }
+  }
+
+  void _writeGitHubSkippedPasses(StringBuffer buffer, BuildResult result) {
+    for (final passName in result.skipped) {
+      buffer
+        ..writeln()
+        ..writeln('## ⏭️ $passName')
+        ..writeln('Skipped: an earlier pass failed.');
     }
   }
 
