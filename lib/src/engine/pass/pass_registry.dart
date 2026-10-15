@@ -3,6 +3,7 @@ import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
+import 'package:refractor/src/engine/passes/opaque_predicate/config/opaque_predicate_definition.dart';
 import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_definition.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
@@ -13,6 +14,7 @@ import 'package:refractor/src/project/project_scope.dart';
 const defaultPassRegistry = PassRegistry([
   RenameDefinition(),
   StringEncryptDefinition(),
+  OpaquePredicateDefinition(),
 ]);
 
 final class PassRegistry {
