@@ -16,7 +16,7 @@ library;
 const String decodeRuntimeHelperName = 'refractorDecode';
 
 /// The Dart source compiled and injected as the decode helper.
-const String decodeRuntimeSource = r'''
+const String decodeRuntimeSource = '''
 import 'dart:convert';
 
 @pragma('vm:never-inline')

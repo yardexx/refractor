@@ -148,8 +148,9 @@ class RefractorEngine {
       project: projectScope,
       keep: KeepPolicy.empty,
     );
-    final target =
-        KernelHelperInjector(scope: scope).firstEligibleLibrary(component);
+    final target = KernelHelperInjector(
+      scope: scope,
+    ).firstEligibleLibrary(component);
     if (target == null) {
       _logger?.detail('No eligible library for runtime helpers; skipping.');
       return;

@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:kernel/ast.dart';
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/helper_source.dart';
@@ -17,13 +16,12 @@ export 'package:refractor/src/engine/kernel/helper_source.dart';
 ///   1. **Merge** the compiled helper dill into the program component with
 ///      `loadComponentFromBinary`, which deduplicates shared SDK libraries by
 ///      canonical name (no second `dart:core`).
-///   2. **Reparent** the wanted procedures into an existing program library.
-///      A standalone helper library is referenced only by the calls we add, not
-///      by an import, so AOT cannot assign it a loading unit and fails with
-///      "Unable to find loading unit". Moving the procedures into a library that
-///      is already in the import graph fixes this.
-///   3. **Drop** the now-empty helper library and unbind canonical names so the
-///      binary writer recomputes them for the new structure.
+///   2. **Reparent** the wanted procedures into an existing program library,
+///      unbinding each one's stale canonical name. A standalone helper library
+///      is referenced only by the calls we add, not by an import, so AOT cannot
+///      assign it a loading unit ("Unable to find loading unit"); moving the
+///      procedures into a library already in the import graph fixes this.
+///   3. **Drop** the now-empty helper library.
 class SourceHelperInjector {
   SourceHelperInjector({required Compiler compiler}) : _compiler = compiler;
 
@@ -44,8 +42,9 @@ class SourceHelperInjector {
       File(sourcePath).writeAsStringSync(helper.source);
       _compiler.compileToKernel(sourcePath, dillPath);
 
-      final existingUris =
-          component.libraries.map((library) => library.importUri).toSet();
+      final existingUris = component.libraries
+          .map((library) => library.importUri)
+          .toSet();
       loadComponentFromBinary(dillPath, component);
       final helperLibraries = component.libraries
           .where((library) => !existingUris.contains(library.importUri))

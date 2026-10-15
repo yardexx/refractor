@@ -56,51 +56,55 @@ void main() {
     setUp(() => dir = Directory.systemTemp.createTempSync('she_test'));
     tearDown(() => dir.deleteSync(recursive: true));
 
-    test('reparents the helper and the AOT program runs it', () {
-      final appDart = '${dir.path}/app.dart';
-      final appDill = '${dir.path}/app.dill';
-      File(appDart).writeAsStringSync("void main() { print('REPLACE_ME'); }");
-      compiler.compileToKernel(appDart, appDill);
-      final component = io.load(appDill);
+    test(
+      'reparents the helper and the AOT program runs it',
+      () {
+        final appDart = '${dir.path}/app.dart';
+        final appDill = '${dir.path}/app.dill';
+        File(appDart).writeAsStringSync("void main() { print('REPLACE_ME'); }");
+        compiler.compileToKernel(appDart, appDill);
+        final component = io.load(appDill);
 
-      final target = component.mainMethod!.enclosingLibrary;
-      int coreCount() => component.libraries
-          .where((l) => '${l.importUri}' == 'dart:core')
-          .length;
-      final coreBefore = coreCount();
+        final target = component.mainMethod!.enclosingLibrary;
+        int coreCount() => component.libraries
+            .where((l) => '${l.importUri}' == 'dart:core')
+            .length;
+        final coreBefore = coreCount();
 
-      final reparented = SourceHelperInjector(compiler: compiler).inject(
-        component,
-        HelperSource(
-          source: decodeRuntimeSource,
-          procedureNames: const {decodeRuntimeHelperName},
-        ),
-        targetLibrary: target,
-      );
+        final reparented = SourceHelperInjector(compiler: compiler).inject(
+          component,
+          const HelperSource(
+            source: decodeRuntimeSource,
+            procedureNames: {decodeRuntimeHelperName},
+          ),
+          targetLibrary: target,
+        );
 
-      // Helper is present, lives in an existing program library, and no
-      // standalone helper library or duplicate SDK remains.
-      expect(reparented.keys, contains(decodeRuntimeHelperName));
-      final decode = reparented[decodeRuntimeHelperName]!;
-      expect(decode.enclosingLibrary, same(target));
-      expect(coreCount(), coreBefore);
-      expect(
-        component.libraries.map((l) => '${l.importUri}'),
-        isNot(contains(contains('helper.dart'))),
-      );
+        // Helper is present, lives in an existing program library, and no
+        // standalone helper library or duplicate SDK remains.
+        expect(reparented.keys, contains(decodeRuntimeHelperName));
+        final decode = reparented[decodeRuntimeHelperName]!;
+        expect(decode.enclosingLibrary, same(target));
+        expect(coreCount(), coreBefore);
+        expect(
+          component.libraries.map((l) => '${l.importUri}'),
+          isNot(contains(contains('helper.dart'))),
+        );
 
-      // Rewrite the plaintext to call the helper, then AOT-compile and run.
-      final intType = CoreTypes(component).intNonNullableRawType;
-      component.transformChildren(_CallRewriter(decode, intType));
+        // Rewrite the plaintext to call the helper, then AOT-compile and run.
+        final intType = CoreTypes(component).intNonNullableRawType;
+        component.transformChildren(_CallRewriter(decode, intType));
 
-      final mergedDill = '${dir.path}/merged.dill';
-      io.write(component, mergedDill);
-      final exe = '${dir.path}/app_exe';
-      compiler.compileToTarget(mergedDill, exe, Target.exe);
+        final mergedDill = '${dir.path}/merged.dill';
+        io.write(component, mergedDill);
+        final exe = '${dir.path}/app_exe';
+        compiler.compileToTarget(mergedDill, exe, Target.exe);
 
-      final result = Process.runSync(exe, const []);
-      expect(result.exitCode, 0, reason: '${result.stderr}');
-      expect(result.stdout.toString().trim(), 'hello');
-    }, timeout: const Timeout(Duration(minutes: 3)));
+        final result = Process.runSync(exe, const []);
+        expect(result.exitCode, 0, reason: '${result.stderr}');
+        expect(result.stdout.toString().trim(), 'hello');
+      },
+      timeout: const Timeout(Duration(minutes: 3)),
+    );
   });
 }
