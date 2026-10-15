@@ -3,6 +3,9 @@ import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/engine/passes/arithmetic_mangle/arithmetic_mangle_pass.dart';
 import 'package:refractor/src/engine/passes/arithmetic_mangle/config/arithmetic_mangle_config.dart';
 import 'package:refractor/src/engine/passes/arithmetic_mangle/config/arithmetic_mangle_definition.dart';
+import 'package:refractor/src/engine/passes/control_flow_flatten/config/control_flow_flatten_config.dart';
+import 'package:refractor/src/engine/passes/control_flow_flatten/config/control_flow_flatten_definition.dart';
+import 'package:refractor/src/engine/passes/control_flow_flatten/control_flow_flatten_pass.dart';
 import 'package:refractor/src/engine/passes/opaque_predicate/config/opaque_predicate_config.dart';
 import 'package:refractor/src/engine/passes/opaque_predicate/config/opaque_predicate_definition.dart';
 import 'package:refractor/src/engine/passes/opaque_predicate/opaque_predicate_pass.dart';
@@ -77,10 +80,51 @@ void main() {
     });
   });
 
-  test('both layer-2 passes are registered', () {
+  group('ControlFlowFlattenDefinition', () {
+    const definition = ControlFlowFlattenDefinition();
+
+    test('name and keep sources', () {
+      expect(definition.name, 'control_flow_flatten');
+      expect(definition.keepSources, isNotEmpty);
+    });
+
+    test('parses config defaults and overrides', () {
+      expect(definition.parseConfig(const {}).enabled, isTrue);
+      final config = definition.parseConfig(const {
+        'enabled': false,
+        'seed': 9,
+        'exclude': ['a/*'],
+      });
+      expect(config.enabled, isFalse);
+      expect(config.seed, 9);
+      expect(config.exclude, ['a/*']);
+    });
+
+    test('supports its own config and creates its pass', () {
+      expect(
+        definition.supports(const ControlFlowFlattenPassConfig()),
+        isTrue,
+      );
+      expect(definition.supports(const _OtherConfig()), isFalse);
+      final pass = definition.createPass(
+        config: const ControlFlowFlattenPassConfig(),
+        scope: makeObfuscationScope(),
+      );
+      expect(pass, isA<ControlFlowFlattenPass>());
+    });
+  });
+
+  test('all layer-2 passes are registered', () {
     final names = defaultPassRegistry.definitions
         .map((definition) => definition.name)
         .toList();
-    expect(names, containsAll(['opaque_predicate', 'arithmetic_mangle']));
+    expect(
+      names,
+      containsAll([
+        'opaque_predicate',
+        'arithmetic_mangle',
+        'control_flow_flatten',
+      ]),
+    );
   });
 }
