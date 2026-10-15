@@ -47,6 +47,7 @@ class OpaquePredicatePass
   ) => OpaquePredicatePlanner(
     seed: config.seed,
     templateCount: opaquePredicateTemplates.length,
+    liveTemplateCount: opaquePredicateLiveTemplates.length,
   ).plan(component, selection);
 
   @override
@@ -55,6 +56,7 @@ class OpaquePredicatePass
     OpaquePredicatePlan plan,
   ) => OpaquePredicateTransformer(
     templates: opaquePredicateTemplates,
+    liveTemplates: opaquePredicateLiveTemplates,
   ).apply(component, plan);
 
   @override
