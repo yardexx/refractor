@@ -6,6 +6,9 @@ import 'package:refractor/src/engine/passes/arithmetic_mangle/config/arithmetic_
 import 'package:refractor/src/engine/passes/control_flow_flatten/config/control_flow_flatten_config.dart';
 import 'package:refractor/src/engine/passes/control_flow_flatten/config/control_flow_flatten_definition.dart';
 import 'package:refractor/src/engine/passes/control_flow_flatten/control_flow_flatten_pass.dart';
+import 'package:refractor/src/engine/passes/dead_code/config/dead_code_config.dart';
+import 'package:refractor/src/engine/passes/dead_code/config/dead_code_definition.dart';
+import 'package:refractor/src/engine/passes/dead_code/dead_code_pass.dart';
 import 'package:refractor/src/engine/passes/opaque_predicate/config/opaque_predicate_config.dart';
 import 'package:refractor/src/engine/passes/opaque_predicate/config/opaque_predicate_definition.dart';
 import 'package:refractor/src/engine/passes/opaque_predicate/opaque_predicate_pass.dart';
@@ -114,6 +117,37 @@ void main() {
     });
   });
 
+  group('DeadCodeDefinition', () {
+    const definition = DeadCodeDefinition();
+
+    test('name and keep sources', () {
+      expect(definition.name, 'dead_code');
+      expect(definition.keepSources, isNotEmpty);
+    });
+
+    test('parses config defaults and overrides', () {
+      expect(definition.parseConfig(const {}).enabled, isTrue);
+      final config = definition.parseConfig(const {
+        'enabled': false,
+        'seed': 9,
+        'exclude': ['a/*'],
+      });
+      expect(config.enabled, isFalse);
+      expect(config.seed, 9);
+      expect(config.exclude, ['a/*']);
+    });
+
+    test('supports its own config and creates its pass', () {
+      expect(definition.supports(const DeadCodePassConfig()), isTrue);
+      expect(definition.supports(const _OtherConfig()), isFalse);
+      final pass = definition.createPass(
+        config: const DeadCodePassConfig(),
+        scope: makeObfuscationScope(),
+      );
+      expect(pass, isA<DeadCodePass>());
+    });
+  });
+
   test('all layer-2 passes are registered', () {
     final names = defaultPassRegistry.definitions
         .map((definition) => definition.name)
@@ -124,6 +158,7 @@ void main() {
         'opaque_predicate',
         'arithmetic_mangle',
         'control_flow_flatten',
+        'dead_code',
       ]),
     );
   });
