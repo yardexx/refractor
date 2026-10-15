@@ -27,6 +27,9 @@ class KernelBuilder {
     _sdk.requireClass('dart:core', 'bool'),
   );
 
+  /// The `int` type, e.g. for typing temporaries bound around an expression.
+  DartType get intType => _intType;
+
   /// An `int` literal.
   IntLiteral intLit(int value) => IntLiteral(value);
 
@@ -44,6 +47,15 @@ class KernelBuilder {
 
   /// `a % b` on `int`.
   Expression mod(Expression a, Expression b) => _arithmetic('%', a, b);
+
+  /// `a ^ b` on `int` (bitwise xor).
+  Expression xor(Expression a, Expression b) => _arithmetic('^', a, b);
+
+  /// `a & b` on `int` (bitwise and).
+  Expression bitAnd(Expression a, Expression b) => _arithmetic('&', a, b);
+
+  /// `a << b` on `int` (left shift).
+  Expression shl(Expression a, Expression b) => _arithmetic('<<', a, b);
 
   /// `a >= b` (result `bool`).
   Expression ge(Expression a, Expression b) => _comparison('>=', a, b);
