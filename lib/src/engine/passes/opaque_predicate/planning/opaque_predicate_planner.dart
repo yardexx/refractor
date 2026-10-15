@@ -16,13 +16,16 @@ final class OpaquePredicatePlanner
   OpaquePredicatePlanner({
     required int seed,
     required int templateCount,
+    required int liveTemplateCount,
   }) : _random = Random(seed),
-       _templateCount = templateCount;
+       _templateCount = templateCount,
+       _liveTemplateCount = liveTemplateCount;
 
   static const int _maxConstant = 1000;
 
   final Random _random;
   final int _templateCount;
+  final int _liveTemplateCount;
 
   @override
   Future<OpaquePredicatePlan> plan(
@@ -30,13 +33,29 @@ final class OpaquePredicatePlanner
     OpaquePredicateSelection selection,
   ) async {
     final decisions = <PlannedOpaquePredicate>[
-      for (final site in selection.orderedSites)
-        PlannedOpaquePredicate(
-          site: site,
-          templateIndex: _random.nextInt(_templateCount),
-          constant: _random.nextInt(_maxConstant) + 1,
-        ),
+      for (final site in selection.orderedSites) _planFor(site, selection),
     ];
     return OpaquePredicatePlan(decisions: decisions);
+  }
+
+  PlannedOpaquePredicate _planFor(
+    IfStatement site,
+    OpaquePredicateSelection selection,
+  ) {
+    // Prefer a data-dependent live predicate where an in-scope variable exists.
+    final variable = selection.liveVariableFor(site);
+    if (variable != null && _liveTemplateCount > 0) {
+      return PlannedOpaquePredicate(
+        site: site,
+        templateIndex: _random.nextInt(_liveTemplateCount),
+        constant: 0,
+        variable: variable,
+      );
+    }
+    return PlannedOpaquePredicate(
+      site: site,
+      templateIndex: _random.nextInt(_templateCount),
+      constant: _random.nextInt(_maxConstant) + 1,
+    );
   }
 }

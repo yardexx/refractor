@@ -15,7 +15,11 @@ void main() {
     }
 
     Future<List<int>> choices(int seed, OpaquePredicateSelection selection) {
-      return OpaquePredicatePlanner(seed: seed, templateCount: 3)
+      return OpaquePredicatePlanner(
+            seed: seed,
+            templateCount: 3,
+            liveTemplateCount: 0,
+          )
           .plan(Component(), selection)
           .then(
             (plan) => [
@@ -31,6 +35,7 @@ void main() {
       final plan = await OpaquePredicatePlanner(
         seed: 1,
         templateCount: 3,
+        liveTemplateCount: 0,
       ).plan(Component(), selectionOf(4));
       expect(plan.decisionCount, 4);
     });
@@ -48,6 +53,7 @@ void main() {
       final plan = await OpaquePredicatePlanner(
         seed: 7,
         templateCount: 3,
+        liveTemplateCount: 0,
       ).plan(Component(), selectionOf(50));
       for (final decision in plan.decisions) {
         expect(decision.templateIndex, inInclusiveRange(0, 2));

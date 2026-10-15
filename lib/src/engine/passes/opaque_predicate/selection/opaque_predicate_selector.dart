@@ -15,7 +15,10 @@ final class OpaquePredicateSelector
   OpaquePredicateSelection select(Component component) {
     final collector = _OpaquePredicateSelectionCollector(scope: _scope);
     component.accept(collector);
-    return OpaquePredicateSelection(orderedSites: collector.sites);
+    return OpaquePredicateSelection(
+      orderedSites: collector.sites,
+      liveVariables: collector.liveVariables,
+    );
   }
 }
 
@@ -27,6 +30,17 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
   final ObfuscationScope scope;
 
   final List<IfStatement> sites = <IfStatement>[];
+  final Map<IfStatement, VariableDeclaration> liveVariables =
+      <IfStatement, VariableDeclaration>{};
+
+  List<VariableDeclaration> _enclosingIntParams = const [];
+
+  static List<VariableDeclaration> _intParamsOf(FunctionNode function) => [
+    for (final parameter in function.positionalParameters)
+      if (parameter.type is InterfaceType &&
+          (parameter.type as InterfaceType).classNode.name == 'int')
+        parameter,
+  ];
 
   @override
   void visitLibrary(Library node) {
@@ -59,7 +73,10 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
     if (!isScopedMember(node)) {
       return;
     }
+    final saved = _enclosingIntParams;
+    _enclosingIntParams = _intParamsOf(node.function);
     node.function.accept(this);
+    _enclosingIntParams = saved;
   }
 
   @override
@@ -77,16 +94,22 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
     if (!isScopedMember(node)) {
       return;
     }
+    final saved = _enclosingIntParams;
+    _enclosingIntParams = _intParamsOf(node.function);
     for (final initializer in node.initializers) {
       initializer.accept(this);
     }
     node.function.accept(this);
+    _enclosingIntParams = saved;
   }
 
   @override
   void visitIfStatement(IfStatement node) {
     if (!inConstContext) {
       sites.add(node);
+      if (_enclosingIntParams.isNotEmpty) {
+        liveVariables[node] = _enclosingIntParams.first;
+      }
     }
     super.visitIfStatement(node);
   }
