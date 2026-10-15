@@ -1,11 +1,16 @@
+import 'package:kernel/ast.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/cli/project_workspace.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
+import 'package:refractor/src/engine/kernel/source_helper_injector.dart';
+import 'package:refractor/src/engine/kernel_toolkit/sdk/helper_injector.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/engine/pass_runner.dart';
+import 'package:refractor/src/policy/keep_policy.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
 export 'package:refractor/src/engine/compiler/compiler.dart' show Target;
@@ -70,6 +75,8 @@ class RefractorEngine {
       projectPackageName: request.projectPackageName,
     );
 
+    _injectRuntimeHelpers(component, config, projectScope);
+
     final enabledPasses = _passRegistry.createAll(
       configs: config.passes,
       component: component,
@@ -124,6 +131,34 @@ class RefractorEngine {
       reports: runResult.reports,
       failures: runResult.failures,
     );
+  }
+
+  /// Compiles and injects the runtime helpers declared by the enabled passes,
+  /// once, before the passes run. Each pass then resolves its reparented
+  /// procedures from the component by name.
+  void _injectRuntimeHelpers(
+    Component component,
+    RefractorConfig config,
+    ProjectScope projectScope,
+  ) {
+    final helpers = _passRegistry.collectRuntimeHelpers(config.passes);
+    if (helpers.isEmpty) return;
+
+    final scope = ObfuscationScope(
+      project: projectScope,
+      keep: KeepPolicy.empty,
+    );
+    final target =
+        KernelHelperInjector(scope: scope).firstEligibleLibrary(component);
+    if (target == null) {
+      _logger?.detail('No eligible library for runtime helpers; skipping.');
+      return;
+    }
+
+    final injector = SourceHelperInjector(compiler: compiler);
+    for (final helper in helpers) {
+      injector.inject(component, helper, targetLibrary: target);
+    }
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
+import 'package:refractor/src/engine/kernel/helper_source.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
@@ -200,6 +201,9 @@ final class _FailingDefinition implements PassDefinition<_FailingPassConfig> {
 
   @override
   Set<KeepSource> get keepSources => const {};
+
+  @override
+  Set<HelperSource> get runtimeHelpers => const {};
 
   @override
   Pass createPass({

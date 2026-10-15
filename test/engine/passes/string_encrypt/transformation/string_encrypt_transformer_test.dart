@@ -22,6 +22,18 @@ void main() {
         userLib: userLib,
         extraLibraries: [convertLib],
       );
+      // The engine injects the decode helper before the transformer runs; the
+      // transformer resolves it by name. Supply a stand-in for these unit
+      // tests so each rewritten literal has a procedure to call.
+      userLib.addProcedure(
+        Procedure(
+          Name('refractorDecode', userLib),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        ),
+      );
     });
 
     test('returns explicit transform output with encrypted count', () async {

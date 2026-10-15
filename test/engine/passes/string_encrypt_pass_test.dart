@@ -59,11 +59,24 @@ void main() {
     });
 
     Component makeRuntimeComponent() {
-      return makeComponent(
+      final component = makeComponent(
         coreLib: coreLib,
         userLib: userLib,
         extraLibraries: [convertLib],
       );
+      // In a real build the engine injects the decode helper before the pass
+      // runs; the pass resolves it by name. Supply a stand-in for these unit
+      // tests so each rewritten literal has a procedure to call.
+      userLib.addProcedure(
+        Procedure(
+          Name('refractorDecode', userLib),
+          ProcedureKind.Method,
+          FunctionNode(EmptyStatement()),
+          fileUri: userLib.fileUri,
+          isStatic: true,
+        ),
+      );
+      return component;
     }
 
     StringEncryptPass makePass(
@@ -286,55 +299,6 @@ void main() {
       expect(result.report.isEmpty, isTrue);
       expect((result as PassSucceeded).artifact, isNull);
     });
-
-    test(r'helper _obfDecode$ is injected into first user library', () async {
-      final proc = Procedure(
-        Name('fn'),
-        ProcedureKind.Method,
-        FunctionNode(
-          Block([ReturnStatement(StringLiteral('test'))]),
-        ),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(proc);
-
-      component = makeRuntimeComponent();
-      await makePass(component).run(component);
-
-      final helperNames = userLib.procedures.map((p) => p.name.text).toList();
-      expect(helperNames, contains(r'_obfDecode$'));
-    });
-
-    test(
-      r'helper injection avoids collisions with existing _obfDecode$',
-      () async {
-        userLib.addProcedure(
-          Procedure(
-            Name(r'_obfDecode$', userLib),
-            ProcedureKind.Method,
-            FunctionNode(EmptyStatement()),
-            fileUri: userLib.fileUri,
-            isStatic: true,
-          ),
-        );
-        final proc = Procedure(
-          Name('fn'),
-          ProcedureKind.Method,
-          FunctionNode(
-            Block([ReturnStatement(StringLiteral('test'))]),
-          ),
-          fileUri: userLib.fileUri,
-        );
-        userLib.addProcedure(proc);
-
-        component = makeRuntimeComponent();
-        await makePass(component).run(component);
-
-        final helperNames = userLib.procedures.map((p) => p.name.text).toList();
-        expect(helperNames, contains(r'_obfDecode$'));
-        expect(helperNames, contains(r'_obfDecode$1'));
-      },
-    );
 
     test('dart: library strings are not encrypted', () async {
       final coreProc = Procedure(

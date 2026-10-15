@@ -1,3 +1,4 @@
+import 'package:refractor/src/engine/kernel/helper_source.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
@@ -19,6 +20,10 @@ final class RenameDefinition implements PassDefinition<RenamePassConfig> {
     KeepSource.annotations,
     KeepSource.entryPoint,
   };
+
+  // Rename rewrites existing declarations; it injects no runtime code.
+  @override
+  Set<HelperSource> get runtimeHelpers => const {};
 
   @override
   RenamePassConfig parseConfig(Map<String, dynamic> json) {
