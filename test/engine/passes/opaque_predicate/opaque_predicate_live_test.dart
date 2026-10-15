@@ -103,5 +103,58 @@ void main() {
       },
       timeout: const Timeout(Duration(minutes: 3)),
     );
+
+    test(
+      'entangles the predicate with a block-local variable',
+      () async {
+        final root = dir.resolveSymbolicLinksSync();
+        final appDart = '$root/app.dart';
+        final appDill = '$root/app.dill';
+        File(appDart).writeAsStringSync('''
+void main() {
+  final seed = int.parse('5');
+  if (seed > 3) {
+    print('big');
+  } else {
+    print('small');
+  }
+}
+''');
+        compiler.compileToKernel(appDart, appDill);
+        final component = io.load(appDill);
+
+        final scope = ObfuscationScope(
+          project: ProjectScope(
+            projectRootUri: Uri.directory(root),
+            projectPackageName: null,
+          ),
+          keep: KeepPolicy.empty,
+        );
+
+        final result = await OpaquePredicatePass(
+          config: const OpaquePredicatePassConfig(),
+          scope: scope,
+        ).run(component);
+        expect(result, isA<PassSucceeded>());
+
+        // The predicate reads the block-local `seed` declared before the `if`.
+        final body = component.mainMethod!.function.body! as Block;
+        final seed = body.statements.whereType<VariableDeclaration>().first;
+        final ifStatement = body.statements.whereType<IfStatement>().first;
+        final collector = _VariableGetCollector();
+        ifStatement.condition.accept(collector);
+        expect(collector.found, contains(seed));
+
+        final outDill = '$root/out.dill';
+        io.write(component, outDill);
+        final exe = '$root/app_exe';
+        compiler.compileToTarget(outDill, exe, Target.exe);
+
+        final run = Process.runSync(exe, const []);
+        expect(run.exitCode, 0, reason: '${run.stderr}');
+        expect(run.stdout.toString().trim(), 'big');
+      },
+      timeout: const Timeout(Duration(minutes: 3)),
+    );
   });
 }

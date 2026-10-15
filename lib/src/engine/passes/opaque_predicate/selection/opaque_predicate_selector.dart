@@ -33,14 +33,13 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
   final Map<IfStatement, VariableDeclaration> liveVariables =
       <IfStatement, VariableDeclaration>{};
 
-  List<VariableDeclaration> _enclosingIntParams = const [];
+  // Int variables in scope at the current point, in declaration order; the
+  // last is the nearest. Holds parameters and block-local declarations alike,
+  // pushed as they are visited and popped when their function or block ends.
+  final List<VariableDeclaration> _intScope = <VariableDeclaration>[];
 
-  static List<VariableDeclaration> _intParamsOf(FunctionNode function) => [
-    for (final parameter in function.positionalParameters)
-      if (parameter.type is InterfaceType &&
-          (parameter.type as InterfaceType).classNode.name == 'int')
-        parameter,
-  ];
+  static bool _isInt(DartType type) =>
+      type is InterfaceType && type.classNode.name == 'int';
 
   @override
   void visitLibrary(Library node) {
@@ -73,10 +72,7 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
     if (!isScopedMember(node)) {
       return;
     }
-    final saved = _enclosingIntParams;
-    _enclosingIntParams = _intParamsOf(node.function);
     node.function.accept(this);
-    _enclosingIntParams = saved;
   }
 
   @override
@@ -94,21 +90,44 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
     if (!isScopedMember(node)) {
       return;
     }
-    final saved = _enclosingIntParams;
-    _enclosingIntParams = _intParamsOf(node.function);
     for (final initializer in node.initializers) {
       initializer.accept(this);
     }
     node.function.accept(this);
-    _enclosingIntParams = saved;
+  }
+
+  @override
+  void visitFunctionNode(FunctionNode node) {
+    // Parameters (visited by super) and anything declared in the body are
+    // scoped to this function.
+    final saved = _intScope.length;
+    super.visitFunctionNode(node);
+    _intScope.length = saved;
+  }
+
+  @override
+  void visitBlock(Block node) {
+    final saved = _intScope.length;
+    super.visitBlock(node);
+    _intScope.length = saved;
+  }
+
+  @override
+  void visitVariableDeclaration(VariableDeclaration node) {
+    // Visit the initializer first (the variable is not yet in scope there),
+    // then make it available to following statements.
+    super.visitVariableDeclaration(node);
+    if (_isInt(node.type)) {
+      _intScope.add(node);
+    }
   }
 
   @override
   void visitIfStatement(IfStatement node) {
     if (!inConstContext) {
       sites.add(node);
-      if (_enclosingIntParams.isNotEmpty) {
-        liveVariables[node] = _enclosingIntParams.first;
+      if (_intScope.isNotEmpty) {
+        liveVariables[node] = _intScope.last;
       }
     }
     super.visitIfStatement(node);
