@@ -1,5 +1,6 @@
 import 'package:glob/glob.dart';
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/helper_source.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
@@ -35,6 +36,17 @@ final class PassRegistry {
       throw ConfigException('Unknown pass type: $name');
     }
     return definition.single.parseConfig(json) as PassConfig;
+  }
+
+  /// The runtime helpers declared by every enabled pass in [configs]. The
+  /// engine injects these into the component once, before the passes run.
+  Set<HelperSource> collectRuntimeHelpers(Iterable<PassConfig> configs) {
+    final helpers = <HelperSource>{};
+    for (final config in configs) {
+      if (!config.enabled) continue;
+      helpers.addAll(_definitionFor(config).runtimeHelpers);
+    }
+    return helpers;
   }
 
   List<Pass> createAll({

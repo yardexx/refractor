@@ -1,7 +1,9 @@
+import 'package:refractor/src/engine/kernel/helper_source.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_config.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_runtime.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
 import 'package:refractor/src/policy/keep_source.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
@@ -21,6 +23,17 @@ final class StringEncryptDefinition
   Set<KeepSource> get keepSources => const {
     KeepSource.excludes,
     KeepSource.annotations,
+  };
+
+  // The decode helper, authored as plain Dart (see decode_runtime.dart) and
+  // injected once by the engine. The transformer resolves it by name and
+  // replaces each plaintext literal with a call to it.
+  @override
+  Set<HelperSource> get runtimeHelpers => const {
+    HelperSource(
+      source: decodeRuntimeSource,
+      procedureNames: {decodeRuntimeHelperName},
+    ),
   };
 
   @override

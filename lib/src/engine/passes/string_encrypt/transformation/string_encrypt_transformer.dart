@@ -5,7 +5,7 @@ import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_plan.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encryption_record.dart';
-import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_helper_injector.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_runtime.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transform_output.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
 
@@ -30,10 +30,8 @@ class StringEncryptTransformer
       );
     }
 
-    final setupResult = DecodeHelperInjector(
-      scope: _scope,
-    ).injectIntoFirstEligibleLibrary(component);
-    if (setupResult == null) {
+    final decodeProcedure = _resolveDecodeProcedure(component);
+    if (decodeProcedure == null) {
       return const StringEncryptTransformOutput(
         encryptedCount: 0,
         records: [],
@@ -41,7 +39,7 @@ class StringEncryptTransformer
     }
 
     final visitor = _StringEncryptVisitor(
-      decodeProcedure: setupResult.decodeProcedure,
+      decodeProcedure: decodeProcedure,
       scope: _scope,
       plan: plan,
     );
@@ -50,6 +48,18 @@ class StringEncryptTransformer
       encryptedCount: visitor.encryptedCount,
       records: List.unmodifiable(visitor.records),
     );
+  }
+
+  /// Finds the decode helper the engine injected into the program. Returns null
+  /// when it is absent (e.g. no eligible library), in which case no literal is
+  /// rewritten.
+  Procedure? _resolveDecodeProcedure(Component component) {
+    for (final library in component.libraries) {
+      for (final procedure in library.procedures) {
+        if (procedure.name.text == decodeRuntimeHelperName) return procedure;
+      }
+    }
+    return null;
   }
 }
 

@@ -1,3 +1,8 @@
 # Run tests sequentially because PassContext reads Directory.current,
 # which can be affected by concurrent test suites.
 concurrency: 1
+
+tags:
+  integration:
+    # Slower tests that shell out to `dart compile` and run real binaries.
+    timeout: 3x
