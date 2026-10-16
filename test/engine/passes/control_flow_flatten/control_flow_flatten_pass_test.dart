@@ -85,12 +85,14 @@ void main() {
         final root = dir.resolveSymbolicLinksSync();
         final appDart = '$root/app.dart';
         final appDill = '$root/app.dill';
-        // `compute` mixes declarations, an expression statement, and a
-        // mid-body early return so flattening must hoist the locals and let a
-        // return case exit the switch.
+        // `compute` mixes an uninitialized declaration (hoisted to an empty
+        // case), a later assignment, initialized declarations, an expression
+        // statement, and a mid-body early return — so flattening must hoist
+        // every local and let the return case exit the switch.
         File(appDart).writeAsStringSync(r'''
 int compute(int seed) {
-  final a = seed + 1;
+  int a;
+  a = seed + 1;
   final b = a * 2;
   print('intermediate: $b');
   final c = b - 3;
