@@ -55,8 +55,25 @@ final class SymbolMap {
   /// Obfuscated-or-scoped key → original name.
   final Map<String, String> symbols;
 
-  /// The original name for [obfuscated], or null if it is not in the map.
+  /// The original name for [obfuscated] by bare key, or null. Public classes
+  /// and members, and unambiguously-named private members, are keyed this way.
   String? originalFor(String obfuscated) => symbols[obfuscated];
+
+  /// The original name for [obfuscated], preferring the scoped entry for
+  /// [scope] (a library URI) when one exists, then falling back to the bare
+  /// key. Private members are keyed `<library-uri>::<name>`, so passing the
+  /// enclosing frame's library URI disambiguates short names that collide
+  /// across libraries; a public class/member has no scoped entry and resolves
+  /// by its bare key regardless.
+  String? lookup(String obfuscated, {String? scope}) {
+    if (scope != null) {
+      final scoped = symbols['$scope::$obfuscated'];
+      if (scoped != null) {
+        return scoped;
+      }
+    }
+    return symbols[obfuscated];
+  }
 
   Map<String, Object?> toJson() => {
     'version': version,

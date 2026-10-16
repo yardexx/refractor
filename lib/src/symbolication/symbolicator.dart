@@ -11,9 +11,9 @@ import 'package:refractor/src/symbolication/symbol_map.dart';
 /// interleaved output).
 ///
 /// This reverses public classes and members and unambiguously-named private
-/// members (the rename mapping records those under their bare name too).
-/// Scope-aware disambiguation of ambiguous short member names using the
-/// enclosing frame is a follow-up.
+/// members (the rename mapping records those under their bare name too). For a
+/// private member whose short name collides across libraries, it uses the
+/// enclosing frame's library URI (from the location) to pick the scoped entry.
 final class Symbolicator {
   const Symbolicator(this.map);
 
@@ -23,11 +23,15 @@ final class Symbolicator {
   /// parenthesised location. Non-greedy symbol so the location is the last
   /// `( ... )` group on the line.
   static final RegExp _framePattern = RegExp(
-    r'^(\s*#\d+\s+)(.*?)(\s+\([^)]*\))\s*$',
+    r'^(\s*#\d+\s+)(.*?)(\s+\(([^)]*)\))\s*$',
   );
 
   /// A Dart identifier token.
   static final RegExp _identifier = RegExp(r'[A-Za-z_$][A-Za-z0-9_$]*');
+
+  /// Strips the trailing `:<line>` or `:<line>:<col>` from a frame location,
+  /// leaving the library URI.
+  static final RegExp _lineColumn = RegExp(r'(?::\d+){1,2}$');
 
   /// Symbolicates a whole trace, line by line.
   String symbolicateTrace(String trace) {
@@ -41,9 +45,10 @@ final class Symbolicator {
     if (frame == null) {
       return line;
     }
+    final scope = frame.group(4)!.replaceFirst(_lineColumn, '');
     final reversed = frame.group(2)!.replaceAllMapped(_identifier, (match) {
       final token = match[0]!;
-      return map.originalFor(token) ?? token;
+      return map.lookup(token, scope: scope) ?? token;
     });
     return '${frame.group(1)}$reversed${frame.group(3)}';
   }
