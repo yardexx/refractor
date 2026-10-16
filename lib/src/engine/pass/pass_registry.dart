@@ -6,6 +6,7 @@ import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
 import 'package:refractor/src/engine/passes/arithmetic_mangle/config/arithmetic_mangle_definition.dart';
 import 'package:refractor/src/engine/passes/bogus_control_flow/config/bogus_control_flow_definition.dart';
+import 'package:refractor/src/engine/passes/call_indirection/config/call_indirection_definition.dart';
 import 'package:refractor/src/engine/passes/control_flow_flatten/config/control_flow_flatten_definition.dart';
 import 'package:refractor/src/engine/passes/dead_code/config/dead_code_definition.dart';
 import 'package:refractor/src/engine/passes/int_encrypt/config/int_encrypt_definition.dart';
@@ -26,6 +27,7 @@ const defaultPassRegistry = PassRegistry([
   ControlFlowFlattenDefinition(),
   DeadCodeDefinition(),
   BogusControlFlowDefinition(),
+  CallIndirectionDefinition(),
 ]);
 
 final class PassRegistry {
