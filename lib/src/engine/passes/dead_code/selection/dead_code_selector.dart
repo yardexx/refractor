@@ -15,7 +15,10 @@ final class DeadCodeSelector implements PassSelector<DeadCodeSelection> {
   DeadCodeSelection select(Component component) {
     final collector = _DeadCodeSelectionCollector(scope: _scope);
     component.accept(collector);
-    return DeadCodeSelection(orderedFunctions: collector.functions);
+    return DeadCodeSelection(
+      orderedFunctions: collector.functions,
+      sites: collector.sites,
+    );
   }
 }
 
@@ -27,6 +30,8 @@ final class _DeadCodeSelectionCollector extends RecursiveVisitor
   final ObfuscationScope scope;
 
   final List<FunctionNode> functions = <FunctionNode>[];
+  final Map<FunctionNode, List<DeadCodeSite>> sites =
+      <FunctionNode, List<DeadCodeSite>>{};
 
   @override
   void visitLibrary(Library node) {
@@ -69,8 +74,10 @@ final class _DeadCodeSelectionCollector extends RecursiveVisitor
   }
 
   void _consider(FunctionNode function) {
-    if (isDeadCodeTarget(function)) {
+    final functionSites = deadCodeSites(function);
+    if (functionSites.isNotEmpty) {
       functions.add(function);
+      sites[function] = functionSites;
     }
   }
 }

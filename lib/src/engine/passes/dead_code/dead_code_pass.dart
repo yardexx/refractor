@@ -9,13 +9,14 @@ import 'package:refractor/src/engine/passes/dead_code/transformation/dead_code_t
 import 'package:refractor/src/engine/passes/dead_code/transformation/dead_code_transformer.dart';
 import 'package:refractor/src/policy/obfuscation_scope.dart';
 
-/// Obfuscation pass that prepends a never-executed, opaquely-guarded block to
+/// Obfuscation pass that inserts a never-executed, opaquely-guarded block into
 /// function bodies, adding plausible code a reader must rule out.
 ///
-/// The guard is an always-false predicate over a live `int` parameter, so the
-/// block never runs (behaviour is preserved) but is not a compile-time constant
-/// the optimizer can drop. This prototype guards on a parameter; using in-scope
-/// locals or richer junk is a follow-up.
+/// The guard is an always-false predicate over a live `int` in scope at the
+/// insertion point — a parameter at the start of the body, or a block-local
+/// just after it is declared. The block never runs (behaviour is preserved) but
+/// is not a compile-time constant the optimizer can drop. Richer junk is a
+/// follow-up.
 ///
 /// Each stage delegates to its own class; the methods below are the seam.
 class DeadCodePass

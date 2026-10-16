@@ -7,9 +7,29 @@ void main() {
     Class(name: 'int', fileUri: Uri.parse('dart:core')),
     Nullability.nonNullable,
   );
+  final nullableIntType = InterfaceType(
+    Class(name: 'int', fileUri: Uri.parse('dart:core')),
+    Nullability.nullable,
+  );
 
   VariableDeclaration intParam() => VariableDeclaration('p', type: intType);
   VariableDeclaration dynParam() => VariableDeclaration('x');
+
+  VariableDeclaration intLocal({
+    bool isLate = false,
+    bool isConst = false,
+    bool initialized = true,
+    DartType? type,
+  }) {
+    final declaration = VariableDeclaration(
+      'v',
+      type: type ?? intType,
+      initializer: initialized ? IntLiteral(1) : null,
+      isConst: isConst,
+    )..isLate = isLate;
+    return declaration;
+  }
+
   FunctionNode function(
     List<VariableDeclaration> params, {
     Statement? body,
@@ -17,17 +37,49 @@ void main() {
     return FunctionNode(body ?? Block([]), positionalParameters: params);
   }
 
-  group('isDeadCodeTarget / firstIntParam', () {
-    test('a block body with an int parameter is a target', () {
+  group('deadCodeSites / isDeadCodeTarget', () {
+    test('an int parameter yields a site at the start of the body', () {
       final node = function([intParam()]);
+      final sites = deadCodeSites(node);
       expect(isDeadCodeTarget(node), isTrue);
-      expect(firstIntParam(node), isNotNull);
+      expect(sites, hasLength(1));
+      expect(sites.single.insertionIndex, 0);
+      expect(sites.single.variable, node.positionalParameters.single);
     });
 
-    test('no int parameter is not a target', () {
-      expect(firstIntParam(function([dynParam()])), isNull);
+    test('no int parameter and no int local is not a target', () {
+      expect(deadCodeSites(function([dynParam()])), isEmpty);
       expect(isDeadCodeTarget(function([dynParam()])), isFalse);
       expect(isDeadCodeTarget(function([])), isFalse);
+    });
+
+    test('an int local yields a site just after its declaration', () {
+      final local = intLocal();
+      final node = function(
+        [],
+        body: Block([local, ExpressionStatement(StringLiteral('x'))]),
+      );
+      final sites = deadCodeSites(node);
+      expect(sites, hasLength(1));
+      expect(sites.single.insertionIndex, 1);
+      expect(sites.single.variable, local);
+    });
+
+    test('a param and an int local yield two sites', () {
+      final local = intLocal();
+      final node = function([intParam()], body: Block([local]));
+      expect(deadCodeSites(node).map((s) => s.insertionIndex), [0, 1]);
+    });
+
+    test('late, const, uninitialized, and nullable locals are excluded', () {
+      for (final local in [
+        intLocal(isLate: true),
+        intLocal(isConst: true),
+        intLocal(initialized: false),
+        intLocal(type: nullableIntType),
+      ]) {
+        expect(deadCodeSites(function([], body: Block([local]))), isEmpty);
+      }
     });
 
     test('a non-block body is not a target', () {
