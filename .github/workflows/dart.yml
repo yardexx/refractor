@@ -21,6 +21,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Full history so Codecov can resolve the PR's base/parent commit and
+          # map patch coverage onto the diff; a shallow clone leaves CC_BASE_SHA
+          # empty and reports "0.00% of diff hit".
+          fetch-depth: 0
       - uses: dart-lang/setup-dart@v1.6.5
         with:
           sdk: "3.11.3"
