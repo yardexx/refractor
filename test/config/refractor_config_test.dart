@@ -32,7 +32,7 @@ void main() {
       expect(
         () => RefractorConfig.fromYaml('''
 refractor:
-  symbol_map: symbol_map.json
+  not_a_real_setting: true
   passes:
     rename: true
 '''),
@@ -83,6 +83,24 @@ refractor:
       expect(
         config.passes.whereType<StringEncryptPassConfig>().single.enabled,
         isTrue,
+      );
+    });
+
+    test('parses a custom symbol_map path, defaulting otherwise', () {
+      expect(
+        RefractorConfig.fromYaml(
+          'refractor:\n  passes:\n    rename: true\n',
+        ).symbolMapPath,
+        'symbol_map.json',
+      );
+      expect(
+        RefractorConfig.fromYaml('''
+refractor:
+  symbol_map: out/map.json
+  passes:
+    rename: true
+''').symbolMapPath,
+        'out/map.json',
       );
     });
 

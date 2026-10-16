@@ -7,12 +7,15 @@ import 'package:refractor/src/cli/pass_results_io.dart';
 import 'package:refractor/src/cli/reporting/build_reporter.dart';
 import 'package:refractor/src/cli/reporting/github_reporter.dart';
 import 'package:refractor/src/cli/reporting/text_reporter.dart';
+import 'package:refractor/src/cli/symbol_map_io.dart';
 import 'package:refractor/src/config/config_manager.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/dart_compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
 import 'package:refractor/src/engine/kernel/file_kernel_io.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
+import 'package:refractor/src/symbolication/symbol_map.dart';
 
 /// Full compile -> obfuscate -> final-compile pipeline command.
 ///
@@ -101,11 +104,33 @@ class BuildCommand extends RefractorCommand {
         }
       }
 
+      _emitSymbolMap(result, config);
+
       logger.success('Build complete: ${result.outputPath}');
       return ExitCode.success.code;
     } on Exception catch (e) {
       throw BuildException('Build failed: $e', cause: e);
     }
+  }
+
+  /// Writes the stable, versioned symbol map from the rename mapping, or clears
+  /// a stale file when this build renamed nothing. Kept separate from the
+  /// bundled artifacts JSON so it stays a clean deobfuscation contract.
+  void _emitSymbolMap(BuildResult result, RefractorConfig config) {
+    final symbolMapPath = workspace.auxiliaryOutputPath(config.symbolMapPath);
+    final rename = result.passResults.artifact<RenameArtifact>('rename');
+    final symbols = rename?.mapping.symbolMap ?? const {};
+
+    if (symbols.isEmpty) {
+      final file = File(symbolMapPath);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      return;
+    }
+
+    writeSymbolMapToPath(SymbolMap(symbols: symbols), symbolMapPath);
+    logger.detail('Wrote symbol map to $symbolMapPath');
   }
 
   BuildReporter _detectReporter() => isCI && Vendor.IS_GITHUB_ACTIONS
