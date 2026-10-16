@@ -7,6 +7,7 @@ import 'package:refractor/src/engine/pass/config/pass_definition.dart';
 import 'package:refractor/src/engine/passes/arithmetic_mangle/config/arithmetic_mangle_definition.dart';
 import 'package:refractor/src/engine/passes/control_flow_flatten/config/control_flow_flatten_definition.dart';
 import 'package:refractor/src/engine/passes/dead_code/config/dead_code_definition.dart';
+import 'package:refractor/src/engine/passes/int_encrypt/config/int_encrypt_definition.dart';
 import 'package:refractor/src/engine/passes/opaque_predicate/config/opaque_predicate_definition.dart';
 import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_definition.dart';
@@ -18,6 +19,7 @@ import 'package:refractor/src/project/project_scope.dart';
 const defaultPassRegistry = PassRegistry([
   RenameDefinition(),
   StringEncryptDefinition(),
+  IntEncryptDefinition(),
   OpaquePredicateDefinition(),
   ArithmeticMangleDefinition(),
   ControlFlowFlattenDefinition(),
