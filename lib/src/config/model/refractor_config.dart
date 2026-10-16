@@ -87,6 +87,8 @@ final class RefractorConfig {
   bool get verbose => refractor.verbose;
 
   String get artifactJsonPath => refractor.artifactJson;
+
+  String get symbolMapPath => refractor.symbolMap;
 }
 
 /// Recursively converts [YamlMap]/[YamlList] to plain Dart [Map]/[List].
