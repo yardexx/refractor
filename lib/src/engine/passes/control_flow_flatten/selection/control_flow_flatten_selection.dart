@@ -13,13 +13,16 @@ final class ControlFlowFlattenSelection extends PassSelection {
   int get selectedFunctionCount => orderedFunctions.length;
 }
 
-/// Whether [function] is a straight-line body this prototype can flatten: a
-/// synchronous function whose body is a block of two or more statements, all
-/// expression statements.
+/// Whether [function] is a straight-line body this pass can flatten: a
+/// synchronous function whose body is a block of two or more statements, each
+/// one a kind the transformer knows how to carry through the state machine.
 ///
-/// Restricting to expression statements keeps the first version safe — there
-/// are no local declarations to rescope, no returns or control flow to
-/// reorder. Those cases are a follow-up.
+/// Supported statement kinds are expression statements, `return`s, and plain
+/// local variable declarations. Declarations are hoisted out of the switch and
+/// turned into assignments, so `late` and `const` locals are excluded — their
+/// initialization semantics would not survive that rewrite. Any other kind
+/// (nested control flow, loops, try/catch) disqualifies the whole body; those
+/// are a follow-up.
 bool isFlattenableFunction(FunctionNode function) {
   if (function.asyncMarker != AsyncMarker.Sync) {
     return false;
@@ -28,5 +31,15 @@ bool isFlattenableFunction(FunctionNode function) {
   if (body is! Block || body.statements.length < 2) {
     return false;
   }
-  return body.statements.every((statement) => statement is ExpressionStatement);
+  return body.statements.every(isFlattenableStatement);
+}
+
+/// Whether [statement] is a top-level body statement the transformer supports.
+bool isFlattenableStatement(Statement statement) {
+  return switch (statement) {
+    ExpressionStatement() => true,
+    ReturnStatement() => true,
+    VariableDeclaration(:final isLate, :final isConst) => !isLate && !isConst,
+    _ => false,
+  };
 }
