@@ -44,7 +44,8 @@ jobs:
             --lcov \
             --in=coverage \
             --out=coverage/lcov.info \
-            --report-on=lib
+            --report-on=lib \
+            --base-directory=.
 
       - name: 📈 Upload Coverage
         uses: codecov/codecov-action@v5
