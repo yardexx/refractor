@@ -16,3 +16,10 @@ ignore:
   - "**/*.g.dart"
   - "lib/src/generated/**"
   - "test/**"
+  # Vendored third-party code refractor does not own or test. Coverage
+  # collection pulls in the vendored Kernel library under
+  # packages/third_party/ (22k+ lines, ~26% covered), which otherwise drags
+  # "project" coverage down to ~66% even though refractor's own lib/ is ~92%
+  # covered. Scoped to third_party so first-party packages (e.g.
+  # packages/kernel_model) still count toward coverage.
+  - "packages/third_party/**"
