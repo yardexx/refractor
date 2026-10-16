@@ -285,6 +285,24 @@ refractor:
       },
     );
 
+    test(
+      'rename + int_encrypt: obfuscated binary produces correct output',
+      () async {
+        final output = await _compileObfuscateRun(
+          tempDir: tempDir,
+          configYaml: '''
+refractor:
+  verbose: false
+  passes:
+    rename: true
+    int_encrypt:
+      seed: 7
+''',
+        );
+        expect(output, equals(_expectedOutput.trim()));
+      },
+    );
+
     test('rename pass: callable aliases survive obfuscated AOT', () async {
       final output = await _compileObfuscateRun(
         tempDir: tempDir,
