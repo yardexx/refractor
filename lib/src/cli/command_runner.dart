@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/cli/commands/build_command.dart';
 import 'package:refractor/src/cli/commands/init_command.dart';
 import 'package:refractor/src/cli/commands/inspect_command.dart';
+import 'package:refractor/src/cli/commands/symbolicate_command.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 
 const packageName = 'refractor';
@@ -24,6 +25,7 @@ class RefractorCommandRunner extends CompletionCommandRunner<int> {
     addCommand(BuildCommand(logger: _logger));
     addCommand(InitCommand(logger: _logger));
     addCommand(InspectCommand(logger: _logger));
+    addCommand(SymbolicateCommand(logger: _logger));
   }
 
   final Logger _logger;
