@@ -3,6 +3,10 @@
 .dart_tool/
 .packages
 
+# The docs site is an app, not a library: commit its lockfile so CI builds
+# are reproducible. Overrides the repo-root `pubspec.lock` ignore.
+!pubspec.lock
+
 # Conventional directory for build output.
 /build/
 
