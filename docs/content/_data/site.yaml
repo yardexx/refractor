@@ -1,0 +1,10 @@
+# Site Configuration
+titleBase: Refractor
+favicon: favicon.ico
+
+# Links
+social:
+  - name: GitHub
+    url: https://github.com/yardexx/refractor
+  - name: Issues
+    url: https://github.com/yardexx/refractor/issues

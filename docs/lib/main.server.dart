@@ -1,0 +1,129 @@
+/// The entrypoint for the **server** environment.
+library;
+
+import 'package:jaspr/server.dart';
+import 'package:jaspr_content/components/callout.dart';
+import 'package:jaspr_content/components/code_block.dart';
+import 'package:jaspr_content/components/github_button.dart';
+import 'package:jaspr_content/components/header.dart';
+import 'package:jaspr_content/components/image.dart';
+import 'package:jaspr_content/components/sidebar.dart';
+import 'package:jaspr_content/components/theme_toggle.dart';
+import 'package:jaspr_content/jaspr_content.dart';
+import 'package:jaspr_content/theme.dart';
+
+import 'main.server.options.dart';
+
+void main() {
+  Jaspr.initializeApp(options: defaultServerOptions);
+
+  runApp(
+    ContentApp(
+      templateEngine: MustacheTemplateEngine(),
+      parsers: [MarkdownParser()],
+      extensions: [HeadingAnchorsExtension(), TableOfContentsExtension()],
+      components: [Callout(), CodeBlock(), Image(zoom: true)],
+      layouts: [
+        const EmptyLayout(),
+        DocsLayout(
+          header: Header(
+            title: 'Refractor',
+            logo: '/images/logo.svg',
+            items: [
+              ThemeToggle(),
+              GitHubButton(repo: 'yardexx/refractor'),
+            ],
+          ),
+          sidebar: Sidebar(
+            groups: [
+              SidebarGroup(
+                links: [SidebarLink(text: 'Introduction', href: '/guide')],
+              ),
+              SidebarGroup(
+                title: 'Guide',
+                links: [
+                  SidebarLink(text: 'Commands', href: '/guide/commands'),
+                  SidebarLink(
+                    text: 'Configuration',
+                    href: '/guide/configuration',
+                  ),
+                ],
+              ),
+              SidebarGroup(
+                title: 'Architecture',
+                links: [
+                  SidebarLink(text: 'Overview', href: '/architecture'),
+                  SidebarLink(text: 'Passes', href: '/architecture/passes'),
+                  SidebarLink(text: 'Policy', href: '/architecture/policy'),
+                  SidebarLink(
+                    text: 'kernel_toolkit',
+                    href: '/architecture/kernel-toolkit',
+                  ),
+                ],
+              ),
+              SidebarGroup(
+                title: 'Rulebook',
+                links: [
+                  SidebarLink(text: 'Overview', href: '/rulebook'),
+                  SidebarLink(text: 'Rename', href: '/rulebook/rename'),
+                  SidebarLink(
+                    text: 'String encryption',
+                    href: '/rulebook/string-encryption',
+                  ),
+                  SidebarLink(
+                    text: 'Integer encryption',
+                    href: '/rulebook/int-encryption',
+                  ),
+                  SidebarLink(
+                    text: 'Arithmetic mangling',
+                    href: '/rulebook/arithmetic-mangling',
+                  ),
+                  SidebarLink(
+                    text: 'Opaque predicates',
+                    href: '/rulebook/opaque-predicates',
+                  ),
+                  SidebarLink(
+                    text: 'Control-flow flattening',
+                    href: '/rulebook/control-flow-flatten',
+                  ),
+                  SidebarLink(text: 'Dead code', href: '/rulebook/dead-code'),
+                  SidebarLink(
+                    text: 'Bogus control flow',
+                    href: '/rulebook/bogus-control-flow',
+                  ),
+                  SidebarLink(
+                    text: 'Call indirection',
+                    href: '/rulebook/call-indirection',
+                  ),
+                ],
+              ),
+              SidebarGroup(
+                title: 'Recipes',
+                links: [
+                  SidebarLink(text: 'Overview', href: '/recipes'),
+                  SidebarLink(
+                    text: 'Continuous integration',
+                    href: '/recipes/ci',
+                  ),
+                  SidebarLink(
+                    text: 'Symbol map',
+                    href: '/recipes/symbolication',
+                  ),
+                  SidebarLink(text: 'Flutter apps', href: '/recipes/flutter'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+      theme: ContentTheme(
+        primary: ThemeColor(ThemeColors.blue.$500, dark: ThemeColors.blue.$300),
+        background: ThemeColor(
+          ThemeColors.slate.$50,
+          dark: ThemeColors.zinc.$950,
+        ),
+        colors: [ContentColors.quoteBorders.apply(ThemeColors.blue.$400)],
+      ),
+    ),
+  );
+}
