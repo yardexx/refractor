@@ -16,3 +16,4 @@ ignore:
   - "**/*.g.dart"
   - "lib/src/generated/**"
   - "test/**"
+  - "packages/third_party/**"
