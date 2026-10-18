@@ -76,5 +76,64 @@ void main() {
       },
       timeout: const Timeout(Duration(minutes: 3)),
     );
+
+    test(
+      'guards on a block-local int when there is no int parameter',
+      () async {
+        final root = dir.resolveSymbolicLinksSync();
+        final appDart = '$root/app.dart';
+        final appDill = '$root/app.dill';
+        // `compute` takes no int parameter, so the guard must key off a
+        // definitely-assigned int local; the dead block lands after a
+        // declaration, not at index 0. `int.parse` keeps the local runtime so
+        // the guard is not folded away.
+        File(appDart).writeAsStringSync('''
+int compute() {
+  final seed = int.parse('5');
+  final result = seed * 2 + 1;
+  return result;
+}
+
+void main() {
+  print(compute());
+}
+''');
+        compiler.compileToKernel(appDart, appDill);
+        final component = io.load(appDill);
+
+        final scope = ObfuscationScope(
+          project: ProjectScope(
+            projectRootUri: Uri.directory(root),
+            projectPackageName: null,
+          ),
+          keep: KeepPolicy.empty,
+        );
+
+        final result = await DeadCodePass(
+          config: const DeadCodePassConfig(),
+          scope: scope,
+        ).run(component);
+
+        expect(result, isA<PassSucceeded>());
+        expect(result.report.metadata['blocks_inserted'], '1');
+
+        final compute = component.mainMethod!.enclosingLibrary.procedures
+            .firstWhere((procedure) => procedure.name.text == 'compute');
+        final statements = (compute.function.body! as Block).statements;
+        // The guard is inserted after a local declaration, not at the top.
+        expect(statements.first, isNot(isA<IfStatement>()));
+        expect(statements.any((s) => s is IfStatement), isTrue);
+
+        final outDill = '$root/out.dill';
+        io.write(component, outDill);
+        final exe = '$root/app_exe';
+        compiler.compileToTarget(outDill, exe, Target.exe);
+
+        final run = Process.runSync(exe, const []);
+        expect(run.exitCode, 0, reason: '${run.stderr}');
+        expect(run.stdout.toString().trim(), '11');
+      },
+      timeout: const Timeout(Duration(minutes: 3)),
+    );
   });
 }
