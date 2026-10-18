@@ -12,9 +12,11 @@ import 'package:refractor/src/policy/obfuscation_scope.dart';
 /// Obfuscation pass that flattens straight-line function bodies into a
 /// switch-dispatch state machine, hiding the linear order of statements.
 ///
-/// This prototype only flattens synchronous bodies that are a block of two or
-/// more expression statements — there are no local declarations to rescope and
-/// no control flow or returns to reorder. Handling those is a follow-up.
+/// Flattens synchronous bodies that are a block of two or more statements, each
+/// an expression statement, a `return`, or a plain local declaration. Local
+/// declarations are hoisted ahead of the switch and a `return` case exits it.
+/// Nested control flow (ifs, loops, try/catch) is still out of scope — those
+/// are a follow-up.
 ///
 /// Each stage delegates to its own class; the methods below are the seam.
 class ControlFlowFlattenPass
