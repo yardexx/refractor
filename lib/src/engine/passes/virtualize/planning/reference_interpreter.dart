@@ -1,7 +1,12 @@
 /// Pure-Dart reference interpreter for the flat bytecode. This is the
-/// correctness oracle used by the E6 differential gate: its semantics MUST
-/// match the synthesized kernel interpreter exactly (same opcode numbering,
-/// same 64-bit `int` arithmetic, same stack discipline).
+/// correctness oracle used by the E6 differential gate.
+///
+/// Opcode numbering and per-op semantics are specified canonically by `VmOp`
+/// in `planning/vm_ir.dart`. This interpreter and the synthesized kernel
+/// interpreter (`runtime/interpreter_injector.dart`) are two hand-written
+/// mirrors of that spec and MUST stay byte-for-byte equivalent (same opcode
+/// numbers, 64-bit `int` arithmetic, and stack discipline); the VM-core and
+/// end-to-end tests guard against drift between them.
 int runReference(List<int> words, List<int> args, {int stackDepth = 64}) {
   final stack = List<int>.filled(stackDepth, 0);
   var sp = 0;

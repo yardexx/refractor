@@ -36,6 +36,7 @@ class VirtualizePass extends Pass {
 
       final injector = InterpreterInjector(component);
       final records = <VirtualizationRecord>[];
+      final applied = <_AppliedTransform>[];
       var virtualizedCount = 0;
 
       for (final target in selection.targets) {
@@ -84,6 +85,14 @@ class VirtualizePass extends Pass {
           params: target.function.positionalParameters,
           returnsBool: assembled.returnsBool,
         );
+        applied.add(
+          _AppliedTransform(
+            target: target,
+            originalBody: target.function.body,
+            library: library,
+            interpreter: interpreter,
+          ),
+        );
         target.function.body = body..parent = target.function;
         virtualizedCount++;
         records.add(
@@ -100,6 +109,10 @@ class VirtualizePass extends Pass {
       if (virtualizedCount > 0) {
         final error = const VirtualizeValidator().verify(component);
         if (error != null) {
+          // Atomic: a verification failure means our own synthesis is wrong, so
+          // roll back every mutation and leave the component untouched for the
+          // rest of the pipeline (pass_runner keeps running later passes).
+          _rollback(applied);
           return PassFailed(
             error: Exception('kernel verification failed: $error'),
             report: PassReport(passName: name, message: error),
@@ -125,5 +138,28 @@ class VirtualizePass extends Pass {
         report: PassReport(passName: name, message: error.toString()),
       );
     }
+  }
+}
+
+/// Records one applied virtualization so it can be undone if validation fails.
+final class _AppliedTransform {
+  const _AppliedTransform({
+    required this.target,
+    required this.originalBody,
+    required this.library,
+    required this.interpreter,
+  });
+
+  final Procedure target;
+  final Statement? originalBody;
+  final Library library;
+  final Procedure interpreter;
+}
+
+void _rollback(List<_AppliedTransform> applied) {
+  for (final t in applied) {
+    t.target.function.body = t.originalBody;
+    t.originalBody?.parent = t.target.function;
+    t.library.procedures.remove(t.interpreter);
   }
 }

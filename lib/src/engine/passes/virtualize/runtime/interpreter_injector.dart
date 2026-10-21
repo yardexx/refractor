@@ -7,10 +7,12 @@ import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 /// Signature of the injected helper:
 ///   `int _vm$N(List<int> code, List<int> args)`
 ///
-/// Its semantics match `reference_interpreter.dart` exactly (same opcode
-/// numbering, same 64-bit int arithmetic, same stack discipline), so the E6
-/// differential gate is sound. M0 uses the canonical fixed ISA; per-build ISA
-/// randomization + chained decode are M1.
+/// Opcode numbering and per-op semantics are specified canonically by `VmOp`
+/// in `planning/vm_ir.dart`; this synthesized interpreter and the pure-Dart
+/// `reference_interpreter.dart` are two mirrors of that spec and must stay
+/// exactly equivalent (same opcode numbers, 64-bit int arithmetic, stack
+/// discipline), so the E6 differential gate is sound. M0 uses the canonical
+/// fixed ISA; per-build ISA randomization + chained decode are M1.
 final class InterpreterInjector {
   InterpreterInjector(Component component) : _ctx = _VmKernelContext(component);
 
@@ -80,7 +82,7 @@ final class InterpreterInjector {
     )..fileOffset = 0;
     final procedure =
         Procedure(
-            Name(_freshName(), library),
+            Name(_freshName(library), library),
             ProcedureKind.Method,
             functionNode,
             fileUri: library.fileUri,
@@ -221,6 +223,18 @@ final class InterpreterInjector {
           ReturnStatement(stackAt(_ig(sp))),
         ]),
       ),
+      // Defensive trap: valid (assembler-produced) bytecode never reaches here,
+      // but a default keeps a malformed opcode from spinning the loop forever.
+      SwitchCase.defaultCase(
+        ExpressionStatement(
+          Throw(
+            ConstantExpression(
+              StringConstant('refractor: invalid opcode'),
+              _ctx.stringType,
+            ),
+          ),
+        ),
+      ),
     ];
   }
 
@@ -347,7 +361,13 @@ final class InterpreterInjector {
         ),
       );
 
-  String _freshName() => '_vm\$${_counter++}';
+  String _freshName(Library library) {
+    final existing = library.procedures.map((p) => p.name.text).toSet();
+    while (true) {
+      final name = '_vm\$${_counter++}';
+      if (!existing.contains(name)) return name;
+    }
+  }
 
   /// Builds the replacement body for a virtualized function:
   ///   `return _vm$N(const [<words>], [p0, p1, ...]);`  (int return), or
@@ -401,6 +421,7 @@ final class _VmKernelContext {
     final intClass = core.classes.firstWhere((c) => c.name == 'int');
     final numClass = core.classes.firstWhere((c) => c.name == 'num');
     final boolClass = core.classes.firstWhere((c) => c.name == 'bool');
+    final stringClass = core.classes.firstWhere((c) => c.name == 'String');
     final objectClass = core.classes.firstWhere((c) => c.name == 'Object');
     final listClass = core.classes.firstWhere((c) => c.name == 'List');
     pragmaClass = core.classes.firstWhere((c) => c.name == 'pragma');
@@ -413,6 +434,7 @@ final class _VmKernelContext {
 
     intType = InterfaceType(intClass, Nullability.nonNullable);
     boolType = InterfaceType(boolClass, Nullability.nonNullable);
+    stringType = InterfaceType(stringClass, Nullability.nonNullable);
     objectType = InterfaceType(objectClass, Nullability.nonNullable);
     listIntType = InterfaceType(listClass, Nullability.nonNullable, [intType]);
 
@@ -446,6 +468,7 @@ final class _VmKernelContext {
 
   late final InterfaceType intType;
   late final InterfaceType boolType;
+  late final InterfaceType stringType;
   late final InterfaceType objectType;
   late final InterfaceType listIntType;
   late final Procedure add;
