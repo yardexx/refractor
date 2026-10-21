@@ -38,7 +38,7 @@ AssembledProgram assembleProgram(VmProgram program) {
     if (item.op == VmOp.jz || item.op == VmOp.jmp) {
       final target = labelOffsets[item.target];
       if (target == null) {
-        throw StateError('Unresolved jump target L${item.target}');
+        throw StackDepthError('unresolved jump target L${item.target}');
       }
       words.add(target);
     } else if (item.op == VmOp.pushConst) {
@@ -52,46 +52,98 @@ AssembledProgram assembleProgram(VmProgram program) {
     words: words,
     argCount: program.argCount,
     returnsBool: program.returnsBool,
-    stackDepth: _estimateStackDepth(program),
+    stackDepth: computeMaxStackDepth(program),
   );
 }
 
-/// Conservative operand-stack depth estimate (upper bound) for sizing the
-/// interpreter's stack. Walks the linear item stream tracking net push/pop.
-int _estimateStackDepth(VmProgram program) {
-  var depth = 0;
-  var max = 0;
-  for (final item in program.items) {
-    if (item is! VmInstr) continue;
-    switch (item.op) {
-      case VmOp.pushConst:
-      case VmOp.pushArg:
-      case VmOp.dup:
-        depth += 1;
-      case VmOp.add:
-      case VmOp.sub:
-      case VmOp.mul:
-      case VmOp.xor:
-      case VmOp.and:
-      case VmOp.or:
-      case VmOp.shl:
-      case VmOp.shr:
-      case VmOp.cmpEq:
-      case VmOp.cmpNe:
-      case VmOp.cmpLt:
-      case VmOp.cmpLe:
-      case VmOp.cmpGt:
-      case VmOp.cmpGe:
-        depth -= 1; // pop 2, push 1
-      case VmOp.jz:
-      case VmOp.ret:
-        depth -= 1;
-      case VmOp.not:
-      case VmOp.jmp:
-        break; // net 0
-    }
-    if (depth > max) max = depth;
+/// Hard cap on operand-stack depth. Functions needing more are skipped (left
+/// intact) rather than silently truncated.
+const int kMaxStackDepth = 1024;
+
+/// Thrown when a program's operand-stack usage cannot be sized safely: paths
+/// disagree on depth at a join (malformed lowering), a jump target is missing,
+/// or the depth exceeds [kMaxStackDepth]. The pass treats this as "skip this
+/// function", never as a silent truncation.
+final class StackDepthError implements Exception {
+  StackDepthError(this.message);
+  final String message;
+  @override
+  String toString() => 'StackDepthError: $message';
+}
+
+/// Computes the exact maximum operand-stack height via control-flow-aware
+/// forward propagation (handles `jz`/`jmp` branches, unlike a linear walk).
+int computeMaxStackDepth(VmProgram program) {
+  final items = program.items;
+  final labelIndex = <int, int>{};
+  for (var i = 0; i < items.length; i++) {
+    final item = items[i];
+    if (item is VmLabel) labelIndex[item.id] = i;
   }
-  // Pad for safety; branches make the linear walk approximate.
-  return (max + 4).clamp(8, 256);
+
+  final entryDepth = <int, int>{};
+  final work = <_DepthState>[const _DepthState(0, 0)];
+  var maxDepth = 0;
+
+  int targetIndex(int? labelId, String kind) {
+    final index = labelIndex[labelId];
+    if (index == null) throw StackDepthError('unresolved $kind target');
+    return index;
+  }
+
+  while (work.isNotEmpty) {
+    final state = work.removeLast();
+    var index = state.index;
+    var depth = state.depth;
+    while (index < items.length) {
+      final existing = entryDepth[index];
+      if (existing != null) {
+        if (existing != depth) {
+          throw StackDepthError('inconsistent stack depth at item $index');
+        }
+        break;
+      }
+      entryDepth[index] = depth;
+      final item = items[index];
+      if (item is VmLabel) {
+        index += 1;
+        continue;
+      }
+      final instr = item as VmInstr;
+      final peak = depth + (_pushesOne(instr.op) ? 1 : 0);
+      if (peak > maxDepth) maxDepth = peak;
+      if (maxDepth > kMaxStackDepth) {
+        throw StackDepthError('stack depth exceeds cap ($kMaxStackDepth)');
+      }
+      depth += _netEffect(instr.op);
+      if (instr.op == VmOp.ret) {
+        index = items.length; // terminates this path
+      } else if (instr.op == VmOp.jmp) {
+        work.add(_DepthState(targetIndex(instr.target, 'jmp'), depth));
+        index = items.length; // no fall-through
+      } else if (instr.op == VmOp.jz) {
+        work.add(_DepthState(targetIndex(instr.target, 'jz'), depth));
+        index += 1; // plus fall-through
+      } else {
+        index += 1;
+      }
+    }
+  }
+  return maxDepth < 1 ? 1 : maxDepth;
+}
+
+bool _pushesOne(VmOp op) =>
+    op == VmOp.pushConst || op == VmOp.pushArg || op == VmOp.dup;
+
+int _netEffect(VmOp op) => switch (op) {
+  VmOp.pushConst || VmOp.pushArg || VmOp.dup => 1,
+  VmOp.not || VmOp.jmp => 0,
+  // all binary ops, comparisons, jz, and ret pop a net of 1
+  _ => -1,
+};
+
+final class _DepthState {
+  const _DepthState(this.index, this.depth);
+  final int index;
+  final int depth;
 }

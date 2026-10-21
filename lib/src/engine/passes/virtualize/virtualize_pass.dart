@@ -51,7 +51,6 @@ class VirtualizePass extends Pass {
           );
           continue;
         }
-        final assembled = assembleProgram(program);
         final opCount = program.items.whereType<VmInstr>().length;
         if (opCount > config.maxOps) {
           records.add(
@@ -59,6 +58,19 @@ class VirtualizePass extends Pass {
               functionName: functionName,
               virtualized: false,
               skipReason: 'exceeds max_ops (${config.maxOps})',
+            ),
+          );
+          continue;
+        }
+        final AssembledProgram assembled;
+        try {
+          assembled = assembleProgram(program);
+        } on StackDepthError catch (error) {
+          records.add(
+            VirtualizationRecord(
+              functionName: functionName,
+              virtualized: false,
+              skipReason: error.message,
             ),
           );
           continue;

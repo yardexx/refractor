@@ -103,5 +103,24 @@ void main() {
       final numbers = kOpcodeNumbers.values.toList()..sort();
       expect(numbers, equals(List.generate(VmOp.values.length, (i) => i)));
     });
+
+    test('exact stack depth is computed (and is branch-aware)', () {
+      expect(assembleProgram(_xformProgram()).stackDepth, 2);
+      // Both arms of the ternary net +1; the depth is 2, not double-counted.
+      expect(assembleProgram(_branchyProgram()).stackDepth, 2);
+    });
+
+    test('unresolved jump target is rejected, not silently sized', () {
+      final bad = VmProgram(
+        items: const [
+          VmInstr(VmOp.pushArg, imm: 0),
+          VmInstr(VmOp.jz, target: 99), // no such label
+          VmInstr(VmOp.ret),
+        ],
+        argCount: 1,
+        returnsBool: false,
+      );
+      expect(() => assembleProgram(bad), throwsA(isA<StackDepthError>()));
+    });
   });
 }

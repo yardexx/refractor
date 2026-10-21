@@ -78,16 +78,17 @@ final class InterpreterInjector {
       requiredParameterCount: 2,
       returnType: _ctx.intType,
     )..fileOffset = 0;
-    final procedure = Procedure(
-      Name(_freshName(), library),
-      ProcedureKind.Method,
-      functionNode,
-      fileUri: library.fileUri,
-      isStatic: true,
-    )
-      ..addAnnotation(_ctx.neverInlineAnnotation())
-      ..fileOffset = 0
-      ..fileEndOffset = 0;
+    final procedure =
+        Procedure(
+            Name(_freshName(), library),
+            ProcedureKind.Method,
+            functionNode,
+            fileUri: library.fileUri,
+            isStatic: true,
+          )
+          ..addAnnotation(_ctx.neverInlineAnnotation())
+          ..fileOffset = 0
+          ..fileEndOffset = 0;
 
     library.addProcedure(procedure);
     return procedure;
