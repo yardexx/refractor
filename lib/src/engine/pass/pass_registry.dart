@@ -3,6 +3,7 @@ import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
 import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_definition.dart';
+import 'package:refractor/src/engine/passes/virtualize/config/virtualize_definition.dart';
 import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:refractor/src/policy/resolved_policy.dart';
 import 'package:refractor/src/project/project_scope.dart';
@@ -10,6 +11,7 @@ import 'package:refractor/src/project/project_scope.dart';
 const defaultPassRegistry = PassRegistry([
   RenameDefinition(),
   StringEncryptDefinition(),
+  VirtualizeDefinition(),
 ]);
 
 final class PassRegistry {

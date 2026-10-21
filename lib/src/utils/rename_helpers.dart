@@ -27,6 +27,22 @@ bool hasRefractorKeepAnnotation(List<Expression> annotations) {
   return false;
 }
 
+bool hasRefractorVirtualizeAnnotation(List<Expression> annotations) {
+  for (final ann in annotations) {
+    if (ann is ConstantExpression) {
+      final c = ann.constant;
+      if (c is InstanceConstant &&
+          c.classNode.name == 'RefractorVirtualize' &&
+          _refractorAnnotationUris.contains(
+            c.classNode.enclosingLibrary.importUri,
+          )) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 String symbolKeyForName(Name name) {
   final library = name.library;
   if (library == null) return name.text;
