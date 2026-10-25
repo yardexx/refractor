@@ -5,40 +5,61 @@ import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 /// 48-bit keystream mask: keeps encoded words bounded and keystream math cheap.
 const int kKeystreamMask = 0xFFFFFFFFFFFF;
 
-/// A per-function instruction-set + encoding profile (M1).
+/// A golden-ratio odd constant used to derive a second multiplier from the
+/// per-function seed (so one stored seed yields the whole keystream). This
+/// tooling only ever runs on the Dart VM, so the JS-rounding lint is moot.
+// ignore: avoid_js_rounded_ints
+const int kKsGolden = 0x9E3779B97F4A7C15;
+
+/// A per-function instruction-set + encoding profile.
 ///
 /// Two levers, both validated by the P1–P4 prototypes:
-///  - **opcode permutation**: each [VmOp] maps to a per-function byte, so the
-///    dispatch numbering learned from one build/function does not transfer.
-///  - **position-keyed XOR encoding**: every emitted word (opcode *or* operand)
-///    is XORed with `keystream(position)`, so the bytecode is not plaintext in
-///    the Dart object pool (E5's finding). Decoding happens per fetch in the
-///    interpreter.
+///  - **opcode permutation** (M1): each [VmOp] maps to a per-function byte, so
+///    the dispatch numbering learned from one build/function does not transfer.
+///  - **nonlinear position-keyed encoding** (M3): every emitted word (opcode or
+///    operand) is XORed with `keystream(position)`, a *nonlinear* mix of the
+///    position and a single per-function [seed] (multiply + xorshift). M1 used
+///    an affine `keyA*(i+1)+keyB` that two word-pairs could solve for; the
+///    nonlinear mix removes that. It is a pure function of position, so
+///    it stays correct across `jz`/`jmp` (unlike execution-state chaining, deferred until
+///    control-flow handling — see docs/02-architecture.md).
 ///
-/// The assembler, the pure-Dart reference interpreter (the E6 oracle), and the
-/// synthesized kernel interpreter all consume the same profile, so they stay in
-/// lockstep. The decode keys live in the interpreter as constants for M1;
-/// environment-derived keys are a later milestone (see docs/02-architecture.md).
+/// The keys are *derived from the single [seed]* inside the keystream, so only
+/// one scalar ships per function rather than several (P4's caveat still holds:
+/// this relocates the key, it does not hide it). The assembler, the reference
+/// interpreter, and the synthesized kernel interpreter all compute the
+/// identical keystream, so they stay in lockstep.
 final class IsaProfile {
-  IsaProfile({required this.opcode, required this.keyA, required this.keyB})
+  IsaProfile({required this.opcode, required this.seed, this.encoded = true})
     : _inverse = {for (final e in opcode.entries) e.value: e.key};
 
   /// Identity profile: canonical numbering, no encoding. Used by tests and as a
-  /// fallback; the pass always generates a randomized profile per function.
+  /// fallback; the pass always generates a randomized, encoded profile.
   factory IsaProfile.identity() =>
-      IsaProfile(opcode: Map.of(kOpcodeNumbers), keyA: 0, keyB: 0);
+      IsaProfile(opcode: Map.of(kOpcodeNumbers), seed: 0, encoded: false);
 
   /// VmOp -> per-function encoded opcode number.
   final Map<VmOp, int> opcode;
 
-  /// Keystream parameters: `keystream(i) = (keyA*(i+1) + keyB) & mask`.
-  final int keyA;
-  final int keyB;
+  /// Per-function master key; the keystream derives its multipliers from it.
+  final int seed;
+
+  /// Whether words are encoded (false for the identity profile).
+  final bool encoded;
 
   final Map<int, VmOp> _inverse;
 
-  int keystream(int position) =>
-      (keyA * (position + 1) + keyB) & kKeystreamMask;
+  /// Nonlinear keystream for a stream [position]. Mirrored bit-for-bit by the
+  /// synthesized `_ks$N` interpreter helper.
+  int keystream(int position) {
+    if (!encoded) return 0;
+    var h = (position + 1) ^ seed;
+    h = h * (seed | 1);
+    h = h ^ (h >>> 29);
+    h = h * ((seed ^ kKsGolden) | 1);
+    h = h ^ (h >>> 32);
+    return h & kKeystreamMask;
+  }
 
   /// Encode a plaintext word for its [position] in the stream.
   int encode(int plainWord, int position) => plainWord ^ keystream(position);
@@ -71,8 +92,8 @@ IsaProfile generateIsa(int seed) {
     } while (!used.add(value));
     opcode[op] = value;
   }
-  int key48() => (rng.nextInt(1 << 24) << 24) | rng.nextInt(1 << 24);
-  return IsaProfile(opcode: opcode, keyA: key48(), keyB: key48());
+  final master = (rng.nextInt(1 << 32) << 32) | rng.nextInt(1 << 32);
+  return IsaProfile(opcode: opcode, seed: master);
 }
 
 /// Mixes a build-level [baseSeed] with a per-function [index] into a stable

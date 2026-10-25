@@ -53,7 +53,11 @@ class VirtualizePass extends Pass {
       for (var index = 0; index < selection.targets.length; index++) {
         final target = selection.targets[index];
         final functionName = target.name.text;
-        final lowered = lowerFunction(target.function);
+        final fnSeed = functionSeed(baseSeed, index);
+        final lowered = lowerFunction(
+          target.function,
+          operandOrderSeed: fnSeed,
+        );
         if (lowered == null) {
           records.add(
             VirtualizationRecord(
@@ -77,7 +81,7 @@ class VirtualizePass extends Pass {
           );
           continue;
         }
-        final profile = generateIsa(functionSeed(baseSeed, index));
+        final profile = generateIsa(fnSeed);
         final AssembledProgram assembled;
         try {
           assembled = assembleProgram(program, profile);
