@@ -43,7 +43,8 @@ AssembledProgram assembleProgram(VmProgram program, IsaProfile profile) {
         throw StackDepthError('unresolved jump target L${item.target}');
       }
       plain.add(target);
-    } else if (item.op == VmOp.pushConst || item.op == VmOp.pushArg) {
+    } else if (opHasImmediate(item.op)) {
+      // pushConst, pushArg, and all *Imm superoperators carry one immediate.
       plain.add(item.imm ?? 0);
     }
   }
@@ -142,7 +143,17 @@ bool _pushesOne(VmOp op) =>
 
 int _netEffect(VmOp op) => switch (op) {
   VmOp.pushConst || VmOp.pushArg || VmOp.dup => 1,
-  VmOp.not || VmOp.jmp => 0,
+  // `not`, `jmp`, and the *Imm superoperators (pop a, push a OP imm) are net 0.
+  VmOp.not ||
+  VmOp.jmp ||
+  VmOp.addImm ||
+  VmOp.subImm ||
+  VmOp.mulImm ||
+  VmOp.xorImm ||
+  VmOp.andImm ||
+  VmOp.orImm ||
+  VmOp.shlImm ||
+  VmOp.shrImm => 0,
   // all binary ops, comparisons, jz, and ret pop a net of 1
   _ => -1,
 };

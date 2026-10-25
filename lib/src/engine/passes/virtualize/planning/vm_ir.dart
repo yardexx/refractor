@@ -46,17 +46,58 @@ enum VmOp {
 
   /// Return the top of stack.
   ret,
+
+  // --- Superoperators (M2) ---
+  // Each fuses `pushConst C; <binop>` into one compound handler carrying C as
+  // its immediate: pop a, push (a OP C). They shrink the bytecode and give the
+  // handler a compound shape that is not a liftable single primitive.
+  addImm,
+  subImm,
+  mulImm,
+  xorImm,
+  andImm,
+  orImm,
+  shlImm,
+  shrImm,
 }
+
+/// The plain binary op a superoperator is the immediate-fused form of, or null.
+VmOp? baseOpForSuperop(VmOp op) => switch (op) {
+  VmOp.addImm => VmOp.add,
+  VmOp.subImm => VmOp.sub,
+  VmOp.mulImm => VmOp.mul,
+  VmOp.xorImm => VmOp.xor,
+  VmOp.andImm => VmOp.and,
+  VmOp.orImm => VmOp.or,
+  VmOp.shlImm => VmOp.shl,
+  VmOp.shrImm => VmOp.shr,
+  _ => null,
+};
+
+/// The superoperator that fuses `pushConst C; op`, or null if op isn't fusable.
+VmOp? superopForBase(VmOp op) => switch (op) {
+  VmOp.add => VmOp.addImm,
+  VmOp.sub => VmOp.subImm,
+  VmOp.mul => VmOp.mulImm,
+  VmOp.xor => VmOp.xorImm,
+  VmOp.and => VmOp.andImm,
+  VmOp.or => VmOp.orImm,
+  VmOp.shl => VmOp.shlImm,
+  VmOp.shr => VmOp.shrImm,
+  _ => null,
+};
 
 /// Which opcodes carry a single trailing immediate word in the flat bytecode.
 bool opHasImmediate(VmOp op) =>
     op == VmOp.pushConst ||
     op == VmOp.pushArg ||
     op == VmOp.jz ||
-    op == VmOp.jmp;
+    op == VmOp.jmp ||
+    baseOpForSuperop(op) != null;
 
-/// Canonical fixed opcode numbering for M0 (diversity/randomization is M1).
-/// Kept dense and stable so the assembler and both interpreters agree.
+/// Canonical identity opcode numbering. The pass overrides this per function
+/// with a seed-derived permutation (`IsaProfile`); this map is the default/test
+/// numbering and the basis the permutation is built from.
 const Map<VmOp, int> kOpcodeNumbers = <VmOp, int>{
   VmOp.pushConst: 0,
   VmOp.pushArg: 1,
@@ -79,6 +120,14 @@ const Map<VmOp, int> kOpcodeNumbers = <VmOp, int>{
   VmOp.jz: 18,
   VmOp.jmp: 19,
   VmOp.ret: 20,
+  VmOp.addImm: 21,
+  VmOp.subImm: 22,
+  VmOp.mulImm: 23,
+  VmOp.xorImm: 24,
+  VmOp.andImm: 25,
+  VmOp.orImm: 26,
+  VmOp.shlImm: 27,
+  VmOp.shrImm: 28,
 };
 
 /// A single IR instruction. [target] is a label id for jumps (resolved to a

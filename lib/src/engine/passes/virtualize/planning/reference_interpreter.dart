@@ -84,6 +84,31 @@ int runReference(
         pc = profile.decode(words[pc], pc);
       case VmOp.ret:
         return stack[--sp];
+      // Superoperators: pop a; push (a OP imm).
+      case VmOp.addImm:
+        stack[sp - 1] = stack[sp - 1] + profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.subImm:
+        stack[sp - 1] = stack[sp - 1] - profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.mulImm:
+        stack[sp - 1] = stack[sp - 1] * profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.xorImm:
+        stack[sp - 1] = stack[sp - 1] ^ profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.andImm:
+        stack[sp - 1] = stack[sp - 1] & profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.orImm:
+        stack[sp - 1] = stack[sp - 1] | profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.shlImm:
+        stack[sp - 1] = stack[sp - 1] << profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.shrImm:
+        stack[sp - 1] = stack[sp - 1] >> profile.decode(words[pc], pc);
+        pc++;
     }
   }
 }
