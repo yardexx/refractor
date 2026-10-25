@@ -1,9 +1,10 @@
+import 'package:refractor/src/engine/passes/virtualize/planning/isa.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 
-/// Assembles a [VmProgram] into a flat `List<int>` bytecode stream using the
-/// canonical M0 opcode numbering. Labels are resolved to word offsets.
-///
-/// M0 emits plaintext bytecode; per-build encoding (chained keystream) is M1.
+/// Assembles a [VmProgram] into a flat `List<int>` bytecode stream under an
+/// [IsaProfile]: opcodes are emitted with the profile's per-function numbering
+/// and every word (opcode and operand) is position-keyed XOR-encoded. Labels
+/// are resolved to word offsets before encoding (positions are unchanged).
 final class AssembledProgram {
   const AssembledProgram({
     required this.words,
@@ -12,13 +13,14 @@ final class AssembledProgram {
     required this.stackDepth,
   });
 
+  /// Encoded bytecode words (as they ship in the object pool).
   final List<int> words;
   final int argCount;
   final bool returnsBool;
   final int stackDepth;
 }
 
-AssembledProgram assembleProgram(VmProgram program) {
+AssembledProgram assembleProgram(VmProgram program, IsaProfile profile) {
   // Pass 1: compute the word offset of each label.
   final labelOffsets = <int, int>{};
   var offset = 0;
@@ -30,23 +32,26 @@ AssembledProgram assembleProgram(VmProgram program) {
     }
   }
 
-  // Pass 2: emit words, resolving jump targets.
-  final words = <int>[];
+  // Pass 2: emit plaintext words (permuted opcode numbers, resolved targets).
+  final plain = <int>[];
   for (final item in program.items) {
     if (item is! VmInstr) continue;
-    words.add(kOpcodeNumbers[item.op]!);
+    plain.add(profile.opcode[item.op]!);
     if (item.op == VmOp.jz || item.op == VmOp.jmp) {
       final target = labelOffsets[item.target];
       if (target == null) {
         throw StackDepthError('unresolved jump target L${item.target}');
       }
-      words.add(target);
-    } else if (item.op == VmOp.pushConst) {
-      words.add(item.imm ?? 0);
-    } else if (item.op == VmOp.pushArg) {
-      words.add(item.imm ?? 0);
+      plain.add(target);
+    } else if (item.op == VmOp.pushConst || item.op == VmOp.pushArg) {
+      plain.add(item.imm ?? 0);
     }
   }
+
+  // Pass 3: position-keyed encode.
+  final words = [
+    for (var i = 0; i < plain.length; i++) profile.encode(plain[i], i),
+  ];
 
   return AssembledProgram(
     words: words,

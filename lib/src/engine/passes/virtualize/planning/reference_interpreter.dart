@@ -1,79 +1,89 @@
-/// Pure-Dart reference interpreter for the flat bytecode. This is the
+import 'package:refractor/src/engine/passes/virtualize/planning/isa.dart';
+import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
+
+/// Pure-Dart reference interpreter for the encoded bytecode. This is the
 /// correctness oracle used by the E6 differential gate.
 ///
 /// Opcode numbering and per-op semantics are specified canonically by `VmOp`
-/// in `planning/vm_ir.dart`. This interpreter and the synthesized kernel
-/// interpreter (`runtime/interpreter_injector.dart`) are two hand-written
-/// mirrors of that spec and MUST stay byte-for-byte equivalent (same opcode
-/// numbers, 64-bit `int` arithmetic, and stack discipline); the VM-core and
+/// in `planning/vm_ir.dart`, under the per-function [IsaProfile] (opcode
+/// permutation + position-keyed encoding). This interpreter and the synthesized
+/// kernel interpreter (`runtime/interpreter_injector.dart`) are two hand-written
+/// mirrors of that spec and MUST stay byte-for-byte equivalent; the VM-core and
 /// end-to-end tests guard against drift between them.
-int runReference(List<int> words, List<int> args, {int stackDepth = 64}) {
+int runReference(
+  List<int> words,
+  List<int> args,
+  IsaProfile profile, {
+  int stackDepth = 64,
+}) {
   final stack = List<int>.filled(stackDepth, 0);
   var sp = 0;
   var pc = 0;
   while (true) {
-    final op = words[pc++];
+    final op = profile.opcodeFor(profile.decode(words[pc], pc));
+    pc++;
     switch (op) {
-      case 0: // pushConst
-        stack[sp++] = words[pc++];
-      case 1: // pushArg
-        stack[sp++] = args[words[pc++]];
-      case 2: // add
+      case VmOp.pushConst:
+        stack[sp++] = profile.decode(words[pc], pc);
+        pc++;
+      case VmOp.pushArg:
+        stack[sp++] = args[profile.decode(words[pc], pc)];
+        pc++;
+      case VmOp.add:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] + b;
-      case 3: // sub
+      case VmOp.sub:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] - b;
-      case 4: // mul
+      case VmOp.mul:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] * b;
-      case 5: // xor
+      case VmOp.xor:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] ^ b;
-      case 6: // and
+      case VmOp.and:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] & b;
-      case 7: // or
+      case VmOp.or:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] | b;
-      case 8: // shl
+      case VmOp.shl:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] << b;
-      case 9: // shr
+      case VmOp.shr:
         final b = stack[--sp];
         stack[sp - 1] = stack[sp - 1] >> b;
-      case 10: // not
+      case VmOp.not:
         stack[sp - 1] = ~stack[sp - 1];
-      case 11: // cmpEq
+      case VmOp.cmpEq:
         final b = stack[--sp];
         stack[sp - 1] = (stack[sp - 1] == b) ? 1 : 0;
-      case 12: // cmpNe
+      case VmOp.cmpNe:
         final b = stack[--sp];
         stack[sp - 1] = (stack[sp - 1] != b) ? 1 : 0;
-      case 13: // cmpLt
+      case VmOp.cmpLt:
         final b = stack[--sp];
         stack[sp - 1] = (stack[sp - 1] < b) ? 1 : 0;
-      case 14: // cmpLe
+      case VmOp.cmpLe:
         final b = stack[--sp];
         stack[sp - 1] = (stack[sp - 1] <= b) ? 1 : 0;
-      case 15: // cmpGt
+      case VmOp.cmpGt:
         final b = stack[--sp];
         stack[sp - 1] = (stack[sp - 1] > b) ? 1 : 0;
-      case 16: // cmpGe
+      case VmOp.cmpGe:
         final b = stack[--sp];
         stack[sp - 1] = (stack[sp - 1] >= b) ? 1 : 0;
-      case 17: // dup
+      case VmOp.dup:
         stack[sp] = stack[sp - 1];
         sp++;
-      case 18: // jz
-        final target = words[pc++];
+      case VmOp.jz:
+        final target = profile.decode(words[pc], pc);
+        pc++;
         if (stack[--sp] == 0) pc = target;
-      case 19: // jmp
-        pc = words[pc];
-      case 20: // ret
+      case VmOp.jmp:
+        pc = profile.decode(words[pc], pc);
+      case VmOp.ret:
         return stack[--sp];
-      default:
-        throw StateError('Bad opcode $op at pc ${pc - 1}');
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/passes/virtualize/planning/isa.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 
 /// Synthesizes a per-function switch-loop bytecode interpreter as kernel and
@@ -11,16 +12,18 @@ import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 /// in `planning/vm_ir.dart`; this synthesized interpreter and the pure-Dart
 /// `reference_interpreter.dart` are two mirrors of that spec and must stay
 /// exactly equivalent (same opcode numbers, 64-bit int arithmetic, stack
-/// discipline), so the E6 differential gate is sound. M0 uses the canonical
-/// fixed ISA; per-build ISA randomization + chained decode are M1.
+/// discipline), so the E6 differential gate is sound. The per-function
+/// [IsaProfile] supplies the opcode permutation and the position-keyed decode
+/// baked into the synthesized loop.
 final class InterpreterInjector {
   InterpreterInjector(Component component) : _ctx = _VmKernelContext(component);
 
   final _VmKernelContext _ctx;
   int _counter = 0;
 
-  /// Injects an interpreter sized to [stackDepth] into [library]; returns it.
-  Procedure inject(Library library, int stackDepth) {
+  /// Injects an interpreter sized to [stackDepth] into [library], decoding and
+  /// dispatching under [profile] (per-function opcode permutation + encoding).
+  Procedure inject(Library library, int stackDepth, IsaProfile profile) {
     final code = VariableDeclaration('code', type: _ctx.listIntType);
     final args = VariableDeclaration('args', type: _ctx.listIntType);
     final stack = VariableDeclaration(
@@ -49,7 +52,7 @@ final class InterpreterInjector {
     final op = VariableDeclaration(
       'op',
       type: _ctx.intType,
-      initializer: _lget(code, _ig(pc)),
+      initializer: _decodedAt(code, pc, profile),
       isFinal: true,
     );
     final swLabel = LabeledStatement(null);
@@ -62,6 +65,7 @@ final class InterpreterInjector {
         sp: sp,
         pc: pc,
         swLabel: swLabel,
+        profile: profile,
       ),
     )..expressionType = _ctx.intType;
     swLabel.body = sw;
@@ -103,6 +107,7 @@ final class InterpreterInjector {
     required VariableDeclaration sp,
     required VariableDeclaration pc,
     required LabeledStatement swLabel,
+    required IsaProfile profile,
   }) {
     Statement brk() => BreakStatement(swLabel);
     Expression stackAt(Expression idx) => _lget(stack, idx);
@@ -152,23 +157,23 @@ final class InterpreterInjector {
       );
     }
 
-    const n = kOpcodeNumbers;
+    final n = profile.opcode;
     return [
-      // pushConst: stack[sp] = code[pc]; pc++; sp++;
+      // pushConst: stack[sp] = decode(code[pc]); pc++; sp++;
       _case(
         n[VmOp.pushConst]!,
         Block([
-          setStack(_ig(sp), _lget(code, _ig(pc))),
+          setStack(_ig(sp), _decodedAt(code, pc, profile)),
           incPc(),
           incSp(),
           brk(),
         ]),
       ),
-      // pushArg: stack[sp] = args[code[pc]]; pc++; sp++;
+      // pushArg: stack[sp] = args[decode(code[pc])]; pc++; sp++;
       _case(
         n[VmOp.pushArg]!,
         Block([
-          setStack(_ig(sp), _lget(args, _lget(code, _ig(pc)))),
+          setStack(_ig(sp), _lget(args, _decodedAt(code, pc, profile))),
           incPc(),
           incSp(),
           brk(),
@@ -205,13 +210,20 @@ final class InterpreterInjector {
           brk(),
         ]),
       ),
-      // jz: t = code[pc]; pc++; sp--; if (stack[sp] == 0) pc = t;
-      _buildJzCase(code: code, stack: stack, sp: sp, pc: pc, brk: brk),
-      // jmp: pc = code[pc];
+      // jz: t = decode(code[pc]); pc++; sp--; if (stack[sp] == 0) pc = t;
+      _buildJzCase(
+        code: code,
+        stack: stack,
+        sp: sp,
+        pc: pc,
+        brk: brk,
+        profile: profile,
+      ),
+      // jmp: pc = decode(code[pc]);
       _case(
         n[VmOp.jmp]!,
         Block([
-          _set(pc, _lget(code, _ig(pc))),
+          _set(pc, _decodedAt(code, pc, profile)),
           brk(),
         ]),
       ),
@@ -244,15 +256,16 @@ final class InterpreterInjector {
     required VariableDeclaration sp,
     required VariableDeclaration pc,
     required Statement Function() brk,
+    required IsaProfile profile,
   }) {
     final t = VariableDeclaration(
       't',
       type: _ctx.intType,
-      initializer: _lget(code, _ig(pc)),
+      initializer: _decodedAt(code, pc, profile),
       isFinal: true,
     );
     return _case(
-      kOpcodeNumbers[VmOp.jz]!,
+      profile.opcode[VmOp.jz]!,
       Block([
         t,
         _set(pc, _add1(_ig(pc))),
@@ -278,6 +291,20 @@ final class InterpreterInjector {
   Statement _set(VariableDeclaration v, Expression e) =>
       ExpressionStatement(VariableSet(v, e));
   Expression _add1(Expression e) => _bin(e, '+', _ctx.add, IntLiteral(1));
+
+  /// Builds `code[pc] ^ ((keyA*(pc+1) + keyB) & mask)` — the per-fetch decode
+  /// that mirrors [IsaProfile.decode]. `pc` is read (not mutated) here.
+  Expression _decodedAt(
+    VariableDeclaration code,
+    VariableDeclaration pc,
+    IsaProfile profile,
+  ) {
+    final pcPlus1 = _bin(_ig(pc), '+', _ctx.add, IntLiteral(1));
+    final aMul = _bin(IntLiteral(profile.keyA), '*', _ctx.mul, pcPlus1);
+    final plusB = _bin(aMul, '+', _ctx.add, IntLiteral(profile.keyB));
+    final masked = _bin(plusB, '&', _ctx.and, IntLiteral(kKeystreamMask));
+    return _bin(_lget(code, _ig(pc)), '^', _ctx.xor, masked);
+  }
 
   Expression _lget(VariableDeclaration list, Expression idx) =>
       InstanceInvocation(

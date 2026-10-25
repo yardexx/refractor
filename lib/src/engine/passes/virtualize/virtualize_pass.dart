@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/virtualize/config/virtualize_config.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/assembler.dart';
+import 'package:refractor/src/engine/passes/virtualize/planning/isa.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/lowering/lowerer.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 import 'package:refractor/src/engine/passes/virtualize/reporting/virtualization_record.dart';
@@ -11,13 +14,16 @@ import 'package:refractor/src/engine/passes/virtualize/selection/virtualize_sele
 import 'package:refractor/src/engine/passes/virtualize/validation/virtualize_validator.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
-/// Code-virtualization pass (M0 skeleton).
+/// Code-virtualization pass (M1).
 ///
 /// Replaces the body of each `@Refractor.virtualize()`-annotated, eligible
 /// function with a call to a per-function switch-loop bytecode interpreter it
-/// synthesizes and injects. M0 supports a restricted int/bool expression subset
-/// with a fixed ISA and plaintext bytecode; per-build diversity, encoding, and
-/// MBA handlers are later milestones (see docs/02-architecture.md).
+/// synthesizes and injects. Each function gets its own seed-derived
+/// [IsaProfile] — an opcode permutation plus position-keyed XOR encoding of the
+/// bytecode — so the dispatch numbering doesn't transfer across functions/builds
+/// and the bytecode is not plaintext in the Dart object pool. Supports a
+/// restricted int/bool expression subset; MBA handlers and environment-derived
+/// keys are later milestones (see docs/02-architecture.md).
 class VirtualizePass extends Pass {
   VirtualizePass({required this.config, required this.projectScope});
 
@@ -38,8 +44,13 @@ class VirtualizePass extends Pass {
       final records = <VirtualizationRecord>[];
       final applied = <_AppliedTransform>[];
       var virtualizedCount = 0;
+      // 0 => random ISA per build; a fixed seed => reproducible builds.
+      final baseSeed = config.seed != 0
+          ? config.seed
+          : Random().nextInt(0xFFFFFFFF);
 
-      for (final target in selection.targets) {
+      for (var index = 0; index < selection.targets.length; index++) {
+        final target = selection.targets[index];
         final functionName = target.name.text;
         final program = lowerFunction(target.function);
         if (program == null) {
@@ -63,9 +74,10 @@ class VirtualizePass extends Pass {
           );
           continue;
         }
+        final profile = generateIsa(functionSeed(baseSeed, index));
         final AssembledProgram assembled;
         try {
-          assembled = assembleProgram(program);
+          assembled = assembleProgram(program, profile);
         } on StackDepthError catch (error) {
           records.add(
             VirtualizationRecord(
@@ -78,7 +90,11 @@ class VirtualizePass extends Pass {
         }
 
         final library = target.enclosingLibrary;
-        final interpreter = injector.inject(library, assembled.stackDepth);
+        final interpreter = injector.inject(
+          library,
+          assembled.stackDepth,
+          profile,
+        );
         final body = injector.buildReplacementBody(
           interpreter: interpreter,
           words: assembled.words,

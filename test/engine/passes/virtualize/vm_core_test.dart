@@ -1,4 +1,5 @@
 import 'package:refractor/src/engine/passes/virtualize/planning/assembler.dart';
+import 'package:refractor/src/engine/passes/virtualize/planning/isa.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/reference_interpreter.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 import 'package:test/test.dart';
@@ -75,27 +76,52 @@ const _inputs = [
   -0x8000000000000000,
 ];
 
+// Profiles exercised: identity (no permutation/encoding) plus several random
+// per-function ISAs, to prove equivalence holds across randomized ISAs.
+final _profiles = <IsaProfile>[
+  IsaProfile.identity(),
+  generateIsa(1),
+  generateIsa(2),
+  generateIsa(0xBADF00D),
+];
+
 void main() {
   group('VM core differential', () {
-    test('straight-line arithmetic program matches native', () {
-      final asm = assembleProgram(_xformProgram());
-      for (final s in _inputs) {
-        expect(
-          runReference(asm.words, [s], stackDepth: asm.stackDepth),
-          _xformNative(s),
-          reason: 'xform(s=$s)',
-        );
+    test('straight-line arithmetic matches native across ISA profiles', () {
+      for (final profile in _profiles) {
+        final asm = assembleProgram(_xformProgram(), profile);
+        for (final s in _inputs) {
+          expect(
+            runReference(asm.words, [s], profile, stackDepth: asm.stackDepth),
+            _xformNative(s),
+            reason: 'xform(s=$s)',
+          );
+        }
       }
     });
 
-    test('branching (jz/jmp) program matches native', () {
-      final asm = assembleProgram(_branchyProgram());
-      for (final s in _inputs) {
-        expect(
-          runReference(asm.words, [s], stackDepth: asm.stackDepth),
-          _branchyNative(s),
-          reason: 'branchy(s=$s)',
-        );
+    test('branching (jz/jmp) matches native across ISA profiles', () {
+      for (final profile in _profiles) {
+        final asm = assembleProgram(_branchyProgram(), profile);
+        for (final s in _inputs) {
+          expect(
+            runReference(asm.words, [s], profile, stackDepth: asm.stackDepth),
+            _branchyNative(s),
+            reason: 'branchy(s=$s)',
+          );
+        }
+      }
+    });
+
+    test('a random profile actually permutes opcodes and encodes operands', () {
+      final profile = generateIsa(1);
+      // Opcode numbering differs from the canonical identity numbering.
+      expect(profile.opcode, isNot(equals(kOpcodeNumbers)));
+      // The encoded stream hides the plaintext operands (E5's finding): none of
+      // the distinctive constants appear verbatim in the encoded words.
+      final words = assembleProgram(_xformProgram(), profile).words;
+      for (final constant in const [48271, 0x1234567, 0x5A5A5A5A, 0xFFFFFF]) {
+        expect(words, isNot(contains(constant)), reason: 'leaked $constant');
       }
     });
 
@@ -105,9 +131,10 @@ void main() {
     });
 
     test('exact stack depth is computed (and is branch-aware)', () {
-      expect(assembleProgram(_xformProgram()).stackDepth, 2);
+      final id = IsaProfile.identity();
+      expect(assembleProgram(_xformProgram(), id).stackDepth, 2);
       // Both arms of the ternary net +1; the depth is 2, not double-counted.
-      expect(assembleProgram(_branchyProgram()).stackDepth, 2);
+      expect(assembleProgram(_branchyProgram(), id).stackDepth, 2);
     });
 
     test('unresolved jump target is rejected, not silently sized', () {
@@ -120,7 +147,10 @@ void main() {
         argCount: 1,
         returnsBool: false,
       );
-      expect(() => assembleProgram(bad), throwsA(isA<StackDepthError>()));
+      expect(
+        () => assembleProgram(bad, IsaProfile.identity()),
+        throwsA(isA<StackDepthError>()),
+      );
     });
   });
 }

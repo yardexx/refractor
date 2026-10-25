@@ -4,6 +4,7 @@
 //
 // Uses the repo's own package_config so the sample can import
 // `package:refractor_annotation` without a separate `pub get`.
+// ignore_for_file: lines_longer_than_80_chars
 
 @TestOn('vm')
 @Timeout(Duration(minutes: 2))
@@ -69,52 +70,58 @@ void main() {
     tempDir.deleteSync(recursive: true);
   });
 
-  test('virtualized functions match plain controls through the full pipeline',
-      () async {
-    final repoRoot = await _repoRoot();
-    final packageConfig = p.join(repoRoot, '.dart_tool', 'package_config.json');
-    final sourcePath = p.join(tempDir.path, 'main.dart');
-    final dillPath = p.join(tempDir.path, 'main.dill');
-    final outPath = p.join(tempDir.path, 'main.virt.dill');
-    File(sourcePath).writeAsStringSync(_sample);
+  test(
+    'virtualized functions match plain controls through the full pipeline',
+    () async {
+      final repoRoot = await _repoRoot();
+      final packageConfig = p.join(
+        repoRoot,
+        '.dart_tool',
+        'package_config.json',
+      );
+      final sourcePath = p.join(tempDir.path, 'main.dart');
+      final dillPath = p.join(tempDir.path, 'main.dill');
+      final outPath = p.join(tempDir.path, 'main.virt.dill');
+      File(sourcePath).writeAsStringSync(_sample);
 
-    // Compile to kernel using the repo's package resolution.
-    final compile = Process.runSync('dart', [
-      'compile',
-      'kernel',
-      '--packages=$packageConfig',
-      sourcePath,
-      '-o',
-      dillPath,
-    ]);
-    expect(
-      compile.exitCode,
-      0,
-      reason: 'compile kernel failed: ${compile.stderr}',
-    );
+      // Compile to kernel using the repo's package resolution.
+      final compile = Process.runSync('dart', [
+        'compile',
+        'kernel',
+        '--packages=$packageConfig',
+        sourcePath,
+        '-o',
+        dillPath,
+      ]);
+      expect(
+        compile.exitCode,
+        0,
+        reason: 'compile kernel failed: ${compile.stderr}',
+      );
 
-    // Run the virtualization pass.
-    final component = loadComponentFromBinary(dillPath);
-    final pass = VirtualizePass(
-      config: const VirtualizePassConfig(enabled: true),
-      projectScope: ProjectScope(
-        projectRootUri: Uri.directory('${tempDir.path}/'),
-        projectPackageName: null,
-      ),
-    );
-    final result = await pass.run(component);
+      // Run the virtualization pass.
+      final component = loadComponentFromBinary(dillPath);
+      final pass = VirtualizePass(
+        config: const VirtualizePassConfig(enabled: true),
+        projectScope: ProjectScope(
+          projectRootUri: Uri.directory('${tempDir.path}/'),
+          projectPackageName: null,
+        ),
+      );
+      final result = await pass.run(component);
 
-    expect(result, isA<PassSucceeded>(), reason: result.report.message);
-    expect(result.report.metadata['functions_virtualized'], '3');
+      expect(result, isA<PassSucceeded>(), reason: result.report.message);
+      expect(result.report.metadata['functions_virtualized'], '3');
 
-    // Re-serialize and execute; every virtualized function must match control.
-    await writeComponentToBinary(component, outPath);
-    final run = Process.runSync('dart', [outPath]);
-    expect(run.exitCode, 0, reason: 'run failed: ${run.stderr}');
-    final stdout = (run.stdout as String).trim();
-    expect(stdout, isNot(contains('MISMATCH')));
-    expect(stdout, equals('ALL_EQUAL check(11217657)=true'));
-  });
+      // Re-serialize and execute; every virtualized function must match control.
+      await writeComponentToBinary(component, outPath);
+      final run = Process.runSync('dart', [outPath]);
+      expect(run.exitCode, 0, reason: 'run failed: ${run.stderr}');
+      final stdout = (run.stdout as String).trim();
+      expect(stdout, isNot(contains('MISMATCH')));
+      expect(stdout, equals('ALL_EQUAL check(11217657)=true'));
+    },
+  );
 }
 
 Future<String> _repoRoot() async {
