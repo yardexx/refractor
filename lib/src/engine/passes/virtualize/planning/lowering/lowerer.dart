@@ -1,10 +1,12 @@
+import 'dart:math';
+
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 
 /// Lowers an eligible kernel [FunctionNode] to a [VmProgram], or returns null
-/// if the function is outside the M0 subset (in which case it is left intact).
+/// if the function is outside the supported subset (left intact in that case).
 ///
-/// M0 grammar (conservative, correctness over coverage):
+/// Supported grammar (conservative, correctness over coverage):
 ///  - All positional parameters typed `int`; no named/optional params.
 ///  - Return type `int` or `bool`.
 ///  - Body is a single `return <expr>;` (expression- or block-bodied).
@@ -12,7 +14,11 @@ import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 ///    `+ - * ^ & | << >> ~` (int), `== != < <= > >=`, `! && ||`, ternary `?:`,
 ///    unary `-`.
 ///  - No locals, loops, calls, strings, doubles, fields, or null.
-VmProgram? lowerFunction(FunctionNode function) {
+///
+/// When [operandOrderSeed] is non-null, commutative binary oper(and ==/!=)
+/// operands are randomly swapped (M3 diversity), except when an operand is a
+/// constant literal (so `pushConst C; <binop>` stays fusable into a superop).
+VmProgram? lowerFunction(FunctionNode function, {int? operandOrderSeed}) {
   if (function.namedParameters.isNotEmpty) return null;
   if (function.requiredParameterCount != function.positionalParameters.length) {
     return null; // optional positional params unsupported in M0
@@ -32,7 +38,7 @@ VmProgram? lowerFunction(FunctionNode function) {
       function.positionalParameters[i]: i,
   };
 
-  final lowerer = _Lowerer(paramIndex);
+  final lowerer = _Lowerer(paramIndex, operandOrderSeed: operandOrderSeed);
   if (!lowerer.lower(returnExpr)) return null;
   lowerer.emit(const VmInstr(VmOp.ret));
 
@@ -54,9 +60,11 @@ Expression? _soleReturnExpression(Statement? body) {
 }
 
 final class _Lowerer {
-  _Lowerer(this._paramIndex);
+  _Lowerer(this._paramIndex, {int? operandOrderSeed})
+    : _rng = operandOrderSeed == null ? null : Random(operandOrderSeed);
 
   final Map<VariableDeclaration, int> _paramIndex;
+  final Random? _rng;
   final List<Object> items = <Object>[];
   int _nextLabel = 0;
 
@@ -145,11 +153,38 @@ final class _Lowerer {
     if (args.positional.length != 1) return false;
     final op = _binaryOpFor(name);
     if (op == null) return false;
-    if (!lower(e.receiver)) return false;
-    if (!lower(args.positional.single)) return false;
+    final left = e.receiver;
+    final right = args.positional.single;
+    // Swap operands of a commutative op for diversity, but not when either is a
+    // constant literal (keeps `pushConst C; <binop>` fusable into a superop).
+    if (_shouldSwap(op) && !_isLiteral(left) && !_isLiteral(right)) {
+      if (!lower(right)) return false;
+      if (!lower(left)) return false;
+    } else {
+      if (!lower(left)) return false;
+      if (!lower(right)) return false;
+    }
     emit(VmInstr(op));
     return true;
   }
+
+  bool _shouldSwap(VmOp op) =>
+      _rng != null && _isCommutative(op) && _rng.nextBool();
+
+  bool _isCommutative(VmOp op) =>
+      op == VmOp.add ||
+      op == VmOp.mul ||
+      op == VmOp.xor ||
+      op == VmOp.and ||
+      op == VmOp.or ||
+      op == VmOp.cmpEq ||
+      op == VmOp.cmpNe;
+
+  bool _isLiteral(Expression e) =>
+      e is IntLiteral ||
+      e is BoolLiteral ||
+      (e is ConstantExpression &&
+          (e.constant is IntConstant || e.constant is BoolConstant));
 
   VmOp? _binaryOpFor(String name) => switch (name) {
     '+' => VmOp.add,

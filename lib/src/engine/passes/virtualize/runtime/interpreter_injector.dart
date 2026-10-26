@@ -24,6 +24,8 @@ final class InterpreterInjector {
   /// Injects an interpreter sized to [stackDepth] into [library], decoding and
   /// dispatching under [profile] (per-function opcode permutation + encoding).
   Procedure inject(Library library, int stackDepth, IsaProfile profile) {
+    // Per-function keystream helper: int _ks$N(int pos) => <nonlinear mix>.
+    final ks = _injectKeystreamHelper(library, profile);
     final code = VariableDeclaration('code', type: _ctx.listIntType);
     final args = VariableDeclaration('args', type: _ctx.listIntType);
     final stack = VariableDeclaration(
@@ -52,7 +54,7 @@ final class InterpreterInjector {
     final op = VariableDeclaration(
       'op',
       type: _ctx.intType,
-      initializer: _decodedAt(code, pc, profile),
+      initializer: _decodedAt(code, pc, ks),
       isFinal: true,
     );
     final swLabel = LabeledStatement(null);
@@ -66,6 +68,7 @@ final class InterpreterInjector {
         pc: pc,
         swLabel: swLabel,
         profile: profile,
+        ks: ks,
       ),
     )..expressionType = _ctx.intType;
     swLabel.body = sw;
@@ -86,7 +89,7 @@ final class InterpreterInjector {
     )..fileOffset = 0;
     final procedure =
         Procedure(
-            Name(_freshName(library), library),
+            Name(_freshName(library, '_vm'), library),
             ProcedureKind.Method,
             functionNode,
             fileUri: library.fileUri,
@@ -108,6 +111,7 @@ final class InterpreterInjector {
     required VariableDeclaration pc,
     required LabeledStatement swLabel,
     required IsaProfile profile,
+    required Procedure ks,
   }) {
     Statement brk() => BreakStatement(swLabel);
     Expression stackAt(Expression idx) => _lget(stack, idx);
@@ -147,7 +151,7 @@ final class InterpreterInjector {
       final c = VariableDeclaration(
         'c',
         type: _ctx.intType,
-        initializer: _decodedAt(code, pc, profile),
+        initializer: _decodedAt(code, pc, ks),
         isFinal: true,
       );
       return _case(
@@ -193,7 +197,7 @@ final class InterpreterInjector {
       _case(
         n[VmOp.pushConst]!,
         Block([
-          setStack(_ig(sp), _decodedAt(code, pc, profile)),
+          setStack(_ig(sp), _decodedAt(code, pc, ks)),
           incPc(),
           incSp(),
           brk(),
@@ -203,7 +207,7 @@ final class InterpreterInjector {
       _case(
         n[VmOp.pushArg]!,
         Block([
-          setStack(_ig(sp), _lget(args, _decodedAt(code, pc, profile))),
+          setStack(_ig(sp), _lget(args, _decodedAt(code, pc, ks))),
           incPc(),
           incSp(),
           brk(),
@@ -248,12 +252,13 @@ final class InterpreterInjector {
         pc: pc,
         brk: brk,
         profile: profile,
+        ks: ks,
       ),
       // jmp: pc = decode(code[pc]);
       _case(
         n[VmOp.jmp]!,
         Block([
-          _set(pc, _decodedAt(code, pc, profile)),
+          _set(pc, _decodedAt(code, pc, ks)),
           brk(),
         ]),
       ),
@@ -296,11 +301,12 @@ final class InterpreterInjector {
     required VariableDeclaration pc,
     required Statement Function() brk,
     required IsaProfile profile,
+    required Procedure ks,
   }) {
     final t = VariableDeclaration(
       't',
       type: _ctx.intType,
-      initializer: _decodedAt(code, pc, profile),
+      initializer: _decodedAt(code, pc, ks),
       isFinal: true,
     );
     return _case(
@@ -331,18 +337,15 @@ final class InterpreterInjector {
       ExpressionStatement(VariableSet(v, e));
   Expression _add1(Expression e) => _bin(e, '+', _ctx.add, IntLiteral(1));
 
-  /// Builds `code[pc] ^ ((keyA*(pc+1) + keyB) & mask)` — the per-fetch decode
-  /// that mirrors [IsaProfile.decode]. `pc` is read (not mutated) here.
+  /// Builds `code[pc] ^ _ks(pc)` — the per-fetch decode, mirroring
+  /// [IsaProfile.decode]. `pc` is read (not mutated) here.
   Expression _decodedAt(
     VariableDeclaration code,
     VariableDeclaration pc,
-    IsaProfile profile,
+    Procedure ks,
   ) {
-    final pcPlus1 = _bin(_ig(pc), '+', _ctx.add, IntLiteral(1));
-    final aMul = _bin(IntLiteral(profile.keyA), '*', _ctx.mul, pcPlus1);
-    final plusB = _bin(aMul, '+', _ctx.add, IntLiteral(profile.keyB));
-    final masked = _bin(plusB, '&', _ctx.and, IntLiteral(kKeystreamMask));
-    return _bin(_lget(code, _ig(pc)), '^', _ctx.xor, masked);
+    final ksCall = StaticInvocation(ks, Arguments([_ig(pc)]));
+    return _bin(_lget(code, _ig(pc)), '^', _ctx.xor, ksCall);
   }
 
   Expression _lget(VariableDeclaration list, Expression idx) =>
@@ -480,13 +483,57 @@ final class InterpreterInjector {
         ),
       );
 
-  String _freshName(Library library) {
+  String _freshName(Library library, String prefix) {
     final existing = library.procedures.map((p) => p.name.text).toSet();
     while (true) {
-      final name = '_vm\$${_counter++}';
+      final name = '$prefix\$${_counter++}';
       if (!existing.contains(name)) return name;
     }
   }
+
+  /// Synthesizes `int _ks$N(int pos)` = the nonlinear position keystream
+  /// (multiply + xorshift), mirroring [IsaProfile.keystream] exactly. Only the
+  /// single per-function seed is baked; the multipliers are derived from it.
+  Procedure _injectKeystreamHelper(Library library, IsaProfile profile) {
+    final seed = profile.seed;
+    final m1 = seed | 1;
+    final m2 = (seed ^ kKsGolden) | 1;
+    final pos = VariableDeclaration('pos', type: _ctx.intType);
+    final h = VariableDeclaration(
+      'h',
+      type: _ctx.intType,
+      initializer: _bin(_add1(_ig(pos)), '^', _ctx.xor, IntLiteral(seed)),
+    );
+    final body = Block([
+      h,
+      _set(h, _bin(_ig(h), '*', _ctx.mul, IntLiteral(m1))),
+      _set(h, _bin(_ig(h), '^', _ctx.xor, _ushr(_ig(h), 29))),
+      _set(h, _bin(_ig(h), '*', _ctx.mul, IntLiteral(m2))),
+      _set(h, _bin(_ig(h), '^', _ctx.xor, _ushr(_ig(h), 32))),
+      ReturnStatement(_bin(_ig(h), '&', _ctx.and, IntLiteral(kKeystreamMask))),
+    ]);
+    final fn = FunctionNode(
+      body,
+      positionalParameters: [pos],
+      requiredParameterCount: 1,
+      returnType: _ctx.intType,
+    )..fileOffset = 0;
+    final proc =
+        Procedure(
+            Name(_freshName(library, '_ks'), library),
+            ProcedureKind.Method,
+            fn,
+            fileUri: library.fileUri,
+            isStatic: true,
+          )
+          ..fileOffset = 0
+          ..fileEndOffset = 0;
+    library.addProcedure(proc);
+    return proc;
+  }
+
+  Expression _ushr(Expression a, int n) =>
+      _bin(a, '>>>', _ctx.ushr, IntLiteral(n));
 
   /// Builds the replacement body for a virtualized function:
   ///   `return _vm$N(const [<words>], [p0, p1, ...]);`  (int return), or
@@ -570,6 +617,7 @@ final class _VmKernelContext {
     or = intOp('|');
     shl = intOp('<<');
     shr = intOp('>>');
+    ushr = intOp('>>>');
     bitNot = intOp('~');
     lt = numOp('<');
     le = numOp('<=');
@@ -598,6 +646,7 @@ final class _VmKernelContext {
   late final Procedure or;
   late final Procedure shl;
   late final Procedure shr;
+  late final Procedure ushr;
   late final Procedure bitNot;
   late final Procedure lt;
   late final Procedure le;
