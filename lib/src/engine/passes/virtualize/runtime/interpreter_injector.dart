@@ -119,15 +119,45 @@ final class InterpreterInjector {
     Statement incSp() => _set(sp, _add1(_ig(sp)));
     Statement incPc() => _set(pc, _add1(_ig(pc)));
 
-    // Binary op case: sp--; stack[sp-1] = stack[sp-1] OP stack[sp];
-    SwitchCase binaryCase(int opcode, String name, Procedure target) {
+    // Binary op case: sp--; stack[sp-1] = MBA(stack[sp-1], stack[sp]);
+    // Arithmetic/bitwise handlers are emitted as MBA identities (equal in value
+    // to the plain op, so the reference oracle stays plain and E6 holds).
+    SwitchCase binaryCase(VmOp op) {
       return _case(
-        opcode,
+        profile.opcode[op]!,
         Block([
           decSp(),
           setStack(
             spMinus(1),
-            _bin(stackAt(spMinus(1)), name, target, stackAt(spMinus(0))),
+            _mbaBinary(
+              op,
+              () => stackAt(spMinus(1)),
+              () => stackAt(spMinus(0)),
+            ),
+          ),
+          brk(),
+        ]),
+      );
+    }
+
+    // Superoperator case: c = decode(code[pc]); pc++;
+    //                     stack[sp-1] = MBA(stack[sp-1], c);
+    SwitchCase superopCase(VmOp op) {
+      final base = baseOpForSuperop(op)!;
+      final c = VariableDeclaration(
+        'c',
+        type: _ctx.intType,
+        initializer: _decodedAt(code, pc, profile),
+        isFinal: true,
+      );
+      return _case(
+        profile.opcode[op]!,
+        Block([
+          c,
+          incPc(),
+          setStack(
+            spMinus(1),
+            _mbaBinary(base, () => stackAt(spMinus(1)), () => _ig(c)),
           ),
           brk(),
         ]),
@@ -179,14 +209,14 @@ final class InterpreterInjector {
           brk(),
         ]),
       ),
-      binaryCase(n[VmOp.add]!, '+', _ctx.add),
-      binaryCase(n[VmOp.sub]!, '-', _ctx.sub),
-      binaryCase(n[VmOp.mul]!, '*', _ctx.mul),
-      binaryCase(n[VmOp.xor]!, '^', _ctx.xor),
-      binaryCase(n[VmOp.and]!, '&', _ctx.and),
-      binaryCase(n[VmOp.or]!, '|', _ctx.or),
-      binaryCase(n[VmOp.shl]!, '<<', _ctx.shl),
-      binaryCase(n[VmOp.shr]!, '>>', _ctx.shr),
+      binaryCase(VmOp.add),
+      binaryCase(VmOp.sub),
+      binaryCase(VmOp.mul),
+      binaryCase(VmOp.xor),
+      binaryCase(VmOp.and),
+      binaryCase(VmOp.or),
+      binaryCase(VmOp.shl),
+      binaryCase(VmOp.shr),
       // not: stack[sp-1] = ~stack[sp-1];
       _case(
         n[VmOp.not]!,
@@ -235,6 +265,15 @@ final class InterpreterInjector {
           ReturnStatement(stackAt(_ig(sp))),
         ]),
       ),
+      // Superoperators (M2): fused `pushConst C; <binop>`.
+      superopCase(VmOp.addImm),
+      superopCase(VmOp.subImm),
+      superopCase(VmOp.mulImm),
+      superopCase(VmOp.xorImm),
+      superopCase(VmOp.andImm),
+      superopCase(VmOp.orImm),
+      superopCase(VmOp.shlImm),
+      superopCase(VmOp.shrImm),
       // Defensive trap: valid (assembler-produced) bytecode never reaches here,
       // but a default keeps a malformed opcode from spinning the loop forever.
       SwitchCase.defaultCase(
@@ -362,6 +401,59 @@ final class InterpreterInjector {
     interfaceTarget: _ctx.bitNot,
     functionType: FunctionType([], _ctx.intType, Nullability.nonNullable),
   );
+
+  Expression _shl1(Expression e) => _bin(e, '<<', _ctx.shl, IntLiteral(1));
+
+  /// Builds an MBA expression equal in value to `a OP b` for the hardened
+  /// arithmetic/bitwise ops (identities verified in E4/E6); `mul`/`shl`/`shr`
+  /// fall through to the plain op. `a`/`b` are thunks so each use gets a fresh
+  /// node (kernel nodes can't be shared); they read the stack, which is
+  /// unchanged while the handler's RHS is evaluated.
+  Expression _mbaBinary(
+    VmOp op,
+    Expression Function() a,
+    Expression Function() b,
+  ) => switch (op) {
+    // (a ^ b) + ((a & b) << 1)
+    VmOp.add => _bin(
+      _bin(a(), '^', _ctx.xor, b()),
+      '+',
+      _ctx.add,
+      _shl1(_bin(a(), '&', _ctx.and, b())),
+    ),
+    // (a ^ b) - ((~a & b) << 1)
+    VmOp.sub => _bin(
+      _bin(a(), '^', _ctx.xor, b()),
+      '-',
+      _ctx.sub,
+      _shl1(_bin(_bitNot(a()), '&', _ctx.and, b())),
+    ),
+    // (a | b) - (a & b)
+    VmOp.xor => _bin(
+      _bin(a(), '|', _ctx.or, b()),
+      '-',
+      _ctx.sub,
+      _bin(a(), '&', _ctx.and, b()),
+    ),
+    // (a | b) - (a ^ b)
+    VmOp.and => _bin(
+      _bin(a(), '|', _ctx.or, b()),
+      '-',
+      _ctx.sub,
+      _bin(a(), '^', _ctx.xor, b()),
+    ),
+    // (a & b) + (a ^ b)
+    VmOp.or => _bin(
+      _bin(a(), '&', _ctx.and, b()),
+      '+',
+      _ctx.add,
+      _bin(a(), '^', _ctx.xor, b()),
+    ),
+    VmOp.mul => _bin(a(), '*', _ctx.mul, b()),
+    VmOp.shl => _bin(a(), '<<', _ctx.shl, b()),
+    VmOp.shr => _bin(a(), '>>', _ctx.shr, b()),
+    _ => throw StateError('not a hardenable binary op: $op'),
+  };
 
   Expression _eq(Expression a, Expression b) => EqualsCall(
     a,

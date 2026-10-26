@@ -6,6 +6,7 @@ import 'package:refractor/src/engine/passes/virtualize/config/virtualize_config.
 import 'package:refractor/src/engine/passes/virtualize/planning/assembler.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/isa.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/lowering/lowerer.dart';
+import 'package:refractor/src/engine/passes/virtualize/planning/lowering/superops.dart';
 import 'package:refractor/src/engine/passes/virtualize/planning/vm_ir.dart';
 import 'package:refractor/src/engine/passes/virtualize/reporting/virtualization_record.dart';
 import 'package:refractor/src/engine/passes/virtualize/reporting/virtualize_artifact.dart';
@@ -52,17 +53,19 @@ class VirtualizePass extends Pass {
       for (var index = 0; index < selection.targets.length; index++) {
         final target = selection.targets[index];
         final functionName = target.name.text;
-        final program = lowerFunction(target.function);
-        if (program == null) {
+        final lowered = lowerFunction(target.function);
+        if (lowered == null) {
           records.add(
             VirtualizationRecord(
               functionName: functionName,
               virtualized: false,
-              skipReason: 'outside M0 subset',
+              skipReason: 'outside the supported subset',
             ),
           );
           continue;
         }
+        // Fuse `pushConst C; <binop>` into superoperators (M2).
+        final program = fuseSuperops(lowered);
         final opCount = program.items.whereType<VmInstr>().length;
         if (opCount > config.maxOps) {
           records.add(
