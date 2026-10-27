@@ -48,17 +48,21 @@
   margin: -0.75rem 0 2rem;
 }
 
+/* One fixed height for every chip, button or not. */
 .pf-chip {
   display: inline-flex;
+  box-sizing: border-box;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.3rem 0.75rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0 0.8rem;
   border: 1px solid var(--rb-border);
   border-radius: 999px;
   background: var(--rb-card);
   color: var(--rb-muted);
   font-size: 0.82rem;
-  line-height: 1.4;
+  line-height: 1;
 }
 
 .pf-group {
@@ -84,14 +88,21 @@
   border: 0;
   background: none;
   color: var(--content-headings);
-  font: 600 0.8rem var(--code-mono);
+  font: 600 0.8rem/1 var(--code-mono);
 }
 
-.pf-copy-state {
+.pf-copy-icon {
+  display: inline-flex;
   color: var(--rb-muted);
-  font-size: 0.68rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  transition: color 0.15s;
+}
+
+.pf-copy:hover .pf-copy-icon {
+  color: var(--content-headings);
+}
+
+.pf-copy.copied .pf-copy-icon {
+  color: var(--rb-ok);
 }
 
 .pf-stable {
