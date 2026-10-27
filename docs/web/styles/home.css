@@ -12,13 +12,14 @@
   --home-card: color-mix(in srgb, var(--content-headings) 3%, var(--background));
   --home-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* One color per pass: the chip, its prism ray and the tokens it changes. */
-  --ray-rename: #40c4ff;
-  --ray-strings: #3b82f6;
-  --ray-ints: #8b5cf6;
-  --ray-arith: #ec4899;
-  --ray-flatten: #f59e0b;
-  --ray-dead: #22c55e;
+  /* One color per pass: the chip, its prism band and the tokens it changes.
+     They run down the rainbow in pass order, like the logo's spectrum. */
+  --ray-rename: #ef4444;
+  --ray-strings: #f97316;
+  --ray-ints: #facc15;
+  --ray-arith: #22c55e;
+  --ray-flatten: #3b82f6;
+  --ray-dead: #a855f7;
 
   min-height: 100vh;
   overflow-x: clip;
@@ -358,12 +359,12 @@
 /* The output runs much wider than the source, so it gets the larger share. */
 .pg-stage {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) 7rem minmax(0, 1.3fr);
+  grid-template-columns: minmax(0, 0.9fr) 9rem minmax(0, 1.3fr);
 }
 
 @media (max-width: 1200px) {
   .pg-stage {
-    grid-template-columns: minmax(0, 0.9fr) 5.5rem minmax(0, 1.3fr);
+    grid-template-columns: minmax(0, 0.9fr) 7rem minmax(0, 1.3fr);
   }
 
   .pg-code {
@@ -501,22 +502,11 @@
 }
 
 .pg-prism .glass {
-  fill: url(#pg-glass);
-  stroke: rgba(255, 255, 255, 0.5);
-  stroke-width: 1.2;
-  stroke-linejoin: round;
+  fill: #fff;
 }
 
 .pg-prism .beam {
-  stroke: #fff;
-  stroke-width: 2.5;
-  stroke-linecap: round;
   animation: pg-beam 3s ease-in-out infinite;
-}
-
-.pg-prism .beam-inner {
-  opacity: 0.35;
-  animation: none;
 }
 
 @keyframes pg-beam {
@@ -524,18 +514,16 @@
 }
 
 .pg-prism .ray {
-  stroke-width: 3;
-  stroke-linecap: round;
-  opacity: 0.1;
+  opacity: 0.12;
   transition: opacity 0.45s ease;
 }
 
-.ray-rename { stroke: var(--ray-rename); }
-.ray-strings { stroke: var(--ray-strings); }
-.ray-ints { stroke: var(--ray-ints); }
-.ray-arith { stroke: var(--ray-arith); }
-.ray-flatten { stroke: var(--ray-flatten); }
-.ray-dead { stroke: var(--ray-dead); }
+.ray-rename { fill: var(--ray-rename); }
+.ray-strings { fill: var(--ray-strings); }
+.ray-ints { fill: var(--ray-ints); }
+.ray-arith { fill: var(--ray-arith); }
+.ray-flatten { fill: var(--ray-flatten); }
+.ray-dead { fill: var(--ray-dead); }
 
 .pg.on-rename .ray-rename,
 .pg.on-strings .ray-strings,
@@ -577,17 +565,18 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* A full-width strip: the prism stays upright, as in the logo. */
   .pg-prism {
-    height: 5.5rem;
+    height: 7.5rem;
     border: 0;
     border-top: 1px solid var(--pg-line);
     border-bottom: 1px solid var(--pg-line);
   }
 
   .pg-prism svg {
-    width: 5.5rem;
+    width: auto;
+    height: 7rem;
     max-height: none;
-    transform: rotate(90deg);
   }
 
   .pg-code {
