@@ -9,7 +9,7 @@ layout: docs
 All commands accept a global `-v, --verbose` flag for detailed logging (the
 underlying `dart compile` commands and per-pass progress).
 
-```
+```sh
 refractor --verbose build
 ```
 
@@ -31,7 +31,7 @@ When the [rename](/rulebook/rename) pass runs, the build also writes a versioned
 uses to de-obfuscate stack traces. See
 [Debugging with the symbol map](/recipes/symbolication).
 
-```
+```sh
 refractor build --target kernel
 ```
 
@@ -47,7 +47,7 @@ map from a build.
 The trace is read from `trace-file` if given, otherwise from **stdin**; the
 symbolicated trace is written to stdout.
 
-```
+```sh
 refractor symbolicate crash.txt
 flutter logs | refractor symbolicate
 refractor symbolicate crash.txt --symbol-map build/symbol_map.json
@@ -57,7 +57,7 @@ refractor symbolicate crash.txt --symbol-map build/symbol_map.json
 
 Print a tree representation of a compiled `.dill` file.
 
-```
+```sh
 refractor inspect build/out.dill
 refractor inspect --sdk build/out.dill   # include dart:* libraries
 ```
@@ -70,7 +70,7 @@ Generate a starter `refractor.yaml`.
 |---|---|---|
 | `-o, --output` | Output path for the config file | `refractor.yaml` |
 
-```
+```sh
 refractor init
 refractor init --output config/refractor.yaml
 ```

@@ -12,7 +12,7 @@ fails fast if it is missing, empty, or malformed, and rejects unknown keys.
 Obfuscation scope is always the current project: libraries matching the `name` in
 `pubspec.yaml` and files under the working directory.
 
-```
+```yaml
 refractor:
   # Path for the build-artifacts JSON (per-pass report: rename symbol map,
   # string-encryption records).

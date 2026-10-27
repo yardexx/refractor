@@ -53,7 +53,7 @@ contexts and anything kept.
 <Tabs defaultValue="minimal">
 <TabItem label="Minimal" value="minimal">
 
-```
+```yaml
 refractor:
   passes:
     opaque_predicate: true
@@ -62,7 +62,7 @@ refractor:
 </TabItem>
 <TabItem label="All options" value="all">
 
-```
+```yaml
 refractor:
   passes:
     opaque_predicate:

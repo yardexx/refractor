@@ -127,6 +127,7 @@
 .tk-num { color: #7ee787; }
 .tk-lbl { color: #8b949e; font-style: italic; }
 .tk-cm { color: #6e7681; font-style: italic; }
+.tk-key { color: #79c0ff; }
 .tk-p { color: #8b949e; }
 
 .pg .sym {
@@ -353,7 +354,104 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* Code panels: every fenced code block in the docs (CodePanel). The same dark
+   editor card, with a header for the language and a copy button. */
+.cb {
+  position: relative;
+  overflow: hidden;
+  margin: 1.25rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+  background: #0a0f1c;
+  color: #c9d1d9;
+  box-shadow: 0 18px 40px -26px rgba(0, 40, 100, 0.5);
+}
+
+.cb::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(64, 196, 255, 0.55), rgba(139, 92, 246, 0.55), transparent);
+}
+
+.cb-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.55rem 0.45rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: #0e1525;
+}
+
+.cb-lang {
+  color: #8b949e;
+  font: 600 0.68rem var(--code-mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.cb-copy {
+  margin-left: auto;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #8b949e;
+  font: 0.72rem var(--code-mono);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.cb-copy:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #e6edf3;
+}
+
+.cb-copy.copied {
+  border-color: rgba(126, 231, 135, 0.4);
+  color: #7ee787;
+}
+
+/* Doubled classes beat the prose styles for pre and code inside docs content. */
+.cb .cb-code {
+  margin: 0;
+  padding: 0.85rem 1.1rem;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #c9d1d9;
+  font: 13px/1.7 var(--code-mono);
+}
+
+.cb .cb-code code {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.cb-line {
+  display: block;
+  min-height: 1.7em;
+  white-space: pre;
+}
+
+/* Shell commands get a prompt; it is drawn by CSS, so copying leaves it out. */
+.cb-cmd::before {
+  content: "$ ";
+  color: #4b5563;
+  user-select: none;
+}
+
+.cb-text .tk-id {
+  color: #c9d1d9;
+}
+
+
   .pg *,
   .pg *::before {
     animation: none !important;

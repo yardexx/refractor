@@ -8,7 +8,9 @@ Refractor is an obfuscation tool for Dart code. It applies obfuscation directly
 at the kernel bytecode level.
 
 <Warning>
+
 Refractor is in early development. Real impact on the generated binary may vary.
+
 </Warning>
 
 Ready to try it? The [Quickstart](/guide/quickstart) takes you from install to an

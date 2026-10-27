@@ -56,7 +56,7 @@ kept code — is left as a direct call.
 <Tabs defaultValue="minimal">
 <TabItem label="Minimal" value="minimal">
 
-```
+```yaml
 refractor:
   passes:
     call_indirection: true
@@ -65,7 +65,7 @@ refractor:
 </TabItem>
 <TabItem label="All options" value="all">
 
-```
+```yaml
 refractor:
   passes:
     call_indirection:

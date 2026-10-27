@@ -49,7 +49,7 @@ anything kept.
 <Tabs defaultValue="minimal">
 <TabItem label="Minimal" value="minimal">
 
-```
+```yaml
 refractor:
   passes:
     arithmetic_mangle: true
@@ -58,7 +58,7 @@ refractor:
 </TabItem>
 <TabItem label="All options" value="all">
 
-```
+```yaml
 refractor:
   passes:
     arithmetic_mangle:

@@ -4,7 +4,6 @@ library;
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:jaspr_content/components/callout.dart';
-import 'package:jaspr_content/components/code_block.dart';
 import 'package:jaspr_content/components/github_button.dart';
 import 'package:jaspr_content/components/image.dart';
 import 'package:jaspr_content/components/sidebar.dart';
@@ -15,6 +14,7 @@ import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
 import 'components/brand_header.dart';
+import 'components/code_panel.dart';
 import 'components/pass_compare.dart';
 import 'diagrams/diagram_components.dart';
 import 'home/home_layout.dart';
@@ -41,7 +41,7 @@ void main() {
       extensions: [HeadingAnchorsExtension(), TableOfContentsExtension()],
       components: [
         Callout(),
-        CodeBlock(),
+        const CodePanel(),
         Image(zoom: true),
         const Tabs(),
         PassCompare(),

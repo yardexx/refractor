@@ -52,7 +52,7 @@ Non-empty, non-`const` string literals in **project** code. It **skips**:
 <Tabs defaultValue="minimal">
 <TabItem label="Minimal" value="minimal">
 
-```
+```yaml
 refractor:
   passes:
     string_encrypt: true
@@ -61,7 +61,7 @@ refractor:
 </TabItem>
 <TabItem label="All options" value="all">
 
-```
+```yaml
 refractor:
   passes:
     string_encrypt:

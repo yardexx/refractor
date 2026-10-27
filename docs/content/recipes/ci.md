@@ -22,12 +22,14 @@ Refractor is CI-friendly out of the box.
 
 A minimal step:
 
-```
+```yaml
 - run: dart pub global activate --source git https://github.com/yardexx/refractor.git
 - run: refractor build --target exe
 ```
 
 <Info>
+
 Pin the Dart SDK your project expects — Refractor's vendored kernel is tied to a
 specific SDK line (see [SDK compatibility](/guide#sdk-compatibility)).
+
 </Info>

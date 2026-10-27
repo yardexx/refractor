@@ -11,7 +11,7 @@ layout: docs
 Wraps a function's body in an **always-true opaque branch** whose else-branch is
 a faithful **clone** of the real body:
 
-```
+```dart
 if (opaqueTrue) { realBody } else { clonedBody }
 ```
 
@@ -60,7 +60,7 @@ bodies, and anything kept.
 <Tabs defaultValue="minimal">
 <TabItem label="Minimal" value="minimal">
 
-```
+```yaml
 refractor:
   passes:
     bogus_control_flow: true
@@ -69,7 +69,7 @@ refractor:
 </TabItem>
 <TabItem label="All options" value="all">
 
-```
+```yaml
 refractor:
   passes:
     bogus_control_flow:

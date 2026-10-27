@@ -31,8 +31,10 @@ doubles as the checklist for shipping a new pass:
 8. **Output** — the report metrics and the artifact it writes.
 
 <Info>
+
 Obfuscation scope is always the current project — libraries matching your
 `pubspec.yaml` package name and files under the working directory. External
 packages and the SDK are never touched. See
 [Policy](/architecture/policy) for the exact rule.
+
 </Info>

@@ -15,13 +15,13 @@ You need the Dart SDK at exactly **3.11.3**. Refractor ships a vendored copy of
 the kernel library that is tied to one SDK snapshot, so other versions are not
 supported (see [SDK compatibility](/guide#sdk-compatibility)). Check yours with:
 
-```
+```sh
 dart --version
 ```
 
 ## 1. Install the CLI
 
-```
+```sh
 dart pub global activate --source git https://github.com/yardexx/refractor.git
 ```
 
@@ -34,7 +34,7 @@ exact line to add when it isn't there yet.
 Skip this if you already have one. Otherwise, generate the standard console
 sample:
 
-```
+```sh
 dart create -t console hello_refractor
 cd hello_refractor
 ```
@@ -45,7 +45,7 @@ Dependencies and the SDK are left alone.
 
 ## 3. Generate a config
 
-```
+```sh
 refractor init
 ```
 
@@ -53,7 +53,7 @@ This writes a starter `refractor.yaml` to the project root. Refractor refuses to
 build without one. The starter file turns on two passes, **rename** and
 **string encryption**, with the other options commented out:
 
-```
+```yaml
 refractor:
   passes:
     rename:
@@ -70,14 +70,14 @@ reference lists them all.
 `refractor build` compiles `lib/main.dart` by default. Console apps keep their
 entrypoint in `bin/`, so point `--input` at it:
 
-```
+```sh
 refractor build --input bin/hello_refractor.dart
 ```
 
 Refractor compiles the app to kernel, runs the enabled passes, and compiles the
 result to a native executable. It prints a report of what each pass changed:
 
-```
+```text
 ✅ Build report: 2 pass(es) succeeded.
 
 ✅ rename:
@@ -103,18 +103,18 @@ The build leaves three files in `build/`:
 
 Run the executable and it behaves exactly like the original:
 
-```
+```sh
 ./build/out
 ```
 
-```
+```text
 Hello world: 42!
 ```
 
 The renames are recorded in `symbol_map.json`. The sample's `calculate`
 function, for example, now has a one-letter name (the exact names vary):
 
-```
+```json
 {
   "version": 1,
   "kind": "refractor-symbol-map",
@@ -126,9 +126,11 @@ function, for example, now has a one-letter name (the exact names vary):
 ```
 
 <Info>
+
 Keep `symbol_map.json` out of anything you ship. It is the key that undoes the
 renaming. Archive it privately with each release so you can
 [symbolicate](/recipes/symbolication) crash reports later.
+
 </Info>
 
 ## Next steps

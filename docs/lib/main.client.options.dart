@@ -6,6 +6,8 @@
 
 import 'package:jaspr/client.dart';
 
+import 'package:docs/components/copy_code_button.dart'
+    deferred as _copy_code_button;
 import 'package:docs/components/pass_compare_card.dart'
     deferred as _pass_compare_card;
 import 'package:docs/diagrams/blocks_diagram.dart' deferred as _blocks_diagram;
@@ -16,8 +18,6 @@ import 'package:docs/diagrams/policy_explorer.dart'
 import 'package:docs/diagrams/stages_diagram.dart' deferred as _stages_diagram;
 import 'package:docs/home/playground.dart' deferred as _playground;
 import 'package:docs/rulebook/copy_chip.dart' deferred as _copy_chip;
-import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
-    deferred as _code_block_copy_button;
 import 'package:jaspr_content/components/_internal/tab_bar.dart'
     deferred as _tab_bar;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
@@ -47,6 +47,10 @@ import 'package:jaspr_content/components/theme_toggle.dart'
 /// ```
 ClientOptions get defaultClientOptions => ClientOptions(
   clients: {
+    'copy_code_button': ClientLoader(
+      (p) => _copy_code_button.CopyCodeButton(text: p['text'] as String),
+      loader: _copy_code_button.loadLibrary,
+    ),
     'pass_compare_card': ClientLoader(
       (p) => _pass_compare_card.PassCompareCard(
         pass: p['pass'] as String,
@@ -78,10 +82,6 @@ ClientOptions get defaultClientOptions => ClientOptions(
     'copy_chip': ClientLoader(
       (p) => _copy_chip.CopyChip(text: p['text'] as String),
       loader: _copy_chip.loadLibrary,
-    ),
-    'jaspr_content:code_block_copy_button': ClientLoader(
-      (p) => _code_block_copy_button.CodeBlockCopyButton(),
-      loader: _code_block_copy_button.loadLibrary,
     ),
     'jaspr_content:tab_bar': ClientLoader(
       (p) => _tab_bar.TabBar(

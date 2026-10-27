@@ -19,7 +19,7 @@ versioned **`symbol_map.json`** next to your build output (default
 obfuscated names back to originals, with library-scoped keys for private members
 so colliding short names resolve correctly.
 
-```
+```yaml
 refractor:
   symbol_map: symbol_map.json   # relative paths resolve under build/
   passes:
@@ -30,8 +30,10 @@ Archive this file for every release you ship, keyed by version — it's the key 
 reading a crash report after the fact.
 
 <Info>
+
 Treat `symbol_map.json` like a debug-symbols file: **archive it, don't ship it.**
 Publishing it next to the binary hands an attacker the de-obfuscation map.
+
 </Info>
 
 ## 2. Symbolicate a captured trace
@@ -39,14 +41,14 @@ Publishing it next to the binary hands an attacker the de-obfuscation map.
 Feed an obfuscated trace to [`symbolicate`](/guide/commands#refractor-symbolicate-trace-file)
 with the matching map — from a file or over a pipe:
 
-```
+```sh
 refractor symbolicate crash.txt --symbol-map build/symbol_map.json
 flutter logs | refractor symbolicate
 ```
 
 It rewrites the **symbol** in each stack frame and prints the result to stdout:
 
-```
+```text
 # before
 #0      a.b (package:app/checkout.dart:42:7)
 #1      c (package:app/main.dart:10:3)
@@ -68,18 +70,20 @@ It rewrites the **symbol** in each stack frame and prints the result to stdout:
   the right original comes back.
 
 <Info>
+
 This is **identifier-level** symbolication — it reverses the renames Refractor
 performed. It is not address-level AOT symbolication of non-symbolic frames;
 that's Dart's own `--save-debugging-info` + `symbolize` domain, and the two
 compose: run Dart's step first to get symbolic frames, then `refractor
 symbolicate` to recover the original names.
+
 </Info>
 
 ## The map format
 
 `symbol_map.json` is schema-versioned so tooling can depend on it:
 
-```
+```json
 {
   "version": 1,
   "kind": "refractor-symbol-map",

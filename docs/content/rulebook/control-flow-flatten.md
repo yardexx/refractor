@@ -65,7 +65,7 @@ try/catch) — those are a follow-up.
 <Tabs defaultValue="minimal">
 <TabItem label="Minimal" value="minimal">
 
-```
+```yaml
 refractor:
   passes:
     control_flow_flatten: true
@@ -74,7 +74,7 @@ refractor:
 </TabItem>
 <TabItem label="All options" value="all">
 
-```
+```yaml
 refractor:
   passes:
     control_flow_flatten:

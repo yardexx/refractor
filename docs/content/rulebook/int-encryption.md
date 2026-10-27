@@ -57,7 +57,7 @@ Non-`const` integer literals in **project** code whose absolute value is at leas
 <Tabs defaultValue="minimal">
 <TabItem label="Minimal" value="minimal">
 
-```
+```yaml
 refractor:
   passes:
     int_encrypt: true
@@ -66,7 +66,7 @@ refractor:
 </TabItem>
 <TabItem label="All options" value="all">
 
-```
+```yaml
 refractor:
   passes:
     int_encrypt:

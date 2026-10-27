@@ -4,6 +4,7 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 import '../rulebook/passes.dart';
+import 'highlight.dart';
 
 /// The before/after card behind `<PassCompare>`: both snippets highlighted
 /// and diffed, with a switch that turns the pass off (the "after" pane shows
@@ -22,16 +23,16 @@ class PassCompareCard extends StatefulComponent {
 
 class _PassCompareCardState extends State<PassCompareCard> {
   bool _applied = true;
-  late final List<_Token> _before, _after, _original;
+  late final List<CodeToken> _before, _after, _original;
 
   @override
   void initState() {
     super.initState();
-    _before = _tokenize(component.before);
-    _after = _tokenize(component.after);
+    _before = highlight(component.before, 'dart');
+    _after = highlight(component.after, 'dart');
     _diff(_before, _after);
     // Unmarked, for the "after" pane while the pass is switched off.
-    _original = _tokenize(component.before);
+    _original = highlight(component.before, 'dart');
   }
 
   @override
@@ -71,8 +72,8 @@ class _PassCompareCardState extends State<PassCompareCard> {
     ]);
   }
 
-  Component _pane(List<Component> head, List<_Token> tokens, {required bool output}) {
-    final lines = <List<_Token>>[[]];
+  Component _pane(List<Component> head, List<CodeToken> tokens, {required bool output}) {
+    final lines = <List<CodeToken>>[[]];
     for (final t in tokens) {
       if (t.kind == 'nl') {
         lines.add([]);
@@ -96,74 +97,6 @@ class _PassCompareCardState extends State<PassCompareCard> {
   }
 }
 
-class _Token {
-  _Token(this.text, this.kind);
-
-  final String text;
-
-  /// Syntax class (`kw`, `ty`, `id`, `fn`, `str`, `num`, `lbl`, `cm`, `p`), or
-  /// `ws` / `nl` for whitespace.
-  String kind;
-
-  bool changed = false;
-
-  /// Zero-based source line.
-  int line = 0;
-
-  bool get significant => kind != 'ws' && kind != 'nl';
-}
-
-final _tokenPattern = RegExp(
-  r'''(//[^\n]*)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)|([A-Za-z_$][\w$]*)|(\n)|([ \t]+)|(.)''',
-);
-
-const _keywords = {
-  'as', 'case', 'class', 'const', 'continue', 'else', 'final', 'if', 'late', //
-  'new', 'null', 'return', 'switch', 'this', 'true', 'false', 'var', 'void',
-};
-const _builtinTypes = {'int', 'double', 'num', 'bool', 'dynamic'};
-
-/// A small Dart highlighter: enough for the Rulebook's snippets.
-List<_Token> _tokenize(String source) {
-  final tokens = [
-    for (final m in _tokenPattern.allMatches(source))
-      if (m[1] != null)
-        _Token(m[1]!, 'cm')
-      else if (m[2] != null)
-        _Token(m[2]!, 'str')
-      else if (m[3] != null)
-        _Token(m[3]!, 'num')
-      else if (m[4] != null)
-        _Token(m[4]!, 'id')
-      else if (m[5] != null)
-        _Token(m[5]!, 'nl')
-      else if (m[6] != null)
-        _Token(m[6]!, 'ws')
-      else
-        _Token(m[7]!, 'p'),
-  ];
-
-  var line = 0;
-  for (final t in tokens) {
-    t.line = line;
-    if (t.kind == 'nl') line++;
-  }
-
-  for (var i = 0; i < tokens.length; i++) {
-    final t = tokens[i];
-    if (t.kind != 'id') continue;
-    final next = tokens.skip(i + 1).where((n) => n.kind != 'ws').firstOrNull;
-    t.kind = switch (t.text) {
-      _ when _keywords.contains(t.text) => 'kw',
-      _ when RegExp(r'^L\d+$').hasMatch(t.text) => 'lbl',
-      _ when _builtinTypes.contains(t.text) || t.text.startsWith(RegExp('[A-Z]')) => 'ty',
-      _ when next?.text == '(' => 'fn',
-      _ => 'id',
-    };
-  }
-  return tokens;
-}
-
 /// Marks the tokens of [a] and [b] outside their common subsequence (compared
 /// on significant tokens), then lets whitespace between two changed tokens on
 /// a line count as changed, so a rewritten span glows as one piece.
@@ -171,9 +104,9 @@ List<_Token> _tokenize(String source) {
 /// Names and literals weigh more than punctuation, so `sum(items)` against
 /// `refractorCall(sum, [items])` keeps `sum` and marks the wrapper, rather
 /// than keeping the `(`.
-void _diff(List<_Token> a, List<_Token> b) {
+void _diff(List<CodeToken> a, List<CodeToken> b) {
   final x = a.where((t) => t.significant).toList(), y = b.where((t) => t.significant).toList();
-  int weight(_Token t) => t.kind == 'p' ? 1 : 3;
+  int weight(CodeToken t) => t.kind == 'p' ? 1 : 3;
   final best = List.generate(x.length + 1, (_) => List.filled(y.length + 1, 0));
   for (var i = x.length - 1; i >= 0; i--) {
     for (var j = y.length - 1; j >= 0; j--) {
@@ -205,8 +138,8 @@ void _diff(List<_Token> a, List<_Token> b) {
 /// the rewrite; it only matched the original by coincidence (the `+` inside
 /// `(a ^ b) + ((a & b) << 1)`, say). Not between two names, though: in
 /// `final e = b` after a rename, the `=` really is unchanged.
-void _fillGaps(List<_Token> seq) {
-  bool isName(_Token t) => const {'id', 'ty', 'fn'}.contains(t.kind);
+void _fillGaps(List<CodeToken> seq) {
+  bool isName(CodeToken t) => const {'id', 'ty', 'fn'}.contains(t.kind);
   for (var k = 1; k + 1 < seq.length; k++) {
     final prev = seq[k - 1], t = seq[k], next = seq[k + 1];
     if (t.changed || !prev.changed || !next.changed || (isName(prev) && isName(next))) continue;
@@ -214,7 +147,7 @@ void _fillGaps(List<_Token> seq) {
   }
 }
 
-void _bridgeWhitespace(List<_Token> tokens) {
+void _bridgeWhitespace(List<CodeToken> tokens) {
   for (var i = 0; i < tokens.length; i++) {
     if (tokens[i].kind != 'ws') continue;
     final prev = i > 0 ? tokens[i - 1] : null, next = i + 1 < tokens.length ? tokens[i + 1] : null;

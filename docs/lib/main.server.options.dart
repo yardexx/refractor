@@ -5,6 +5,7 @@
 // Generated with jaspr_builder
 
 import 'package:jaspr/server.dart';
+import 'package:docs/components/copy_code_button.dart' as _copy_code_button;
 import 'package:docs/components/pass_compare_card.dart' as _pass_compare_card;
 import 'package:docs/diagrams/blocks_diagram.dart' as _blocks_diagram;
 import 'package:docs/diagrams/pipeline_diagram.dart' as _pipeline_diagram;
@@ -12,13 +13,10 @@ import 'package:docs/diagrams/policy_explorer.dart' as _policy_explorer;
 import 'package:docs/diagrams/stages_diagram.dart' as _stages_diagram;
 import 'package:docs/home/playground.dart' as _playground;
 import 'package:docs/rulebook/copy_chip.dart' as _copy_chip;
-import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
-    as _code_block_copy_button;
 import 'package:jaspr_content/components/_internal/tab_bar.dart' as _tab_bar;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
     as _zoomable_image;
 import 'package:jaspr_content/components/callout.dart' as _callout;
-import 'package:jaspr_content/components/code_block.dart' as _code_block;
 import 'package:jaspr_content/components/github_button.dart' as _github_button;
 import 'package:jaspr_content/components/image.dart' as _image;
 import 'package:jaspr_content/components/sidebar_toggle_button.dart'
@@ -45,6 +43,11 @@ import 'package:jaspr_content/components/theme_toggle.dart' as _theme_toggle;
 ServerOptions get defaultServerOptions => ServerOptions(
   clientId: 'main.client.dart.js',
   clients: {
+    _copy_code_button.CopyCodeButton:
+        ClientTarget<_copy_code_button.CopyCodeButton>(
+          'copy_code_button',
+          params: __copy_code_buttonCopyCodeButton,
+        ),
     _pass_compare_card.PassCompareCard:
         ClientTarget<_pass_compare_card.PassCompareCard>(
           'pass_compare_card',
@@ -65,10 +68,6 @@ ServerOptions get defaultServerOptions => ServerOptions(
       'copy_chip',
       params: __copy_chipCopyChip,
     ),
-    _code_block_copy_button.CodeBlockCopyButton:
-        ClientTarget<_code_block_copy_button.CodeBlockCopyButton>(
-          'jaspr_content:code_block_copy_button',
-        ),
     _tab_bar.TabBar: ClientTarget<_tab_bar.TabBar>(
       'jaspr_content:tab_bar',
       params: __tab_barTabBar,
@@ -91,7 +90,6 @@ ServerOptions get defaultServerOptions => ServerOptions(
   },
   styles: () => [
     ..._callout.Callout.styles,
-    ..._code_block.CodeBlock.styles,
     ..._github_button.GitHubButton.styles,
     ..._image.Image.styles,
     ..._tabs.Tabs.styles,
@@ -101,6 +99,9 @@ ServerOptions get defaultServerOptions => ServerOptions(
   ],
 );
 
+Map<String, Object?> __copy_code_buttonCopyCodeButton(
+  _copy_code_button.CopyCodeButton c,
+) => {'text': c.text};
 Map<String, Object?> __pass_compare_cardPassCompareCard(
   _pass_compare_card.PassCompareCard c,
 ) => {'pass': c.pass, 'before': c.before, 'after': c.after};

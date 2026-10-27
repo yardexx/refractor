@@ -41,7 +41,7 @@ instances/mixins as their nature requires.
 
 ## The pieces
 
-```
+```text
 kernel_toolkit/
   traversal/
     scoped_transformer.dart   ScopedKernelTransformer  — mutation base (Transformer)

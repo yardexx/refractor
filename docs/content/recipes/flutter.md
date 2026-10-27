@@ -20,6 +20,8 @@ What already carries over:
   for plugin surfaces and anything reached via reflection or platform channels.
 
 <Info>
+
 This recipe is a work in progress. If you're wiring Refractor into a Flutter
 build, please share your setup in an issue so we can document a supported path.
+
 </Info>

@@ -39,9 +39,11 @@ shape**: every pass reads the same way, and `S → P → O` are threaded with
 compile-time checking.
 
 <Info>
+
 **Why split plan from transform?** Planning is pure and inspectable — decisions
 can be validated and serialized (the symbol map, the encryption records) before
 anything is touched. Transformation is the single, auditable mutation point.
+
 </Info>
 
 ## How a pass is constructed and run
@@ -79,8 +81,10 @@ sealed class PassResult
   `build_artifacts.json` (the rename symbol map, the string-encryption records).
 
 <Info>
+
 The `PassReport` metadata keys and the artifact shapes are a **contract**: the
 e2e/resistance harness and the CLI reporters depend on them. Keep them stable.
+
 </Info>
 
 ## The shape of a concrete `run()`
