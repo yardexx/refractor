@@ -361,30 +361,25 @@ List<_Line> _render(Set<DemoPass> on) {
   return lines;
 }
 
-/// A glass prism splitting one beam into a ray per pass. Rays light up via
-/// the `on-<slug>` classes on the playground root.
+/// The logo's prism (same proportions, outline weight, crossbar beam and
+/// spectrum angles) with one band per pass. Bands light up via the
+/// `on-<slug>` classes on the playground root.
 const _prismSvg = '''
-<svg viewBox="0 0 140 260" aria-hidden="true">
+<svg viewBox="0 0 180 210" aria-hidden="true">
   <defs>
-    <filter id="pg-glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2.2" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <linearGradient id="pg-glass" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.04"/>
+    <linearGradient id="pg-beam" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="51.1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".7" stop-color="#fff"/>
     </linearGradient>
   </defs>
-  <line class="beam" x1="0" y1="150" x2="46" y2="130"/>
-  <line class="beam beam-inner" x1="46" y1="130" x2="92" y2="125"/>
-  <g filter="url(#pg-glow)">
-    <line class="ray ray-rename" x1="92" y1="125" x2="140" y2="92"/>
-    <line class="ray ray-strings" x1="92" y1="125" x2="140" y2="108"/>
-    <line class="ray ray-ints" x1="92" y1="125" x2="140" y2="124"/>
-    <line class="ray ray-arith" x1="92" y1="125" x2="140" y2="140"/>
-    <line class="ray ray-flatten" x1="92" y1="125" x2="140" y2="156"/>
-    <line class="ray ray-dead" x1="92" y1="125" x2="140" y2="172"/>
-  </g>
-  <polygon class="glass" points="70,60 25,190 115,190"/>
+  <path class="beam" d="M0 126.8L62.8 115.7L62.8 120.9L0 129.8Z" fill="url(#pg-beam)"/>
+  <path class="ray ray-rename" d="M115.1 115.7L180 94L180 103.7L115.1 116.6Z"/>
+  <path class="ray ray-strings" d="M115.1 116.6L180 103.7L180 113.4L115.1 117.5Z"/>
+  <path class="ray ray-ints" d="M115.1 117.5L180 113.4L180 123.2L115.1 118.3Z"/>
+  <path class="ray ray-arith" d="M115.1 118.3L180 123.2L180 132.9L115.1 119.2Z"/>
+  <path class="ray ray-flatten" d="M115.1 119.2L180 132.9L180 142.7L115.1 120Z"/>
+  <path class="ray ray-dead" d="M115.1 120L180 142.7L180 152.4L115.1 120.9Z"/>
+  <path class="glass" d="M86 62L31.4 150L140.6 150ZM86 84.2L119.5 138.3L52.5 138.3Z" fill-rule="evenodd"/>
+  <path class="glass" d="M66.4 115.7L105.6 115.7L108.7 120.9L63.3 120.9Z"/>
 </svg>
 ''';
