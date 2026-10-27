@@ -1,18 +1,31 @@
 ---
-title: Getting Started
-description: Install Refractor and obfuscate your first Dart build.
 layout: docs
 ---
 
 # Refractor
 
-Refractor is a Dart kernel (`.dill`) obfuscation tool. It compiles a Dart
-entrypoint to kernel bytecode, applies configurable obfuscation passes, and
-emits an executable, AOT snapshot, JIT snapshot, or kernel file.
+Refractor is an obfuscation tool for Dart code. It applies obfuscation directly
+at the kernel bytecode level.
 
-<Info>
+<Warning>
 Refractor is in early development. Real impact on the generated binary may vary.
-</Info>
+</Warning>
+
+Ready to try it? The [Quickstart](/guide/quickstart) takes you from install to an
+obfuscated binary in a few minutes.
+
+## How it works
+
+Refractor sits between the Dart compiler and your final binary. It compiles your
+entrypoint to a kernel (`.dill`) file, rewrites that program in memory, and then
+compiles the result to a native executable, an AOT or JIT snapshot, or back to
+kernel. Your source code is never modified.
+
+Working on kernel rather than source is what makes the transforms safe. By the
+time Refractor sees your program, the Dart front end has already resolved every
+type, call target and override, so a renamed method is renamed everywhere it is
+used, and a member that overrides a framework type keeps its name. The
+[Architecture](/architecture) section covers the pipeline in depth.
 
 ## What it does
 
@@ -25,13 +38,11 @@ program — see the [Rulebook](/rulebook) for exactly what each one does:
 - **Control flow** — opaque predicates, control-flow flattening, dead code,
   bogus branches, and call indirection.
 
-Alongside the transforms:
-
-- **Symbol map** — every build writes a versioned `symbol_map.json`, and
-  [`refractor symbolicate`](/recipes/symbolication) turns an obfuscated stack
-  trace back into original names.
-- **Build reports** — pass metrics and failures through structured build output,
-  including a GitHub Actions job summary in CI.
+When the rename pass runs, the build also writes a versioned `symbol_map.json`, and
+[`refractor symbolicate`](/recipes/symbolication) uses it to turn an obfuscated
+stack trace back into original names. Each run ends with a build report of what
+every pass changed, which also lands in the job summary when you run in GitHub
+Actions.
 
 ## SDK compatibility
 
@@ -39,30 +50,9 @@ Refractor is pinned to one Dart SDK line at a time, because the vendored kernel
 API and binary format are tied to a specific SDK snapshot. This release expects
 Dart **3.11.3**.
 
-## Install
-
-```
-dart pub global activate --source git https://github.com/yardexx/refractor.git
-```
-
-## Quick start
-
-```
-# 1. Generate a config file
-refractor init
-
-# 2. Build with obfuscation
-refractor build
-```
-
-This compiles `lib/main.dart`, applies the passes defined in `refractor.yaml`,
-and writes the output to `build/out.exe`.
-
-Local runs print a plain-text build report. In GitHub Actions, Refractor also
-appends a Markdown summary to `GITHUB_STEP_SUMMARY`.
-
 ## Next steps
 
+- [Quickstart](/guide/quickstart) — install Refractor and obfuscate your first build.
 - [Commands](/guide/commands) — `build`, `symbolicate`, `inspect`, `init`, and the global `--verbose`.
 - [Configuration](/guide/configuration) — the `refractor.yaml` reference.
 - [Architecture](/architecture) — how Refractor is built, end to end.

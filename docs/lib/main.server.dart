@@ -37,7 +37,10 @@ void main() {
           sidebar: Sidebar(
             groups: [
               SidebarGroup(
-                links: [SidebarLink(text: 'Introduction', href: '/guide')],
+                links: [
+                  SidebarLink(text: 'Introduction', href: '/guide'),
+                  SidebarLink(text: 'Quickstart', href: '/guide/quickstart'),
+                ],
               ),
               SidebarGroup(
                 title: 'Guide',
