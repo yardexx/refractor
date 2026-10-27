@@ -1,67 +1,72 @@
 ---
 title: Policy
-description: Membership and keep — the one "may I obfuscate this?" oracle.
+description: How Refractor decides what each pass is allowed to change.
 layout: docs
 ---
 
-# Policy — membership and keep
+Before a pass changes anything, it asks one question: may I obfuscate this?
+Refractor answers it by asking two smaller questions and combining them. Is this
+code part of your project? And has anyone asked to keep it as it is? A
+declaration is obfuscated only when the first answer is yes and the second is no.
 
-Every selector, transformer, and injector asks one question before touching a
-node: **"may I obfuscate this?"** That question decomposes into two *orthogonal*
-concerns that are easy to conflate. Keeping them separate is the whole design.
+The two questions are handled by separate pieces of code, `ProjectScope` and
+`KeepPolicy`, because they change for different reasons. Which libraries are
+yours depends on your package layout; what to keep depends on your config and
+annotations. Try a few cases:
 
 <PolicyExplorer />
 
-## Membership — "is this my code?"
+## Is this my code?
 
-`ProjectScope` answers whether a library belongs to the project being obfuscated,
-vs. an external package or the SDK. It's purely structural — nothing about user
-intent.
+`ProjectScope` works out whether a library belongs to your project or comes from a
+dependency or the SDK. It only looks at where the library lives, never at your
+config.
 
-- `containsLibrary(lib)` / `workspacePathForLibrary(lib)` → a workspace-relative
-  path, or `null` if the library isn't ours.
-- Resolution: `package:` URIs must match the pubspec package name → `lib/...`;
-  `file:` URIs must sit under the project root; `dart:` and other packages are
-  external.
-- Memoized per library — membership is queried once per node during
-  selection/transformation.
+A `package:` URI counts as yours when its package name matches the `name` in your
+`pubspec.yaml`, and it maps to a path under `lib/`. A `file:` URI counts as yours
+when the file sits under the project root. Everything under `dart:` and every
+other package is external and never touched.
 
-## Keep — "did the user ask to preserve it?"
+The answer is cached per library, because it gets asked for almost every node a
+pass looks at. `containsLibrary(lib)` gives the yes or no, and
+`workspacePathForLibrary(lib)` returns the library's path inside your project, or
+`null` for external code.
 
-`KeepPolicy` is the set of declarations to leave alone. Pure keep, no membership.
-It has **containment**: a kept library keeps its classes and members; a kept
-class keeps its members.
+## Did you ask to keep it?
 
-The mechanisms are a fixed, framework-owned vocabulary:
+`KeepPolicy` is the set of declarations to leave alone, and it knows nothing about
+which code is yours. Keeping is inherited downward: a kept library keeps all its
+classes and members, and a kept class keeps all its members.
+
+There are three ways to keep something, and they form a fixed list:
 
 ```dart
 enum KeepSource { excludes, annotations, entryPoint }
 ```
 
-- `excludes` — the global `refractor.exclude` globs plus a pass's own `exclude`
-  globs. Keeps whole libraries by path.
-- `annotations` — `@Refractor.keep()` on classes/members.
-- `entryPoint` — the program's `main`.
+`excludes` are glob patterns: the global `refractor.exclude` list plus any
+`exclude` list under a single pass. They keep whole libraries by path.
+`annotations` covers `@Refractor.keep()` on a class or member. `entryPoint` is
+your program's `main`.
 
-Each `PassDefinition` declares which sources it honors:
+Each pass declares which of these it follows. Every pass honors excludes and
+annotations; only rename also keeps the entry point:
 
-| Pass | Honors | Why |
+| Pass | Follows | Why |
 |---|---|---|
-| `rename` | `excludes`, `annotations`, `entryPoint` | It rewrites identifiers, so preserving `main`'s *name* matters. |
-| `string_encrypt` | `excludes`, `annotations` | Keeping `main`'s name says nothing about the string literals inside it — those are fine to encrypt. |
+| `rename` | excludes, annotations, entry point | It changes names, so `main` has to keep its name to stay the entry point. |
+| the other eight | excludes, annotations | They change bodies and literals, not names. Keeping `main`'s name says nothing about the strings or arithmetic inside it. |
 
-## KeepResolver — pass-agnostic
+`KeepResolver.resolve(sources, passExcludeGlobs)` builds a pass's keep policy from
+only the sources that pass declares. It has one branch per source and never
+checks which pass is asking, so a new pass only has to declare its sources. It
+also only ever scans project libraries; whether external code is in scope is
+`ProjectScope`'s question, not this one.
 
-`KeepResolver.resolve(sources, passExcludeGlobs)` builds a `KeepPolicy` from
-**only** the declared sources — one branch per source, never branching on pass
-identity. That decoupling is why adding a third pass needs no change here: it
-just declares its `KeepSource` set. Every scan only ever considers project
-libraries — external code is a membership concern, never a keep concern.
+## One answer for every pass
 
-## ObfuscationScope — the one oracle
-
-`ObfuscationScope` is the single authority a pass consults. It combines the two
-concerns:
+`ObfuscationScope` puts the two halves together, and it is the only thing a pass
+consults:
 
 ```dart
 bool shouldObfuscateLibrary(Library l) => project.containsLibrary(l) && !keep.isLibraryKept(l);
@@ -69,20 +74,17 @@ bool shouldObfuscateClass(Class c)     => project.containsLibrary(c.enclosingLib
 bool shouldObfuscateMember(Member m)   => project.containsLibrary(m.enclosingLibrary) && !keep.isMemberKept(m);
 ```
 
-A pass never re-derives "in project and not kept" — it asks the scope. The
-`project` and `keep` halves stay accessible for the rare case that must reason
-about an *external* node directly (e.g. detecting an external supertype during
-rename).
+Passes never repeat the "in the project and not kept" check themselves. The two
+halves are still reachable on their own for the rare case that needs them, such
+as rename spotting that a class extends a type from a dependency.
 
-## Who builds it
+`PassRegistry.createAll` builds one `KeepResolver` for the whole build. For each
+enabled pass it resolves that pass's keep policy and wraps it, together with the
+shared `ProjectScope`, in an `ObfuscationScope`. Every pass gets its own scope, and
+the scopes differ only in what they keep.
 
-`PassRegistry.createAll` builds one `KeepResolver` for the whole run, then per
-enabled pass resolves that pass's `KeepPolicy` (from its declared `keepSources`)
-and constructs an `ObfuscationScope(project, keep)` handed to the pass. So each
-pass gets its own scope, differing only in what it keeps.
+## What isn't a keep rule
 
-## Not a keep concern
-
-`string_encrypt`'s literal-exclusion regexes (`exclude_patterns`) are a **pass
-parameter** built from config in the pass itself — they filter literal *values*,
-not declarations, and never touch the policy layer.
+String encryption's `exclude_patterns` option looks similar but works
+differently. The patterns match the text of string literals, not declarations, so
+they live inside the pass as one of its settings and never reach the policy.

@@ -1,6 +1,6 @@
 ---
 title: String encryption
-description: Hides string literals behind an injected runtime decoder.
+description: Hides string literals behind a decoder that rebuilds them at runtime.
 layout: docs
 ---
 
@@ -8,9 +8,10 @@ layout: docs
 
 ## What it does
 
-Replaces string literals in your code with a call to an injected runtime decoder,
-so the plaintext no longer appears in the binary. At runtime the decoder
-reconstructs the original string.
+String encryption replaces each string literal with a call to a small decoder
+that Refractor adds to your program. The text is stored in encoded form, so it
+no longer shows up in the binary, and the decoder rebuilds it when the code
+runs.
 
 ## Example
 
@@ -41,11 +42,13 @@ String banner() {
 
 ## What it targets
 
-Non-empty, non-`const` string literals in **project** code. It **skips**:
+It encodes non-empty string literals in your project's code. It leaves alone
+strings in a `const` context or an annotation, which have to stay constant, empty
+strings, and any literal whose text matches one of your `exclude_patterns`, for
+example to keep URLs readable.
 
-- literals in a `const` context or inside annotations (they must stay const);
-- empty strings;
-- literals whose value matches any `exclude_patterns` regex (e.g. keep URLs readable).
+It follows `exclude` globs and `@Refractor.keep()`, but not the entry point:
+keeping `main`'s name says nothing about the strings inside it.
 
 ## Configuration
 
@@ -77,42 +80,32 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | `0x5A` | Seeds the PRNG that assigns a distinct key per literal — **not** a single fixed key. |
-| `exclude_patterns` | regex list | `[]` | Literal values matching any pattern stay in plaintext. |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations. It does **not** honor
-the entry point — keeping `main`'s name says nothing about the strings inside it.
-See [Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | `0x5A` | Seeds the random generator that picks each literal's key. Every literal still gets a different key. |
+| `exclude_patterns` | regex list | `[]` | Literals whose text matches any of these stay in plain text. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Per-literal keys.** Each literal is XOR-encoded (bytes reversed) with its own
-  key derived from the `seed` — identical strings don't produce identical bytes.
-- **One decode helper per build**, injected as a top-level
-  `@pragma('vm:never-inline')` function.
+- Every literal gets its own key, derived from the `seed`, so two identical strings don't produce the same bytes.
+- Refractor adds one decoder per build, marked `@pragma('vm:never-inline')` so the compiler keeps it as a separate function.
 
 </Promises>
 <Caveats>
 
-- **Not secrets protection.** This defeats `strings(1)` and casual inspection
-  only. The key travels in the binary, so a determined reverse-engineer can
-  recover the plaintext. Don't rely on it to hide credentials.
-- **`const` strings stay plain**, by design.
+- It isn't a way to protect secrets. It defeats `strings` and casual browsing, but the keys ship inside the binary, so someone determined can recover the text. Don't use it to hide credentials.
+- `const` strings stay readable, by design.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `strings_encrypted` (count).
-- **Artifact:** per-literal **records** (plaintext, encoded bytes, key, location)
-  written into `build_artifacts.json`.
+The build report counts `strings_encrypted`. A record for each literal (its
+text, encoded bytes, key and location) goes into `build_artifacts.json`, so keep
+that file out of anything you ship.
 
 <PassPager pass="strings" />

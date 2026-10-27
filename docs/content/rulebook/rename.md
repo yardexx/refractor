@@ -1,6 +1,6 @@
 ---
 title: Rename
-description: Renames classes, members, and variables to meaningless names.
+description: Gives your classes, members and variables short, meaningless names.
 layout: docs
 ---
 
@@ -8,10 +8,11 @@ layout: docs
 
 ## What it does
 
-Rewrites the names of your classes, methods, fields, constructors, and local
-variables/parameters to short meaningless identifiers, and updates every
-reference so the program still runs. This is the pass that makes a decompiled
-binary hard to read.
+Rename replaces the names of your classes, methods, fields, constructors, local
+variables and parameters with short, meaningless ones, and updates every place
+they're used so the program still runs. It does more than any other pass to make
+a decompiled binary hard to read, because names are usually the first thing a
+reader goes by.
 
 ## Example
 
@@ -47,13 +48,19 @@ class a {
 
 ## What it targets
 
-Classes, members (methods, fields, constructors), and variables in **project**
-code. It deliberately **skips**:
+It renames classes, members and variables in your project's code, and leaves a
+few things alone on purpose:
 
-- compiler-synthesized mixin application classes (their generated names are load-bearing);
-- instance members that override an **external** supertype (e.g. Flutter's `build`, or `==`/`hashCode`/`toString`) — renaming them would break the override contract with code you don't control;
-- named parameters on dynamically-dispatched instance methods (can't be rewritten soundly once the receiver is `dynamic`);
-- anything kept (see below) and the program entry point.
+- classes the compiler generates for mixin applications, because other generated
+  code relies on their names;
+- members that override a type from outside your project, like Flutter's `build`
+  or `==`, `hashCode` and `toString`, since renaming them would break the
+  override;
+- named parameters of instance methods that can be called dynamically, where not
+  every call site can be found.
+
+It follows all three keep rules: `exclude` globs, `@Refractor.keep()`, and the
+entry point, so `main` keeps its name. See [Policy](/architecture/policy).
 
 ## Configuration
 
@@ -84,42 +91,33 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | — | Optional seed for deterministic obfuscated names. |
-
-## Scope & keep
-
-Honors **all three** keep mechanisms: `exclude` globs, `@Refractor.keep()`
-annotations, and the entry point (`main`'s name is preserved). See
-[Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | none | Fixes the generated names, for reproducible builds. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Overrides stay wired.** Members that form an override family across a class
-  hierarchy are grouped (union-find) and given one shared new name.
-- **Dynamic dispatch is reconciled**, and first-class tear-offs are preserved, by
-  a safety-normalizer that reverts names it can't rewrite soundly.
-- **Fails loud, never silently corrupts.** A validator asserts every planned
-  rename was applied and that no two declarations collide on a name; a mismatch
-  aborts the build with no output.
+- Members that override each other across a class hierarchy are grouped and all get the same new name, so overrides keep working.
+- Names it can't rewrite safely, such as some dynamic calls and tear-offs, are put back to their originals rather than risk breaking the program.
+- A final check confirms every planned rename happened and no two declarations ended up with the same name. If it fails, the build stops and writes nothing.
 
 </Promises>
 <Caveats>
 
-- **Not covered.** Reflection/`dart:mirrors`-style lookups the pass can't see;
-  named arguments at dynamic call sites; anything you've kept.
+- It can't see code that looks members up by name at runtime, such as `dart:mirrors`. Keep those declarations with `@Refractor.keep()`.
+- Named arguments at dynamic call sites keep their names.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `classes`, `members`, `variables` (counts).
-- **Artifact:** a **symbol map** (obfuscated name → original) written into
-  `build_artifacts.json`, so stack traces and logs can be de-obfuscated.
+The build report counts the renamed `classes`, `members` and `variables`. The
+mapping from new names back to the originals goes into `build_artifacts.json` and
+into the [symbol map](/recipes/symbolication), which turns obfuscated stack traces
+back into readable ones.
 
 <PassPager pass="rename" />

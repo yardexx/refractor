@@ -1,70 +1,75 @@
 ---
 title: Architecture Overview
-description: How Refractor is structured — layers, blocks, and the pipeline.
+description: How Refractor is put together, from the compile pipeline to the parts of the engine.
 layout: docs
 ---
 
-# Architecture
-
-Refractor is a Dart **kernel-level** obfuscator. It does not touch your source:
-it compiles your entrypoint to Dart's intermediate representation (a `.dill`
-kernel file), rewrites that AST in memory, writes it back, and compiles the
-result to the final binary.
+Refractor never edits your source code. It compiles your entrypoint to a kernel
+file (`.dill`, Dart's intermediate representation), rewrites the program inside
+that file, and then compiles the rewritten kernel into the binary you ship. The
+diagram below walks through each step.
 
 <PipelineDiagram />
 
-Working at the kernel level is the central design choice: the front end has
-already resolved types, interface targets, canonical names, and override
-relationships — exactly the information that makes correct renaming tractable.
-That is also why the passes are deliberately coupled to `package:kernel` (see
-[kernel_toolkit](/architecture/kernel-toolkit)).
+Working on kernel instead of source is the decision the rest of the design
+follows from. By the time Refractor reads the `.dill`, the Dart front end has
+already worked out every type, which method each call goes to, and which members
+override which. Safe renaming depends on all of that, so the passes work with
+`package:kernel` directly rather than through an abstraction. The
+[kernel_toolkit](/architecture/kernel-toolkit) page explains why.
 
-## The blocks
+## The parts
 
-Read this as independent blocks that use each other through narrow seams but do
-not care about each other's internals.
+Refractor is split into a few parts that talk to each other through small
+interfaces. The CLI reads your config and starts a build, the engine runs the
+passes, and each pass asks the policy which parts of the program it may change.
+Click through them below.
 
 <BlocksDiagram />
 
-| Block | What it owns | More |
+| Part | What it does | More |
 |---|---|---|
-| **CLI + Config** | User-facing commands and translating `refractor.yaml` into typed config. The only layer allowed `dart:io`. | — |
-| **Orchestrator** | Creating, ordering, and running passes; collecting results; refusing to emit output on failure. | [Passes](/architecture/passes) |
-| **Pass** | One unit of obfuscation, internally a 5-stage pipeline. | [Passes](/architecture/passes) |
-| **Policy** | The single "may I transform this node?" authority — membership + keep. | [Policy](/architecture/policy) |
-| **Compile/serialize boundary** | Abstract `Compiler` + `KernelIO`; the engine depends on interfaces, the CLI injects the `dart:io` implementations. | below |
-| **kernel_toolkit** | The shared vocabulary passes use instead of touching raw `package:kernel`. | [kernel_toolkit](/architecture/kernel-toolkit) |
+| CLI and config | The commands you run, and turning `refractor.yaml` into typed settings. The only part that touches `dart:io`. | |
+| Orchestrator | Builds the passes, runs them in order, collects their results, and refuses to write output if any failed. | [Passes](/architecture/passes) |
+| Passes | One kind of obfuscation each, all built the same way in five stages. | [Passes](/architecture/passes) |
+| Policy | Answers one question for every pass: may I change this declaration? | [Policy](/architecture/policy) |
+| Compile/serialize boundary | Two interfaces, `Compiler` and `KernelIO`. The engine depends on them; the CLI provides the real implementations. | |
+| kernel_toolkit | Shared helpers the passes use instead of handling raw `package:kernel` everywhere. | [kernel_toolkit](/architecture/kernel-toolkit) |
 
-## The load-bearing rule: pure engine, injected IO
+## Why the engine never touches the disk
 
-Dependency direction is strict and one-way:
+Dependencies point one way. The CLI depends on the config, the config feeds the
+engine, and nothing in the engine imports `dart:io`.
 
 <DependencyRule />
 
-The engine never imports `dart:io`. It depends on two abstract interfaces —
-`Compiler` (compile source→kernel, kernel→target) and `KernelIO` (read/write
-`.dill`) — and the CLI supplies the concrete implementations (`DartCompiler`,
-which shells out to `dart compile`, and `FileKernelIO`). This is what makes the
-whole engine unit-testable without spawning processes or touching disk, and it
-is the seam a different backend would plug into.
+The engine works against two interfaces instead: `Compiler`, which turns source
+into kernel and kernel into a target, and `KernelIO`, which reads and writes
+`.dill` files. The CLI passes in the real versions, `DartCompiler` (which runs
+`dart compile`) and `FileKernelIO`. That split is why the whole engine can be
+unit-tested without starting processes or writing files, and it is also where a
+different backend would plug in.
 
-## The compile/serialize pipeline
+## The pipeline step by step
 
-`RefractorEngine.run` is the orchestrator's spine. The obfuscation passes are
-only the middle of a longer pipeline:
+`RefractorEngine.run` drives the whole build, and the passes are only its middle
+part:
 
-1. `compiler.compileToKernel(input)` → `app.dill`
-2. `kernelIO.load(...)` → `Component` (the kernel AST)
-3. build `ProjectScope`, then `PassRegistry.createAll(...)` → `List<Pass>`
-4. `PassRunner.run(component)` → passes mutate the AST, results collected
-5. if any pass failed → **stop**, emit no output (never ship a half-obfuscated
-   binary)
-6. `kernelIO.write(...)` → `app.obfuscated.dill`
-7. `compiler.compileToTarget(...)` → `exe` / `aot` / `jit` (or the kernel is the
-   output directly)
+1. `compiler.compileToKernel(input)` produces `app.dill`.
+2. `kernelIO.load(...)` reads it into a `Component`, the kernel AST.
+3. The engine builds a `ProjectScope` and asks `PassRegistry.createAll(...)` for
+   the enabled passes.
+4. `PassRunner.run(component)` runs them. Each one rewrites the AST in place, and
+   every result is kept.
+5. If any pass failed, the build stops here and writes nothing, so you never end
+   up with a half-obfuscated binary.
+6. `kernelIO.write(...)` saves the rewritten program as `app.obfuscated.dill`.
+7. `compiler.compileToTarget(...)` turns that into an executable or an AOT or JIT
+   snapshot. For the kernel target, the `.dill` itself is the output.
 
 ## Where to go next
 
-- [Passes](/architecture/passes) — the pass framework and the concrete passes.
-- [Policy](/architecture/policy) — membership vs keep, and the one scope oracle.
-- [kernel_toolkit](/architecture/kernel-toolkit) — the shared kernel-operations layer and the design philosophy behind it.
+[Passes](/architecture/passes) covers how a pass is built and run.
+[Policy](/architecture/policy) explains how Refractor decides what it may touch,
+and [kernel_toolkit](/architecture/kernel-toolkit) describes the shared helpers
+underneath.

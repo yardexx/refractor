@@ -1,6 +1,6 @@
 ---
 title: Arithmetic mangling
-description: Rewrites integer + and * into equivalent, harder-to-read expressions.
+description: Rewrites integer + and * into equivalent but harder-to-read expressions.
 layout: docs
 ---
 
@@ -8,10 +8,11 @@ layout: docs
 
 ## What it does
 
-Rewrites integer addition and multiplication into algebraically equivalent but
-less obvious expressions. `a + b` becomes `(a ^ b) + ((a & b) << 1)`; `a * b`
-becomes `a * (b + k) - a * k` for a constant `k`. The result is the same number;
-the expression a reader (or a decompiler) sees is not.
+Arithmetic mangling rewrites integer additions and multiplications into
+expressions that compute the same number the long way round. `a + b` becomes
+`(a ^ b) + ((a & b) << 1)`, and `a * b` becomes `a * (b + k) - a * k` for some
+constant `k`. The value doesn't change; what a reader or a decompiler sees
+does.
 
 ## Example
 
@@ -38,11 +39,12 @@ int cost(int a, int b, int n) {
 
 ## What it targets
 
-Integer `+` and `*` operations in **project** code — matched structurally: the
-operator is `+` or `*`, both operands are `int`/`num`, and the result is `int`.
-Nested arithmetic is rewritten bottom-up, so compound expressions are mangled
-throughout. It **skips** floating-point math, operations in const contexts, and
-anything kept.
+It rewrites `+` and `*` in your project's code when both operands are integers
+and the result is an `int`. Nested expressions are rewritten from the inside out,
+so a longer formula is mangled all the way through. Floating-point math and
+arithmetic in `const` contexts are left alone.
+
+It follows `exclude` globs and `@Refractor.keep()`, like every pass.
 
 ## Configuration
 
@@ -72,36 +74,28 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | `0x0A17` | Seeds the identity/constant choices, for reproducible builds. |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations. The entry point's
-name is irrelevant to it. See [Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | `0x0A17` | Seeds which identity and constant each expression gets, for reproducible builds. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Behaviour-preserving.** The rewrites are algebraic identities over Dart's
-  64-bit integers — the computed value is unchanged.
-- **Side effects fire exactly once.** Operands with side effects are bound to
-  temporaries before being reused, so `f() + g()` still calls each once.
+- The rewrites are exact identities over Dart's 64-bit integers, so results don't change.
+- An operand with side effects is stored in a temporary first, so `f() + g()` still calls each function once.
 
 </Promises>
 <Caveats>
 
-- **Integers only.** Doubles and mixed `num` results are left alone to avoid any
-  rounding or precision change.
+- Only integer math is touched. Doubles and mixed `num` expressions are left alone to avoid any change in rounding.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `operations_mangled` (count).
+The build report counts `operations_mangled`.
 
 <PassPager pass="arith" />

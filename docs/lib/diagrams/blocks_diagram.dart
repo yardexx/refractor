@@ -43,13 +43,14 @@ const List<_Block> _blocks = [
     id: 'policy',
     name: 'Policy',
     sub: 'ObfuscationScope',
-    text: 'The single "may I transform this node?" authority: in the project, and not kept.',
+    text:
+        'Answers one question for every pass: may I change this declaration? Yes, if it is in your project and not kept.',
   ),
   (
     id: 'toolkit',
     name: 'kernel_toolkit',
     sub: 'shared kernel operations',
-    text: 'The shared vocabulary passes use instead of re-touching raw package:kernel.',
+    text: 'Shared helpers the passes use instead of handling raw package:kernel everywhere.',
   ),
   (
     id: 'boundary',

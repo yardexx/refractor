@@ -1,6 +1,6 @@
 ---
 title: Integer encryption
-description: Hides integer literals behind an injected runtime decoder.
+description: Hides integer literals behind a decoder that rebuilds them at runtime.
 layout: docs
 ---
 
@@ -8,11 +8,11 @@ layout: docs
 
 ## What it does
 
-Replaces integer literals in your code with a call to an injected runtime
-decoder, so the original magic numbers don't appear in the binary. It's the
-integer analogue of [String encryption](/rulebook/string-encryption): each value
-is XOR-encoded with its own key, and a `@pragma('vm:never-inline')` helper
-recovers it at runtime.
+Integer encryption does for numbers what
+[string encryption](/rulebook/string-encryption) does for text. Each integer
+literal is XOR-encoded with its own key and replaced by a call to an injected
+decoder, so magic numbers like timeouts, limits and offsets no longer appear in
+the binary.
 
 ## Example
 
@@ -43,14 +43,13 @@ int backoff(int attempt) {
 
 ## What it targets
 
-Non-`const` integer literals in **project** code whose absolute value is at least
-`min_magnitude`. It **skips**:
+It encodes integer literals in your project's code whose absolute value is at
+least `min_magnitude`. By default that leaves `-1`, `0` and `1` alone, so loop
+counters and indexes don't all turn into function calls. Literals in a `const`
+context or an annotation stay as they are, since kernel stores them as constants
+rather than literals.
 
-- literals in a `const` context or inside annotations (they must stay const —
-  these are `ConstantExpression`s in kernel, not plain literals);
-- small, ubiquitous values below `min_magnitude` (by default `-1`, `0`, `1`), so
-  the pass doesn't turn every loop counter and array index into a call;
-- anything kept.
+It follows `exclude` globs and `@Refractor.keep()`, like every pass. The entry point doesn't matter to it.
 
 ## Configuration
 
@@ -81,39 +80,30 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | `0x1F` | Seeds the PRNG that assigns a distinct 64-bit key per literal. |
-| `min_magnitude` | int | `2` | Literals with `|value|` below this stay inline. Set to `0` for maximum coverage. |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations. The entry point's
-name is irrelevant to it. See [Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | `0x1F` | Seeds the random generator that picks each literal's 64-bit key. |
+| `min_magnitude` | int | `2` | Literals whose absolute value is below this stay inline. Set it to `0` to encode every literal. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Per-literal keys.** Each value is XOR-encoded with its own 64-bit key, so
-  identical numbers don't encode identically.
-- **Not foldable.** The decoder is `@pragma('vm:never-inline')`, so the AOT
-  compiler can't inline it and fold the XOR back into the original constant.
+- Every value gets its own 64-bit key, so the same number doesn't encode the same way twice.
+- The decoder is marked never-inline, so the compiler can't fold the XOR back into the original number.
 
 </Promises>
 <Caveats>
 
-- **Not secrets protection.** Like string encryption, this defeats casual
-  inspection only — the key is in the binary. Don't use it to hide key material.
-- **Performance tradeoff.** Each encoded literal becomes a function call; keep
-  `min_magnitude` sensible on hot paths.
+- It only stops casual reading. The keys are in the binary, so don't use it to hide key material.
+- Each encoded literal becomes a function call, so keep `min_magnitude` sensible in hot code.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `ints_encrypted` (count).
+The build report counts `ints_encrypted`.
 
 <PassPager pass="ints" />

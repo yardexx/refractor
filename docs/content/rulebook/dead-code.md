@@ -1,6 +1,6 @@
 ---
 title: Dead code
-description: Inserts never-executed, opaquely-guarded junk a reader must rule out.
+description: Adds junk code that never runs, behind a guard the compiler can't prove false.
 layout: docs
 ---
 
@@ -8,11 +8,10 @@ layout: docs
 
 ## What it does
 
-Inserts a block of plausible-looking junk into function bodies, behind an
-**always-false** opaque guard, so it never runs. The guard — a masked square
-that can never be negative — reads a live `int`, so the optimizer can't prove it
-false and drop the block. A reader has to analyze the junk to discover it's
-unreachable.
+Dead code adds a block of plausible-looking junk to a function, behind a
+condition that is always false. The condition reads a live `int`, so the
+optimizer can't prove it false and drop the block, and anyone reading the code
+has to work out for themselves that it never runs.
 
 ## Example
 
@@ -42,11 +41,13 @@ int scale(int p) {
 
 ## What it targets
 
-Functions with a block body and a live `int` to key the guard from — either an
-`int` **parameter** (the block goes at the top of the body) or a
-definitely-assigned, non-`late`, non-`const` `int` **local** (the block goes
-just after that local's declaration). Functions with neither are **skipped**, as
-is anything kept.
+It needs a function with a block body and an `int` to build the guard from.
+That is either an `int` parameter, in which case the block goes at the top of the
+body, or an `int` local that is definitely assigned and not `late` or `const`, in
+which case the block goes right after its declaration. Functions with neither are
+skipped.
+
+It follows `exclude` globs and `@Refractor.keep()`, like every pass.
 
 ## Configuration
 
@@ -76,38 +77,28 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | `0x0DEAD` | Seeds the per-function guard site and junk constants. |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations — a kept declaration
-is left untouched. The entry point's name is irrelevant to it. See
-[Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | `0x0DEAD` | Seeds where each guard goes and the constants in the junk. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Never runs.** The guard is always false, so the inserted block has no effect
-  on behaviour.
-- **Not foldable.** Because the guard reads a live variable, the optimizer can't
-  prove it false and eliminate the block at compile time.
+- The block never runs. Its guard is always false, so behaviour doesn't change.
+- The guard reads a live variable, so the optimizer can't prove it false and remove the block.
 
 </Promises>
 <Caveats>
 
-- **Plausible, not real.** The junk is arithmetic over the live variable — it
-  looks like work but is dead. For a branch whose *else* is real-looking cloned
-  code, see [Bogus control flow](/rulebook/bogus-control-flow).
+- The junk is arithmetic on the guard's variable. It looks like work at a glance, but a careful reader can tell it isn't real logic. For a decoy that is an actual copy of your code, see [bogus control flow](/rulebook/bogus-control-flow).
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `blocks_inserted` (count).
+The build report counts `blocks_inserted`.
 
 <PassPager pass="dead" />

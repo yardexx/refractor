@@ -1,12 +1,12 @@
 ---
 title: Passes
-description: The pass framework and the concrete passes.
+description: How a pass is built, created and run.
 layout: docs
 ---
 
-# Passes
-
-A **pass** is one unit of obfuscation. The public contract is tiny:
+A pass is one kind of obfuscation, such as renaming, string encryption or
+control-flow flattening. From the outside it is a very small interface: a name
+for logs and metrics, and a method that rewrites the program.
 
 ```dart
 abstract class Pass {
@@ -15,41 +15,42 @@ abstract class Pass {
 }
 ```
 
-Nine passes ship today, in three groups — naming & data, expressions, and
-control flow (listed at the bottom of this page).
+Nine passes ship today. They are listed at the bottom of this page, and the
+[Rulebook](/rulebook) describes what each one does to your code.
 
-## The five stages
+## Five stages inside every pass
 
-Inside `run()`, every pass follows the same fixed pipeline. Each stage is a
-small, type-parameterized interface:
+Every pass does its work in the same five steps, and each step is its own small
+interface. Select and plan only read the program. Transform is the one step that
+changes it.
 
 <StagesDiagram />
 
-| Stage | Interface | Responsibility |
+| Stage | Interface | What it does |
 |---|---|---|
-| **Selection** | `PassSelector<S>` — `S select(Component)` | Walk the AST, gather eligible nodes into an immutable `S`. No mutation. |
-| **Planning** | `PassPlanner<S,P>` — `Future<P> plan(Component, S)` | Turn the selection into exact decisions (`P`). Still no mutation. This is where the *smart* domain reasoning lives. |
-| **Transformation** | `PassTransformer<P,O>` — `Future<O> apply(Component, P)` | The only stage that mutates the AST. Returns counts + an artifact (`O`). |
-| **Validation** | `PassValidator<P,O>` — `validate(Component, {plan, output})` | Assert post-conditions; throw on violation. (rename uses it; most passes leave it at the no-op default.) |
-| **Reporting** | `PassReport` + `PassArtifact` | Human/CI metrics + durable machine-readable output. |
+| Select | `PassSelector<S>`: `S select(Component)` | Walks the AST and collects the nodes the pass may change, without changing anything. |
+| Plan | `PassPlanner<S,P>`: `Future<P> plan(Component, S)` | Decides exactly what to do with each node. Most of a pass's real logic lives here. |
+| Transform | `PassTransformer<P,O>`: `Future<O> apply(Component, P)` | Applies the plan to the AST and returns counts and an artifact. |
+| Validate | `PassValidator<P,O>`: `validate(Component, {plan, output})` | Checks the result and throws if something is wrong. Only rename uses it so far. |
+| Report | `PassReport` and `PassArtifact` | Metrics for people and CI, plus machine-readable output for tools. |
 
-The base marker types (`PassSelection`, `PassPlan`, `PassTransformOutput`) are
-essentially empty. The value isn't in the base classes — it's the **uniform
-shape**: every pass reads the same way, and `S → P → O` are threaded with
-compile-time checking.
+The base types (`PassSelection`, `PassPlan`, `PassTransformOutput`) are nearly
+empty. What they buy is consistency: every pass reads the same way, and the
+compiler checks that each stage's output type matches the next stage's input.
 
 <Info>
 
-**Why split plan from transform?** Planning is pure and inspectable — decisions
-can be validated and serialized (the symbol map, the encryption records) before
-anything is touched. Transformation is the single, auditable mutation point.
+Planning is kept apart from transforming so that decisions can be checked and
+saved before anything changes. The symbol map and the string-encryption records
+both come out of the plan, which leaves the transform step as the only place the
+AST is modified.
 
 </Info>
 
-## How a pass is constructed and run
+## How passes are created and run
 
-A pass isn't hardcoded; it's registered via a descriptor and assembled by the
-registry:
+Passes aren't hardcoded. Each one registers a definition that knows its name, how
+to read its config, which keep rules it follows, and how to build the pass:
 
 ```dart
 abstract interface class PassDefinition<C extends PassConfig> {
@@ -61,13 +62,14 @@ abstract interface class PassDefinition<C extends PassConfig> {
 }
 ```
 
-- **`PassRegistry`** — `parseAll(yaml)` turns config into typed `PassConfig`s.
-  `createAll(...)` builds **one** shared `KeepResolver`, then for each enabled
-  pass resolves a `KeepPolicy` (from that pass's `keepSources` + its excludes)
-  and hands the pass an `ObfuscationScope`. See [Policy](/architecture/policy).
-- **`PassRunner`** — runs the list in order, folds each result into
-  `PassResults`, and **continues past failures** (collecting all of them). The
-  engine then skips output generation if any pass failed.
+`PassRegistry` reads the `passes` section of `refractor.yaml` into typed configs.
+When a build starts, `createAll(...)` builds one shared `KeepResolver`, works out
+each enabled pass's keep policy from its keep sources and excludes, and hands
+every pass its own `ObfuscationScope` (see [Policy](/architecture/policy)).
+
+`PassRunner` then runs the passes in order. It doesn't stop at the first failure.
+It collects every result so the report can show all the problems at once, and the
+engine skips writing output if any pass failed. Each result is one of two types:
 
 ```dart
 sealed class PassResult
@@ -75,19 +77,23 @@ sealed class PassResult
   └─ PassFailed    { PassReport report; Exception error; }
 ```
 
-- **`PassReport`** — metrics/metadata for humans and CI summaries (e.g.
-  `classes`/`members`/`variables`, `strings_encrypted`). Ephemeral.
-- **`PassArtifact`** — durable, machine-readable output written to
-  `build_artifacts.json` (the rename symbol map, the string-encryption records).
+`PassReport` holds the metrics and messages you see in the build report and the
+GitHub job summary, such as `classes`, `members` and `strings_encrypted`. It
+isn't saved anywhere. `PassArtifact` is the part that lasts: it is written to
+`build_artifacts.json`, and holds things like the rename symbol map and the
+string-encryption records.
 
 <Info>
 
-The `PassReport` metadata keys and the artifact shapes are a **contract**: the
-e2e/resistance harness and the CLI reporters depend on them. Keep them stable.
+The end-to-end test harness and the CLI reporters read the report keys and the
+artifact formats, so renaming or reshaping them is a breaking change.
 
 </Info>
 
-## The shape of a concrete `run()`
+## What a `run()` looks like
+
+Put together, a typical `run()` is the five stages in order, wrapped so that any
+error becomes a `PassFailed`:
 
 ```dart
 Future<PassResult> run(Component component) async {
@@ -103,32 +109,13 @@ Future<PassResult> run(Component component) async {
 }
 ```
 
-The mutation stage extends `ScopedKernelTransformer` (in the toolkit), which
-gates traversal on the pass's scope and tracks const/annotation context.
+The transform stage builds on `ScopedKernelTransformer` from the toolkit. It
+skips libraries outside the pass's scope and keeps track of when it is inside a
+`const` expression or an annotation, where code can't be rewritten.
 
-## The passes
+## The nine passes
 
-Nine passes ship today. This page is about the framework they share; for what
-each one actually does — its guarantees, config, and limits — see the
-[Rulebook](/rulebook).
+Each card links to the pass's Rulebook page, with its options, guarantees and an
+example.
 
-**Naming & data**
-
-- **[Rename](/rulebook/rename)** — renames classes, members, and variables.
-- **[String encryption](/rulebook/string-encryption)** — replaces string literals with an injected runtime decoder.
-- **[Integer encryption](/rulebook/int-encryption)** — replaces integer literals with an injected runtime decoder.
-
-**Expressions**
-
-- **[Arithmetic mangling](/rulebook/arithmetic-mangling)** — rewrites `+`/`*` into equivalent, uglier expressions.
-
-**Control flow**
-
-- **[Opaque predicates](/rulebook/opaque-predicates)** — entangles branch conditions with always-true predicates.
-- **[Control-flow flattening](/rulebook/control-flow-flatten)** — turns a straight-line body into a switch state machine.
-- **[Dead code](/rulebook/dead-code)** — inserts never-executed, opaquely-guarded junk.
-- **[Bogus control flow](/rulebook/bogus-control-flow)** — wraps a body in an always-true branch over a real-looking clone.
-- **[Call indirection](/rulebook/call-indirection)** — routes static calls through a never-inline forwarder.
-
-They all build on the shared kernel operations described in
-[kernel_toolkit](/architecture/kernel-toolkit).
+<PassGrid />

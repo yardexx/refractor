@@ -1,6 +1,6 @@
 ---
 title: Control-flow flattening
-description: Rewrites a straight-line body into a switch-dispatch state machine.
+description: Turns a function body into a switch statement that runs it piece by piece.
 layout: docs
 ---
 
@@ -8,11 +8,10 @@ layout: docs
 
 ## What it does
 
-Rewrites a function's body into a **switch-dispatch state machine**. The `n`
-statements become `n` switch cases laid out in a shuffled order; each case ends
-by jumping to the next one via a labelled `continue`, so the program still runs
-the statements in their original order — but the linear structure a decompiler
-would show is gone.
+Control-flow flattening rewrites a function's body as a small state machine.
+Each statement becomes a case of a `switch`, the cases are shuffled, and each one
+ends by jumping to the case that should run next. The statements still run in
+their original order, but the straight line a decompiler would show is gone.
 
 ## Example
 
@@ -52,13 +51,14 @@ int checkout(Cart cart) {
 
 ## What it targets
 
-Synchronous functions whose body is a block of two or more statements, where
-each statement is one the state machine can carry: an **expression statement**, a
-**`return`**, or a plain **local variable declaration** (not `late`, not
-`const`). Local declarations are hoisted ahead of the switch so they stay in
-scope across every case, and a `return` case exits the switch directly. It
-**skips** async bodies and bodies with nested control flow (ifs, loops,
-try/catch) — those are a follow-up.
+It flattens synchronous functions whose body has at least two statements, all of
+a kind the state machine can carry: expression statements, `return`s, and plain
+local variable declarations (not `late` or `const`). Locals are declared before
+the `switch` so every case can see them, and a `return` leaves the function
+straight from its case. Async bodies, and bodies with an `if`, a loop or a `try`
+inside, are skipped for now.
+
+It follows `exclude` globs and `@Refractor.keep()`, like every pass.
 
 ## Configuration
 
@@ -88,37 +88,28 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | `0x0CFF` | Seeds the per-function case layout, for reproducible builds. |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations — a kept declaration
-keeps its control flow intact. The entry point's name is irrelevant to it. See
-[Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | `0x0CFF` | Seeds the order of the cases in each function, for reproducible builds. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Execution order is preserved** by the continue links, regardless of the
-  shuffled layout.
-- **Declarations and returns are handled.** Locals are hoisted and re-assigned in
-  place; a mid-body `return` still exits the function.
+- Statements run in their original order. The `continue` jumps follow that order, whatever order the cases are written in.
+- Local declarations and returns keep working: locals are hoisted and assigned in place, and a `return` in the middle of a body still exits the function.
 
 </Promises>
 <Caveats>
 
-- **Straight-line bodies only (for now).** Functions with nested `if`/loops/`try`
-  or async bodies are left untouched rather than flattened unsoundly.
+- It only handles straight-line bodies for now. Functions with an `if`, a loop, a `try` or `async` are left as they are rather than flattened unsafely.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `functions_flattened` (count).
+The build report counts `functions_flattened`.
 
 <PassPager pass="flatten" />

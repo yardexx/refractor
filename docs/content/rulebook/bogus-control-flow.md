@@ -1,6 +1,6 @@
 ---
 title: Bogus control flow
-description: Wraps a body in an always-true branch whose else-branch is a real-looking clone.
+description: Wraps a function body in an always-true branch whose else is a copy of the body.
 layout: docs
 ---
 
@@ -8,17 +8,16 @@ layout: docs
 
 ## What it does
 
-Wraps a function's body in an **always-true opaque branch** whose else-branch is
-a faithful **clone** of the real body:
+Bogus control flow wraps a function's body in an `if` whose condition is always
+true, and fills the `else` branch with a copy of the same body:
 
 ```dart
 if (opaqueTrue) { realBody } else { clonedBody }
 ```
 
-The guard always selects the real branch, so behaviour is unchanged — but the
-else-branch is plausible, real-looking code rather than obvious junk, so an
-attacker can't dismiss it at a glance the way they can with
-[Dead code](/rulebook/dead-code).
+Only the real branch ever runs. The copy is genuine code rather than obvious
+junk, so a reader can't dismiss it at a glance the way they can with
+[dead code](/rulebook/dead-code).
 
 ## Example
 
@@ -49,11 +48,13 @@ int fee(int n) {
 
 ## What it targets
 
-Synchronous functions with a non-nullable `int` **parameter** (to key the
-always-true guard) and a body of at most `max_statements` top-level statements.
-The body is cloned into the bogus branch, so that limit bounds the code-size
-cost. It **skips** async functions, functions with no int parameter, oversized
-bodies, and anything kept.
+It works on synchronous functions that have a non-nullable `int` parameter to
+build the condition from, and whose body has at most `max_statements` top-level
+statements. The body gets copied, so that limit is what keeps the size cost under
+control. Async functions, functions without an `int` parameter and longer bodies
+are skipped.
+
+It follows `exclude` globs and `@Refractor.keep()`, like every pass.
 
 ## Configuration
 
@@ -84,40 +85,30 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | `0x3D` | Seeds the guard-parameter choice, for reproducible builds. |
-| `max_statements` | int | `16` | Functions whose body exceeds this are left alone (cloning doubles the body). |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations — a kept declaration
-keeps its control flow intact. The entry point's name is irrelevant to it. See
-[Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | `0x3D` | Seeds which `int` parameter each condition uses, for reproducible builds. |
+| `max_statements` | int | `16` | Functions with more top-level statements than this are left alone, since the body gets copied. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Behaviour-preserving.** The masked-square guard (`(v & 0xFFFF)² >= 0`) is
-  always true, so only the real branch ever runs.
-- **Real-looking decoy.** The clone is produced with the kernel cloner (variables
-  correctly rebound), so it reads as genuine code, not junk.
-- **Not foldable.** The guard reads a live parameter, so the optimizer can't
-  prove it and drop the branch.
+- Behaviour doesn't change. The condition, a masked square that can never be negative, is always true, so only the real branch runs.
+- The copy is made with the kernel cloner, which rebinds every variable correctly, so it reads like real code.
+- The condition reads a live parameter, so the optimizer can't prove it true and drop the branch.
 
 </Promises>
 <Caveats>
 
-- **Code-size cost.** Cloning doubles the wrapped body; `max_statements` keeps it
-  bounded. Keying on in-scope locals and partial-body branches are follow-ups.
+- Each wrapped body is copied, which doubles its size; `max_statements` keeps that bounded. Building the condition from a local, or wrapping only part of a body, isn't supported yet.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `bogus_branches_inserted` (count).
+The build report counts `bogus_branches_inserted`.
 
 <PassPager pass="bogus" />

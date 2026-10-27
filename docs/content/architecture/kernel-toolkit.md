@@ -1,103 +1,84 @@
 ---
 title: kernel_toolkit
-description: The shared kernel-operations layer, and the philosophy behind it.
+description: The shared helpers the passes use to read and change kernel code.
 layout: docs
 ---
 
-# kernel_toolkit
+`lib/src/engine/kernel_toolkit/` holds the helpers the passes share for working
+with `package:kernel`. The aim is that writing a new pass mostly means answering
+questions about the pass itself (what to select, what to change) rather than
+relearning the details of the kernel AST. The fiddly kernel handling lives in one
+place that has been tested once, instead of being copied from pass to pass.
 
-`lib/src/engine/kernel_toolkit/` is the shared vocabulary passes speak instead of
-re-touching raw `package:kernel`. Its goal is authoring ergonomics: writing a new
-pass should be mostly *answering domain questions*, not re-learning kernel
-internals — and the case-by-case kernel manipulation should live in one audited
-place instead of being copy-pasted across passes.
+## Helpers, not a wrapper
 
-## What it is — and what it is not
+The toolkit doesn't hide kernel. `Component` still appears in every pass and stage
+signature, and the toolkit sits beside kernel as a set of helpers and small
+services rather than as a layer in between.
 
-It is **not** an abstraction that hides kernel. `Component` stays in the pass and
-stage signatures; the toolkit is a set of helpers and thin services *beside*
-kernel, not a new layer in the pipeline.
+That is on purpose. Refractor can rename safely because the front end has already
+resolved types, call targets and overrides by the time it reads the `.dill`. A
+tool that rewrote source code would have none of that, so it isn't another
+implementation of the same idea; it is a different problem. An abstraction that
+tried to cover both would either leak kernel details anyway or be too thin to
+help.
 
-This is a deliberate limit. Kernel-level obfuscation is tractable precisely
-*because* the front end hands you resolved types, interface targets, canonical
-names, and override relationships. A source-rewriting backend would have none of
-that — it's a fundamentally different domain, not a swappable implementation of
-the same interface. Trying to abstract over "kernel AST vs source" would either
-leak kernel concepts (useless) or be too thin to help. So the toolkit's job is to
-tame kernel's irregularity, not to pretend kernel is replaceable.
+Some of the awkwardness simply comes with the territory. Dart's AST has around
+forty kinds of expression, and a call can be static, instance, dynamic, super,
+abstract super, a tear-off or a constant. No helper makes that go away. What the
+toolkit can do is handle it in one place.
 
-The "case-by-case" pain of kernel obfuscation is partly **inherent** (Dart's AST
-is a zoo: ~40 expression kinds, dispatch in static/instance/dynamic/super/
-abstract-super/tear-off/constant forms). No abstraction deletes that; it can only
-put it in one place. That's what the toolkit does.
+## How the helpers are written
 
-## House style
+Each helper is a `static` method on a named class that can't be instantiated
+(`final class X { const X._(); static ... }`). Call sites therefore read like
+`MemberModel.nameText(m)`, and it is always clear where a function comes from.
+Things that need state, like `SdkIndex` and `KernelHelperInjector`, are normal
+objects, and the traversal bases are a class and a mixin.
 
-Every helper is a `static` method on a named, non-instantiable class
-(`final class X { const X._(); static ... }`), so call sites read
-`MemberModel.nameText(m)` — you always know where a symbol comes from. Stateful
-services (`SdkIndex`, `KernelHelperInjector`) and traversal bases/mixins are real
-instances/mixins as their nature requires.
-
-## The pieces
+## What's in it
 
 ```text
 kernel_toolkit/
   traversal/
-    scoped_transformer.dart   ScopedKernelTransformer  — mutation base (Transformer)
-    scoped_visiting.dart      ScopedVisiting           — selector mixin (RecursiveVisitor)
+    scoped_transformer.dart   ScopedKernelTransformer   base for the passes' rewriting visitors
+    scoped_visiting.dart      ScopedVisiting            read-only mixin for selectors
   relations/
-    member_model.dart         MemberModel              — name / kind / kindLabel / isInstanceDispatch
-    class_relations.dart      ClassRelations           — directSupertypesOf
-                              ClassRelationIndex       — transitive super/subtype + override queries
+    member_model.dart         MemberModel               a member's name, kind and dispatch style
+    class_relations.dart      ClassRelations            a class's direct supertypes
+                              ClassRelationIndex        all supertypes, subtypes and overrides
   location/
-    enclosing.dart            Enclosing                — member / library / fileUri (parent-walk)
-  naming.dart                 KernelNames              — same(Name, Name) (privacy-aware equality)
+    enclosing.dart            Enclosing                 the member, library or file around a node
+  naming.dart                 KernelNames               name equality that respects privacy
   sdk/
-    sdk_index.dart            SdkIndex                 — require{Library,Class,Procedure,Field,SingleConstructor}, interfaceType
-    helper_injector.dart      KernelHelperInjector     — firstEligibleLibrary / freshTopLevelName / addStaticProcedure / pragma
+    sdk_index.dart            SdkIndex                  look up SDK classes and members by name
+    helper_injector.dart      KernelHelperInjector      add a helper function to a library
 ```
 
-Grouped by capability:
+`ScopedKernelTransformer` is the base class every pass's transform step builds
+on. It skips libraries outside the pass's scope and tracks whether it is inside a
+`const` expression or an annotation. `ScopedVisiting` does the same scope check
+for the read-only visitors the select step uses.
 
-- **Traversal** — `ScopedKernelTransformer` (the base for both passes' mutation
-  visitors: gates `visitLibrary` on scope, tracks const/annotation depth) and
-  `ScopedVisiting` (its read-only analogue for selector `RecursiveVisitor`s).
-- **Relations** — `MemberModel` (member-kind classification and dispatch
-  predicate) and `ClassRelations`/`ClassRelationIndex` (structural super/subtype
-  and override-family queries used by rename's family grouping).
-- **Location** — `Enclosing` (the enclosing member/library/fileUri parent-walk).
-- **Naming** — `KernelNames.same` (two `Name`s are equal only with matching text
-  *and* library — private names differ across libraries).
-- **SDK** — `SdkIndex` (resolve SDK types/members by name; a miss throws a
-  `CompilationException` with a clear message instead of a bare `StateError`) and
-  `KernelHelperInjector` (the mechanics of injecting a static helper into a
-  library).
+`MemberModel` classifies a member (method, getter, field, constructor) and tells
+whether calls to it go through instance dispatch. `ClassRelations` and
+`ClassRelationIndex` answer questions about the class hierarchy, which rename
+needs to find every member that overrides another and give them all the same new
+name.
+
+`Enclosing` walks up from a node to the member, library or file it belongs to.
+`KernelNames.same` compares two names properly: private names from different
+libraries are different names even when the text matches.
+
+`SdkIndex` finds SDK types and members by name and fails with a clear
+`CompilationException` if one is missing, instead of a bare `StateError`.
+`KernelHelperInjector` handles the mechanics of adding a static helper, like the
+string decoder, to a library.
 
 ## What stays in the passes
 
-The toolkit owns the *mechanical* knowledge. The **domain reasoning stays in the
-passes**: rename's override-family grouping and safety reverts, the symbol-map
-assembly (`SymbolMapKey`), and `string_encrypt`'s hand-built decode-function body
-(inherently bespoke — the toolkit provides the injection mechanics, not the body).
-
-## How it was built
-
-Extracted incrementally, one behavior-preserving PR at a time, with the e2e /
-resistance suite as the guard (it compiles fixtures, runs the binary, and greps
-with `strings` to prove no leaks):
-
-1. module skeleton + relocations (`ScopedKernelTransformer`, `ClassRelationIndex`)
-2. primitives + dissolve `rename_helpers` (`MemberModel`, `KernelNames`,
-   `Enclosing`, `ClassRelations`)
-3. `ScopedVisiting` mixin for the selectors
-4. `SdkIndex` + `KernelHelperInjector`; refactor the decode injector
-
-## Deferred: MemberReferenceRewriter
-
-The highest-value but highest-risk extraction is left for later: folding rename's
-~20 hand-rolled reference-rewriting overrides (`Instance*`/`Super*`/
-`AbstractSuper*`/`Dynamic*`, named-argument fixups, canonical-name unbinding) into
-a reusable `MemberReferenceRewriter` base under `kernel_toolkit/mutation/`. It's
-correctness-critical AST rewriting, so it should land on its own behind a golden
-AST/symbol-map diff test.
+The toolkit knows how kernel works. Decisions about obfuscation stay in the
+passes: rename's grouping of overrides and its fallbacks when a rename can't be
+done safely, the assembly of the symbol map, and the body of string encryption's
+decoder. The toolkit can inject a function, but what that function does is the
+pass's business.

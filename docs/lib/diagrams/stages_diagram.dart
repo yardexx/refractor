@@ -30,8 +30,8 @@ const List<_Stage> _stages = [
     input: 'S',
     signature: 'Future<P> plan(Component, S)',
     text:
-        'Turn the selection into exact decisions. The smart domain reasoning lives here, and the plan can be '
-        'checked and serialized before anything changes.',
+        'Decide exactly what to do with each selected node. Most of a pass\'s real logic lives here, and the '
+        'plan can be checked and saved before anything changes.',
     effect: 'Reads only',
     tone: 'read',
   ),

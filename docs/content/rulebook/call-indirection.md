@@ -1,6 +1,6 @@
 ---
 title: Call indirection
-description: Routes direct static calls through an injected never-inline forwarder.
+description: Sends static calls through a forwarder so they drop out of the call graph.
 layout: docs
 ---
 
@@ -8,11 +8,12 @@ layout: docs
 
 ## What it does
 
-Routes direct static calls through an injected forwarder, so the direct call
-edge no longer appears in the binary's static call graph. `f(a, b)` becomes
-`refractorCall(f, [a, b]) as R`, where `refractorCall` is a
-`@pragma('vm:never-inline')` helper that dispatches via `Function.apply`. The
-never-inline boundary stops the AOT compiler from folding the indirection away.
+Call indirection sends direct calls to static functions through a forwarder that
+Refractor adds to your program. `f(a, b)` becomes `refractorCall(f, [a, b]) as R`,
+and `refractorCall` makes the call with `Function.apply`. Tools that rebuild a
+program's call graph from its direct calls lose the link between caller and
+callee. The forwarder is marked never-inline, so the compiler can't turn it back
+into a direct call.
 
 ## Example
 
@@ -40,16 +41,13 @@ double total(List<double> items) {
 
 ## What it targets
 
-Direct static calls in **project** code where the target is itself in scope
-(project code, not kept, not SDK). To keep the `Function.apply` forwarding exact,
-it only routes calls that are:
+It routes direct calls in your project's code to top-level or `static` functions
+that are themselves in your project, aren't generic, and take positional
+arguments only. Calls with named or type arguments, calls to the SDK or to kept
+code, and calls in `const` contexts stay direct, so the forwarding is always
+exact.
 
-- to a **non-generic static method** (a top-level or `static` function);
-- with **positional-only** arguments (no named arguments, no type arguments);
-- outside any `const` context.
-
-Everything else — generic targets, named/typed arguments, calls to the SDK or to
-kept code — is left as a direct call.
+It follows `exclude` globs and `@Refractor.keep()`, like every pass.
 
 ## Configuration
 
@@ -78,42 +76,28 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations — a kept call site
-keeps its direct call, and calls to a kept target stay direct (the target must be
-in scope to be routed). The entry point's name is irrelevant to it. See
-[Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Behaviour-preserving.** `Function.apply` forwards the exact positional
-  arguments; void and `dynamic` results need no cast, others are restored with
-  `as R` (the dynamic value always is that type, so the cast never throws).
-- **Breaks the static edge.** The call becomes an indirect dynamic dispatch the
-  compiler can't devirtualize back, so tools that reconstruct the call graph
-  from direct invocations lose the edge.
+- Behaviour doesn't change. `Function.apply` passes the exact positional arguments, and the `as R` cast restores the result's type. It can't fail, because the value always has that type. Calls that return `void` or `dynamic` need no cast.
+- The call becomes an indirect, dynamic one that the compiler can't turn back into a direct call, so the edge disappears from the static call graph.
 
 </Promises>
 <Caveats>
 
-- **The target is still named at the site.** This breaks the direct edge and
-  forces dynamic dispatch, but the tear-off still references the callee — a
-  name-hiding dispatcher (route by id) is a heavier follow-up.
-- **Performance tradeoff.** Each routed call becomes a dynamic `Function.apply`
-  with a small argument list; exclude hot paths.
+- The function is still named at the call site, because the tear-off refers to it. Hiding the name as well would take a dispatcher that routes by id, which is a bigger change.
+- Each routed call goes through `Function.apply`, which costs time, so exclude hot code.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `calls_indirected` (count).
+The build report counts `calls_indirected`.
 
 <PassPager pass="call" />

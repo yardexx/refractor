@@ -1,6 +1,6 @@
 ---
 title: Opaque predicates
-description: Entangles branch conditions with always-true predicates the optimizer can't fold.
+description: Adds always-true checks to your if conditions, built from live variables.
 layout: docs
 ---
 
@@ -8,12 +8,11 @@ layout: docs
 
 ## What it does
 
-Strengthens the `if` conditions already in your code by folding in an **opaque
-predicate** — an extra sub-expression whose value is known to be constant to
-you, but not to a static analyzer. The predicate is wired to a **live variable**
-in scope, so the compiler can't fold it away, and a reader can't tell at a
-glance that the branch is decided. Control flow is unchanged: the predicate is
-always true, so the original condition still decides the branch.
+Opaque predicates make your existing `if` conditions harder to reason about.
+Each condition gets an extra check that is always true, though that isn't obvious
+from reading it. The check reads a variable that is live at that point, so the
+compiler can't prove it constant and remove it, and the original condition still
+decides which branch runs.
 
 ## Example
 
@@ -42,11 +41,12 @@ void refund(Order o, int n) {
 
 ## What it targets
 
-`if` statements in **project** code, outside any `const` context. At each site
-the pass finds the nearest in-scope `int` (a parameter or a block-local
-declaration) and keys the predicate off it. Sites with no live `int` in scope
-fall back to a constant-only predicate. It **skips** conditions in const
-contexts and anything kept.
+It works on `if` statements in your project's code outside `const` contexts.
+For each one it picks the nearest `int` in scope, a parameter or a local, and
+builds the check from it. Where there's no `int` in scope, it falls back to a
+check built from constants.
+
+It follows `exclude` globs and `@Refractor.keep()`, like every pass.
 
 ## Configuration
 
@@ -76,42 +76,29 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turn the pass on/off. |
-| `exclude` | glob list | `[]` | Extra libraries this pass leaves untouched. |
-| `seed` | int | `0x05A1` | Seeds per-site template and variable selection, for reproducible builds. |
-
-## Scope & keep
-
-Honors `exclude` globs and `@Refractor.keep()` annotations — a kept declaration
-keeps its control flow intact. It does **not** touch the entry point's name, so
-it does not honor that keep source. See [Policy](/architecture/policy).
+| `enabled` | bool | `true` | Turns the pass on or off. |
+| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+| `seed` | int | `0x05A1` | Seeds which template and which variable each condition uses, for reproducible builds. |
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- **Behaviour-preserving.** The predicate is always true, so the original
-  condition alone decides the branch.
-- **Data-dependent, not foldable.** Keying on a live `int` (e.g. a masked square,
-  which is never negative) stops the optimizer from proving the predicate
-  constant and dropping it.
-- **Per-site variation.** The `seed` drives which template and which in-scope
-  variable each site uses, so the inserted predicates don't all look identical.
+- Behaviour doesn't change: the added check is always true, so the original condition alone picks the branch.
+- The check reads a live variable (for example, a masked square that can never be negative), so the optimizer can't drop it.
+- The `seed` varies the template and the variable from one condition to the next, so the added checks don't all look alike.
 
 </Promises>
 <Caveats>
 
-- **Not a loop or data-flow obfuscator.** It hardens existing branch conditions;
-  it doesn't add or reorder control flow (see
-  [Control-flow flattening](/rulebook/control-flow-flatten) and
-  [Bogus control flow](/rulebook/bogus-control-flow) for that).
+- It only strengthens conditions that are already there. It doesn't add or reorder control flow; [control-flow flattening](/rulebook/control-flow-flatten) and [bogus control flow](/rulebook/bogus-control-flow) do that.
 
 </Caveats>
 </Guarantees>
 
 ## Output
 
-- **Metrics:** `conditions_strengthened` (count).
+The build report counts `conditions_strengthened`.
 
 <PassPager pass="opaque" />
