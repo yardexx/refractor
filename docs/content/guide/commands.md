@@ -25,7 +25,7 @@ Compile, obfuscate, and build.
 The build output is always written to `build/out.<ext>` in the project root.
 When the [rename](/rulebook/rename) pass runs, the build also writes a versioned
 **symbol map** to `build/symbol_map.json` (path configurable via
-`refractor.symbol_map`) — the input [`symbolicate`](#refractor-symbolicate-trace-file)
+`refractor.symbol_map`) — the input [`symbolicate`](/guide/commands#refractor-symbolicate-trace-file)
 uses to de-obfuscate stack traces. See
 [Debugging with the symbol map](/recipes/symbolication).
 
