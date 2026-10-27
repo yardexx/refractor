@@ -6,6 +6,7 @@
 
 import 'package:jaspr/client.dart';
 
+import 'package:docs/home/playground.dart' deferred as _playground;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
     deferred as _code_block_copy_button;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
@@ -35,6 +36,10 @@ import 'package:jaspr_content/components/theme_toggle.dart'
 /// ```
 ClientOptions get defaultClientOptions => ClientOptions(
   clients: {
+    'playground': ClientLoader(
+      (p) => _playground.Playground(),
+      loader: _playground.loadLibrary,
+    ),
     'jaspr_content:code_block_copy_button': ClientLoader(
       (p) => _code_block_copy_button.CodeBlockCopyButton(),
       loader: _code_block_copy_button.loadLibrary,

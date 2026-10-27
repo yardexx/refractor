@@ -5,6 +5,7 @@
 // Generated with jaspr_builder
 
 import 'package:jaspr/server.dart';
+import 'package:docs/home/playground.dart' as _playground;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
     as _code_block_copy_button;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
@@ -36,6 +37,7 @@ import 'package:jaspr_content/components/theme_toggle.dart' as _theme_toggle;
 ServerOptions get defaultServerOptions => ServerOptions(
   clientId: 'main.client.dart.js',
   clients: {
+    _playground.Playground: ClientTarget<_playground.Playground>('playground'),
     _code_block_copy_button.CodeBlockCopyButton:
         ClientTarget<_code_block_copy_button.CodeBlockCopyButton>(
           'jaspr_content:code_block_copy_button',

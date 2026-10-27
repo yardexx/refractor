@@ -1,6 +1,7 @@
 /// The entrypoint for the **server** environment.
 library;
 
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:jaspr_content/components/callout.dart';
 import 'package:jaspr_content/components/code_block.dart';
@@ -8,11 +9,25 @@ import 'package:jaspr_content/components/github_button.dart';
 import 'package:jaspr_content/components/header.dart';
 import 'package:jaspr_content/components/image.dart';
 import 'package:jaspr_content/components/sidebar.dart';
+import 'package:jaspr_content/components/sidebar_toggle_button.dart';
 import 'package:jaspr_content/components/theme_toggle.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
+import 'home/home_layout.dart';
 import 'main.server.options.dart';
+
+Header _header({required bool docs}) => Header(
+  title: 'Refractor',
+  logo: '/images/logo.svg',
+  // The landing page has no sidebar to toggle, but links into the docs.
+  leading: docs ? const [SidebarToggleButton()] : const [],
+  items: [
+    if (!docs) a(classes: 'header-link', href: '/guide', [Component.text('Docs')]),
+    ThemeToggle(),
+    GitHubButton(repo: 'yardexx/refractor'),
+  ],
+);
 
 void main() {
   Jaspr.initializeApp(options: defaultServerOptions);
@@ -25,15 +40,9 @@ void main() {
       components: [Callout(), CodeBlock(), Image(zoom: true)],
       layouts: [
         const EmptyLayout(),
+        HomeLayout(header: _header(docs: false)),
         DocsLayout(
-          header: Header(
-            title: 'Refractor',
-            logo: '/images/logo.svg',
-            items: [
-              ThemeToggle(),
-              GitHubButton(repo: 'yardexx/refractor'),
-            ],
-          ),
+          header: _header(docs: true),
           sidebar: Sidebar(
             groups: [
               SidebarGroup(
