@@ -23,9 +23,7 @@ control flow (listed at the bottom of this page).
 Inside `run()`, every pass follows the same fixed pipeline. Each stage is a
 small, type-parameterized interface:
 
-```
-select → plan → transform → validate → report
-```
+<StagesDiagram />
 
 | Stage | Interface | Responsibility |
 |---|---|---|

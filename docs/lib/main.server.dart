@@ -16,6 +16,7 @@ import 'package:jaspr_content/theme.dart';
 
 import 'components/brand_header.dart';
 import 'components/pass_compare.dart';
+import 'diagrams/diagram_components.dart';
 import 'home/home_layout.dart';
 import 'main.server.options.dart';
 import 'rulebook/rulebook_components.dart';
@@ -51,6 +52,8 @@ void main() {
         const Guarantees(),
         const Promises(),
         const Caveats(),
+        // Architecture diagrams.
+        const Diagrams(),
       ],
       layouts: [
         const EmptyLayout(),

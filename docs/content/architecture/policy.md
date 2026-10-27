@@ -10,11 +10,7 @@ Every selector, transformer, and injector asks one question before touching a
 node: **"may I obfuscate this?"** That question decomposes into two *orthogonal*
 concerns that are easy to conflate. Keeping them separate is the whole design.
 
-```
-obfuscatable  =  in the project   AND   not kept
-                 └ membership ┘         └── keep ──┘
-                 ProjectScope           KeepPolicy
-```
+<PolicyExplorer />
 
 ## Membership — "is this my code?"
 

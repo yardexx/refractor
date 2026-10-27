@@ -11,12 +11,7 @@ it compiles your entrypoint to Dart's intermediate representation (a `.dill`
 kernel file), rewrites that AST in memory, writes it back, and compiles the
 result to the final binary.
 
-```
-dart compile kernel   →   load .dill (Component)   →   obfuscation passes
-      (source → IR)              (IR → AST)               (mutate the AST)
-                                                                │
-   final binary   ←   dart compile exe/aot/jit   ←   write .dill
-```
+<PipelineDiagram />
 
 Working at the kernel level is the central design choice: the front end has
 already resolved types, interface targets, canonical names, and override
@@ -29,18 +24,7 @@ That is also why the passes are deliberately coupled to `package:kernel` (see
 Read this as independent blocks that use each other through narrow seams but do
 not care about each other's internals.
 
-```
-CLI + Config  (dart:io)
-      │
-      ▼
-Engine  (zero dart:io)
- ├─ Orchestrator           RefractorEngine · PassRegistry · PassRunner
- │    ├─ Passes            nine passes — rename · encrypt · mangle · flow …
- │    │    ├─ Policy       ObfuscationScope = ProjectScope + KeepPolicy
- │    │    └─ kernel_toolkit   shared kernel operations
- │    └─ Compile / serialize boundary   Compiler · KernelIO (abstract)
- └─ IO implementations injected by the CLI:  DartCompiler · FileKernelIO
-```
+<BlocksDiagram />
 
 | Block | What it owns | More |
 |---|---|---|
@@ -55,9 +39,7 @@ Engine  (zero dart:io)
 
 Dependency direction is strict and one-way:
 
-```
-CLI (dart:io)  →  Config  →  Engine (zero dart:io)
-```
+<DependencyRule />
 
 The engine never imports `dart:io`. It depends on two abstract interfaces —
 `Compiler` (compile source→kernel, kernel→target) and `KernelIO` (read/write

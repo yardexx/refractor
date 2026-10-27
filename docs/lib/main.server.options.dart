@@ -6,6 +6,10 @@
 
 import 'package:jaspr/server.dart';
 import 'package:docs/components/pass_compare_card.dart' as _pass_compare_card;
+import 'package:docs/diagrams/blocks_diagram.dart' as _blocks_diagram;
+import 'package:docs/diagrams/pipeline_diagram.dart' as _pipeline_diagram;
+import 'package:docs/diagrams/policy_explorer.dart' as _policy_explorer;
+import 'package:docs/diagrams/stages_diagram.dart' as _stages_diagram;
 import 'package:docs/home/playground.dart' as _playground;
 import 'package:docs/rulebook/copy_chip.dart' as _copy_chip;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
@@ -46,6 +50,16 @@ ServerOptions get defaultServerOptions => ServerOptions(
           'pass_compare_card',
           params: __pass_compare_cardPassCompareCard,
         ),
+    _blocks_diagram.BlocksDiagram: ClientTarget<_blocks_diagram.BlocksDiagram>(
+      'blocks_diagram',
+    ),
+    _pipeline_diagram.PipelineDiagram:
+        ClientTarget<_pipeline_diagram.PipelineDiagram>('pipeline_diagram'),
+    _policy_explorer.PolicyExplorer:
+        ClientTarget<_policy_explorer.PolicyExplorer>('policy_explorer'),
+    _stages_diagram.StagesDiagram: ClientTarget<_stages_diagram.StagesDiagram>(
+      'stages_diagram',
+    ),
     _playground.Playground: ClientTarget<_playground.Playground>('playground'),
     _copy_chip.CopyChip: ClientTarget<_copy_chip.CopyChip>(
       'copy_chip',

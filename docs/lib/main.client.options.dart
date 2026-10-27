@@ -8,6 +8,12 @@ import 'package:jaspr/client.dart';
 
 import 'package:docs/components/pass_compare_card.dart'
     deferred as _pass_compare_card;
+import 'package:docs/diagrams/blocks_diagram.dart' deferred as _blocks_diagram;
+import 'package:docs/diagrams/pipeline_diagram.dart'
+    deferred as _pipeline_diagram;
+import 'package:docs/diagrams/policy_explorer.dart'
+    deferred as _policy_explorer;
+import 'package:docs/diagrams/stages_diagram.dart' deferred as _stages_diagram;
 import 'package:docs/home/playground.dart' deferred as _playground;
 import 'package:docs/rulebook/copy_chip.dart' deferred as _copy_chip;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
@@ -48,6 +54,22 @@ ClientOptions get defaultClientOptions => ClientOptions(
         after: p['after'] as String,
       ),
       loader: _pass_compare_card.loadLibrary,
+    ),
+    'blocks_diagram': ClientLoader(
+      (p) => _blocks_diagram.BlocksDiagram(),
+      loader: _blocks_diagram.loadLibrary,
+    ),
+    'pipeline_diagram': ClientLoader(
+      (p) => _pipeline_diagram.PipelineDiagram(),
+      loader: _pipeline_diagram.loadLibrary,
+    ),
+    'policy_explorer': ClientLoader(
+      (p) => _policy_explorer.PolicyExplorer(),
+      loader: _policy_explorer.loadLibrary,
+    ),
+    'stages_diagram': ClientLoader(
+      (p) => _stages_diagram.StagesDiagram(),
+      loader: _stages_diagram.loadLibrary,
     ),
     'playground': ClientLoader(
       (p) => _playground.Playground(),
