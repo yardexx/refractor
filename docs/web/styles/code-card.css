@@ -56,11 +56,15 @@
   background: var(--pg-pane);
 }
 
+/* A fixed height, so the before and after headers line up whatever they hold
+   (the after pane's tag is taller than plain text). */
 .pg-pane-head {
   display: flex;
+  box-sizing: border-box;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.55rem 0.9rem;
+  height: 2.3rem;
+  padding: 0 0.9rem;
   border-bottom: 1px solid var(--pg-line);
   color: #8b949e;
   font: 0.75rem var(--code-mono);
@@ -85,6 +89,7 @@
   background: rgba(255, 255, 255, 0.05);
   color: #6e7681;
   font-size: 0.68rem;
+  line-height: 1.5;
 }
 
 /* Doubled class beats prose styles for `pre` inside docs content. */
