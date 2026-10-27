@@ -4,9 +4,7 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
-import 'prism_art.dart';
-
-/// A before/after comparison in the landing page's code card.
+/// A side-by-side before/after comparison in the landing page's code card.
 ///
 /// In markdown, wrap two fenced code blocks (before, then after):
 ///
@@ -70,12 +68,9 @@ class _PassCompareCard extends StatelessComponent {
       Document.head(
         children: [link(id: 'code-card-css', rel: 'stylesheet', href: '/styles/code-card.css')],
       ),
-      div(classes: 'pg pg-stacked pc pc-$pass', [
+      div(classes: 'pg pc pc-$pass', [
         div(classes: 'pg-stage', [
           _pane('before', a, output: false),
-          div(classes: 'pg-prism', [
-            RawText(prismSvg(['ray'])),
-          ]),
           _pane('after', b, output: true),
         ]),
       ]),
@@ -93,7 +88,7 @@ class _PassCompareCard extends StatelessComponent {
     }
     return div(classes: 'pg-pane${output ? ' pg-out' : ''}', [
       div(classes: 'pg-pane-head', [
-        span(classes: 'pg-lights', [span([]), span([]), span([])]),
+        if (output) span(classes: 'pc-dot', []) else span(classes: 'pg-lights', [span([]), span([]), span([])]),
         span([Component.text(label)]),
         if (output) span(classes: 'pg-tag', [Component.text('illustrative')]),
       ]),

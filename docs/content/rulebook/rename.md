@@ -67,17 +67,17 @@ annotations, and the entry point (`main`'s name is preserved). See
 
 ## Example
 
-`Gateway` comes from a dependency, so it and its `charge` method keep their names; everything declared in your package is renamed.
+`Gateway` comes from a dependency, so it keeps its name, and so do its `pay` method and the `id` it returns; everything declared in your package is renamed.
 
 <PassCompare pass="rename">
 
 ```dart
-class PaymentProcessor {
+class Payments {
   final Gateway gateway;
-  PaymentProcessor(this.gateway);
+  Payments(this.gateway);
 
-  String chargeCard(String token) {
-    final receipt = gateway.charge(token);
+  String charge(String token) {
+    final receipt = gateway.pay(token);
     return receipt.id;
   }
 }
@@ -89,7 +89,7 @@ class a {
   a(this.b);
 
   String c(String d) {
-    final e = b.charge(d);
+    final e = b.pay(d);
     return e.id;
   }
 }

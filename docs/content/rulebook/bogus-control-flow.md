@@ -74,19 +74,19 @@ The guard is always true, so only the first branch runs. The `else` is a clone o
 <PassCompare pass="bogus">
 
 ```dart
-int fee(int amount) {
-  final base = amount ~/ 40;
+int fee(int n) {
+  final base = n ~/ 40;
   return base + 25;
 }
 ```
 
 ```dart
-int fee(int amount) {
-  if ((amount & 0xFFFF) * (amount & 0xFFFF) >= 0) {
-    final base = amount ~/ 40;
+int fee(int n) {
+  if ((n & 0xFFFF) * (n & 0xFFFF) >= 0) {
+    final base = n ~/ 40;
     return base + 25;
   } else {
-    final base = amount ~/ 40;
+    final base = n ~/ 40;
     return base + 25;
   }
 }

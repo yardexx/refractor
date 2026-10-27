@@ -66,26 +66,26 @@ See [Policy](/architecture/policy).
 
 ## Example
 
-The `const` string has to stay a compile-time constant, so it is left alone; the other literal is replaced by a call to the injected decoder.
+The `const` string has to stay a compile-time constant, so it is left alone; the other literal becomes a call to the injected decoder.
 
 <PassCompare pass="strings">
 
 ```dart
-const appName = 'Acme Pay';
+const app = 'Acme Pay';
 
 String banner() {
-  final greeting = 'Welcome to Acme';
-  return greeting;
+  final text = 'Welcome to Acme';
+  return text;
 }
 ```
 
 ```dart
-const appName = 'Acme Pay';
+const app = 'Acme Pay';
 
 String banner() {
-  final greeting = refractorDecode(
-      [0x1d, 0x2f, 0x84, 0x3a, 0x5c, …], 0x8c3f1a2b);
-  return greeting;
+  final text = refractorDecode(
+      [0x1d, 0x2f, …], 0x8c3f1a2b);
+  return text;
 }
 ```
 

@@ -65,25 +65,26 @@ name is irrelevant to it. See [Policy](/architecture/policy).
 
 ## Example
 
-`30000` is encoded behind the decoder; the `const` and the `1` (below `min_magnitude`) stay inline.
+`30000` is hidden behind the decoder; the `const` and the `1` (below `min_magnitude`) stay inline.
 
 <PassCompare pass="ints">
 
 ```dart
 const maxRetries = 3;
 
-Duration timeout(int attempt) {
-  final ms = 30000;
-  return Duration(milliseconds: ms * (attempt + 1));
+int backoff(int attempt) {
+  final base = 30000;
+  return base * (attempt + 1);
 }
 ```
 
 ```dart
 const maxRetries = 3;
 
-Duration timeout(int attempt) {
-  final ms = refractorDecodeInt(0x6c21a9f3, 0x6c21dcc3);
-  return Duration(milliseconds: ms * (attempt + 1));
+int backoff(int attempt) {
+  final base = refractorDecodeInt(
+      0x6c21a9f3, 0x6c21dcc3);
+  return base * (attempt + 1);
 }
 ```
 

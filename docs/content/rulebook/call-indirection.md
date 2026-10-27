@@ -70,7 +70,7 @@ in scope to be routed). The entry point's name is irrelevant to it. See
 
 ## Example
 
-`sum` and `withTax` are top-level functions called with positional arguments, so both calls are routed through the forwarder; `as double` restores the static type.
+`sum` and `withTax` are top-level functions called with positional arguments, so both calls go through the forwarder; `as double` restores the static type.
 
 <PassCompare pass="call">
 
@@ -83,8 +83,10 @@ double total(List<double> items) {
 
 ```dart
 double total(List<double> items) {
-  final net = refractorCall(sum, [items]) as double;
-  return refractorCall(withTax, [net]) as double;
+  final net = refractorCall(
+      sum, [items]) as double;
+  return refractorCall(
+      withTax, [net]) as double;
 }
 ```
 

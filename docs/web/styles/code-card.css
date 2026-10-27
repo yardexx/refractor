@@ -211,25 +211,6 @@
 .ray-flatten { fill: var(--ray-flatten); }
 .ray-dead { fill: var(--ray-dead); }
 
-/* Stacked: before above after, with the prism as an upright strip between.
-   The Rulebook cards always stack; any card stacks on narrow screens. */
-.pg-stacked .pg-stage {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.pg-stacked .pg-prism {
-  height: 7.5rem;
-  border: 0;
-  border-top: 1px solid var(--pg-line);
-  border-bottom: 1px solid var(--pg-line);
-}
-
-.pg-stacked .pg-prism svg {
-  width: auto;
-  height: 7rem;
-  max-height: none;
-}
-
 @media (max-width: 900px) {
   .pg-stage {
     grid-template-columns: minmax(0, 1fr);
@@ -253,9 +234,12 @@
   }
 }
 
-/* Rulebook comparisons: the pass's color lights the prism and the glow. */
+/* Rulebook comparisons: before and after side by side, sized to the card
+   itself so they only stack when the card gets narrow. The pass's color runs
+   along the top edge, marks the "after" pane and lights the changed code. */
 .pc {
   --pc: #fff;
+  container-type: inline-size;
   margin: 1.5rem 0;
 }
 
@@ -269,13 +253,62 @@
 .pc-bogus { --pc: var(--ray-bogus); }
 .pc-call { --pc: var(--ray-call); }
 
-.pc .pg-prism .ray {
-  fill: var(--pc);
-  opacity: 1;
+.pc::before {
+  background: linear-gradient(90deg, transparent, var(--pc) 50%, transparent);
+}
+
+.pc .pg-stage {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.pc .pg-pane + .pg-pane {
+  border-left: 1px solid var(--pg-line);
+}
+
+/* No line numbers: the panes need every column for code. */
+.pc .pg-code {
+  font-size: 12px;
+}
+
+/* A line too long for a narrow pane wraps with a hanging indent instead of
+   hiding its end behind a horizontal scroll. */
+.pc .pg-line {
+  padding: 0 0.75rem 0 calc(0.75rem + 4ch);
+  text-indent: -4ch;
+  white-space: pre-wrap;
+}
+
+.pc .pg-line::before {
+  display: none;
+}
+
+.pc-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--pc);
+  box-shadow: 0 0 8px var(--pc);
 }
 
 .pc .pg-out .fx {
   --c: var(--pc);
+}
+
+@container (max-width: 680px) {
+  .pc .pg-code {
+    font-size: 11.5px;
+  }
+}
+
+@container (max-width: 540px) {
+  .pc .pg-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pc .pg-pane + .pg-pane {
+    border-top: 1px solid var(--pg-line);
+    border-left: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

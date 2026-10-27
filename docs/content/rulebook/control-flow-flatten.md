@@ -78,10 +78,17 @@ int checkout(Cart cart) {
 int checkout(Cart cart) {
   int total;
   switch (2) {
-    L0: case 0: log(total); continue L3;
-    L1: case 1: return total;
-    L2: case 2: total = cart.sum(); continue L0;
-    L3: case 3: charge(total); continue L1;
+    L0: case 0:
+      log(total);
+      continue L3;
+    L1: case 1:
+      return total;
+    L2: case 2:
+      total = cart.sum();
+      continue L0;
+    L3: case 3:
+      charge(total);
+      continue L1;
   }
 }
 ```

@@ -65,23 +65,23 @@ it does not honor that keep source. See [Policy](/architecture/policy).
 
 ## Example
 
-`amount` is the nearest `int` in scope, so the predicate is keyed off it. A masked square is never negative, so the branch still depends only on `order.isPaid`.
+`n` is the nearest `int` in scope, so the predicate is keyed off it. A masked square is never negative, so the branch still depends only on `o.isPaid`.
 
 <PassCompare pass="opaque">
 
 ```dart
-void refund(Order order, int amount) {
-  if (order.isPaid) {
-    issueRefund(order, amount);
+void refund(Order o, int n) {
+  if (o.isPaid) {
+    issueRefund(o, n);
   }
 }
 ```
 
 ```dart
-void refund(Order order, int amount) {
-  if (order.isPaid &&
-      (amount & 0xFFFF) * (amount & 0xFFFF) >= 0) {
-    issueRefund(order, amount);
+void refund(Order o, int n) {
+  if (o.isPaid &&
+      (n & 0xFFFF) * (n & 0xFFFF) >= 0) {
+    issueRefund(o, n);
   }
 }
 ```

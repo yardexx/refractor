@@ -57,21 +57,22 @@ name is irrelevant to it. See [Policy](/architecture/policy).
 
 ## Example
 
-The `+` becomes the XOR/AND identity and the `*` is split around a constant; both compute the same number.
+`a + b` becomes the XOR/AND identity and `sum * n` is split around a constant; both still compute the same number.
 
 <PassCompare pass="arith">
 
 ```dart
-int total(int price, int tax, int qty) {
-  final sum = price + tax;
-  return sum * qty;
+int cost(int a, int b, int n) {
+  final sum = a + b;
+  return sum * n;
 }
 ```
 
 ```dart
-int total(int price, int tax, int qty) {
-  final sum = (price ^ tax) + ((price & tax) << 1);
-  return sum * (qty + 7) - sum * 7;
+int cost(int a, int b, int n) {
+  final sum =
+      (a ^ b) + ((a & b) << 1);
+  return sum * (n + 7) - sum * 7;
 }
 ```
 
