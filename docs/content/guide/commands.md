@@ -22,7 +22,9 @@ Compile, obfuscate, and build.
 | `-i, --input` | Dart entrypoint file | `lib/main.dart` |
 | `-t, --target` | Output format: `exe`, `aot`, `jit`, `kernel` | `exe` |
 
-The build output is always written to `build/out.<ext>` in the project root.
+The build output is always written to `build/` in the project root: `build/out`
+for `exe`, and `build/out.aot`, `build/out.jit`, or `build/out.dill` for the
+other targets.
 When the [rename](/rulebook/rename) pass runs, the build also writes a versioned
 **symbol map** to `build/symbol_map.json` (path configurable via
 `refractor.symbol_map`) — the input [`symbolicate`](/guide/commands#refractor-symbolicate-trace-file)

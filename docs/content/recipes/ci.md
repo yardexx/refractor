@@ -29,5 +29,5 @@ A minimal step:
 
 <Info>
 Pin the Dart SDK your project expects — Refractor's vendored kernel is tied to a
-specific SDK line (see [Getting Started](/guide)).
+specific SDK line (see [SDK compatibility](/guide#sdk-compatibility)).
 </Info>
