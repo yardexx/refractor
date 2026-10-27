@@ -21,10 +21,7 @@ class PassInfo {
     required this.group,
     required this.configKey,
     required this.summary,
-    required this.before,
-    required this.after,
-    this.inStarterConfig = false,
-    this.keepsEntryPoint = false,
+    this.stable = false,
   });
 
   /// Color and CSS hook (`pc-<slug>`, `--ray-<slug>`).
@@ -41,16 +38,9 @@ class PassInfo {
 
   final String summary;
 
-  /// A one-line taste of the pass for the overview grid.
-  final String before;
-  final String after;
-
-  /// Whether `refractor init` turns the pass on in the starter config.
-  final bool inStarterConfig;
-
-  /// Whether the pass keeps `main`'s name (`KeepSource.entryPoint`). Every pass
-  /// honors excludes and `@Refractor.keep()`.
-  final bool keepsEntryPoint;
+  /// Whether the pass shipped in a release (0.2.2). The rest are new on dev
+  /// and marked experimental.
+  final bool stable;
 }
 
 const rulebookPasses = [
@@ -61,10 +51,7 @@ const rulebookPasses = [
     group: PassGroup.naming,
     configKey: 'rename',
     summary: 'Rewrites identifiers to short, meaningless names.',
-    before: 'chargeCard(token)',
-    after: 'c(d)',
-    inStarterConfig: true,
-    keepsEntryPoint: true,
+    stable: true,
   ),
   PassInfo(
     slug: 'strings',
@@ -73,9 +60,7 @@ const rulebookPasses = [
     group: PassGroup.naming,
     configKey: 'string_encrypt',
     summary: 'Hides string literals behind a runtime decoder.',
-    before: "'Acme Pay'",
-    after: 'refractorDecode([…])',
-    inStarterConfig: true,
+    stable: true,
   ),
   PassInfo(
     slug: 'ints',
@@ -84,8 +69,6 @@ const rulebookPasses = [
     group: PassGroup.naming,
     configKey: 'int_encrypt',
     summary: 'Hides integer literals behind a runtime decoder.',
-    before: '30000',
-    after: 'refractorDecodeInt(…)',
   ),
   PassInfo(
     slug: 'arith',
@@ -94,8 +77,6 @@ const rulebookPasses = [
     group: PassGroup.expressions,
     configKey: 'arithmetic_mangle',
     summary: 'Rewrites + and * into equivalent, uglier expressions.',
-    before: 'a + b',
-    after: '(a ^ b) + ((a & b) << 1)',
   ),
   PassInfo(
     slug: 'opaque',
@@ -104,8 +85,6 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'opaque_predicate',
     summary: 'Entangles branch conditions with always-true predicates.',
-    before: 'if (paid)',
-    after: 'if (paid && n² >= 0)',
   ),
   PassInfo(
     slug: 'flatten',
@@ -114,8 +93,6 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'control_flow_flatten',
     summary: 'Turns a straight-line body into a switch state machine.',
-    before: 'a(); b(); c();',
-    after: 'switch (2) { case 0: … }',
   ),
   PassInfo(
     slug: 'dead',
@@ -124,8 +101,6 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'dead_code',
     summary: 'Inserts never-executed, opaquely guarded junk.',
-    before: 'return p * 2;',
-    after: 'if (p² < 0) { … } return p * 2;',
   ),
   PassInfo(
     slug: 'bogus',
@@ -134,8 +109,6 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'bogus_control_flow',
     summary: 'Wraps a body in an always-true branch over a real-looking clone.',
-    before: '{ body }',
-    after: 'if (n² >= 0) { body } else { clone }',
   ),
   PassInfo(
     slug: 'call',
@@ -144,8 +117,6 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'call_indirection',
     summary: 'Routes static calls through a never-inline forwarder.',
-    before: 'sum(items)',
-    after: 'refractorCall(sum, [items])',
   ),
 ];
 

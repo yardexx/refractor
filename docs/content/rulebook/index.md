@@ -21,9 +21,9 @@ program.
 Every pass page follows the same shape, so you always know where to look — and it
 doubles as the checklist for shipping a new pass:
 
-1. **Facts** — the pass's group, its config key, whether the starter config turns it on, and which keep rules it honors.
+1. **Facts** — the pass's group, its config key, and whether it's stable (shipped in a release) or experimental.
 2. **What it does** — the effect on your code, in one paragraph.
-3. **Example** — before and after, side by side; switch the pass off and on to replay the change.
+3. **Example** — before and after, side by side, with what the pass changed highlighted.
 4. **What it targets** — which declarations/nodes it changes, and what it skips.
 5. **Configuration** — a minimal setup and every option with its default.
 6. **Scope & keep** — which keep mechanisms it honors (excludes, `@Refractor.keep()`, entry point).

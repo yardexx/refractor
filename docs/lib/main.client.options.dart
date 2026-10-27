@@ -8,8 +8,6 @@ import 'package:jaspr/client.dart';
 
 import 'package:docs/components/copy_code_button.dart'
     deferred as _copy_code_button;
-import 'package:docs/components/pass_compare_card.dart'
-    deferred as _pass_compare_card;
 import 'package:docs/diagrams/blocks_diagram.dart' deferred as _blocks_diagram;
 import 'package:docs/diagrams/pipeline_diagram.dart'
     deferred as _pipeline_diagram;
@@ -50,14 +48,6 @@ ClientOptions get defaultClientOptions => ClientOptions(
     'copy_code_button': ClientLoader(
       (p) => _copy_code_button.CopyCodeButton(text: p['text'] as String),
       loader: _copy_code_button.loadLibrary,
-    ),
-    'pass_compare_card': ClientLoader(
-      (p) => _pass_compare_card.PassCompareCard(
-        pass: p['pass'] as String,
-        before: p['before'] as String,
-        after: p['after'] as String,
-      ),
-      loader: _pass_compare_card.loadLibrary,
     ),
     'blocks_diagram': ClientLoader(
       (p) => _blocks_diagram.BlocksDiagram(),

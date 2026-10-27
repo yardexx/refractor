@@ -14,6 +14,7 @@ import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
 import 'components/brand_header.dart';
+import 'components/cards.dart';
 import 'components/code_panel.dart';
 import 'components/pass_compare.dart';
 import 'diagrams/diagram_components.dart';
@@ -45,6 +46,8 @@ void main() {
         Image(zoom: true),
         const Tabs(),
         PassCompare(),
+        const Cards(),
+        const Card(),
         // Rulebook pass pages.
         const PassFacts(),
         const PassPager(),

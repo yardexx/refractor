@@ -1,0 +1,73 @@
+/*
+ * Cards (components/cards.dart): a grid of titled cards with a colored dot,
+ * a short body and an optional link. Page colors follow ContentTheme
+ * (light/dark); --pc comes from a pass's .pc-<slug> class (code-card.css) or
+ * the card's own color attribute.
+ */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.9rem;
+  margin: 1.25rem 0;
+}
+
+.card {
+  --card-border: color-mix(in srgb, var(--content-headings) 12%, transparent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  overflow: hidden;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--card-border);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--content-headings) 3%, var(--background));
+  text-decoration: none !important;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+/* A thin edge in the card's color along the top. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--pc, var(--primary)), transparent 85%);
+}
+
+a.card:hover {
+  border-color: color-mix(in srgb, var(--pc, var(--primary)) 50%, transparent);
+  transform: translateY(-1px);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--content-headings);
+  font-weight: 650;
+}
+
+.card-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--pc, var(--primary));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc, var(--primary)) 22%, transparent);
+}
+
+.card-body {
+  color: color-mix(in srgb, var(--text) 72%, transparent);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.card-body > :first-child {
+  margin-top: 0;
+}
+
+.card-body > :last-child {
+  margin-bottom: 0;
+}

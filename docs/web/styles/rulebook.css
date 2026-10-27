@@ -1,6 +1,7 @@
 /*
- * Rulebook page components: the facts strip, guarantees cards, the
- * previous/next pager and the overview grid. Page colors follow ContentTheme
+ * Rulebook page components: the facts strip (group, config key, status), guarantees cards, the
+ * previous/next pager and the overview grid's group headings (the cards
+ * themselves are in cards.css). Page colors follow ContentTheme
  * (light/dark); pass colors (--pc via .pc-<slug>) come from code-card.css.
  */
 
@@ -29,7 +30,6 @@
 
 /* A thin pass-colored edge along the top of a card. */
 .pp-card::before,
-.rg-card::before,
 .pass-card::before {
   content: "";
   position: absolute;
@@ -94,43 +94,14 @@
   text-transform: uppercase;
 }
 
-.pf-on {
+.pf-stable {
   border-color: color-mix(in srgb, var(--rb-ok) 40%, transparent);
   color: var(--rb-ok);
 }
 
-.pf-keeps {
-  gap: 0.65rem;
-}
-
-.pf-label {
-  color: var(--content-headings);
-  font-weight: 600;
-}
-
-.pf-keep {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  white-space: nowrap;
-}
-
-.pf-keeps {
-  flex-wrap: wrap;
-  row-gap: 0.15rem;
-}
-
-.pf-mark {
-  color: var(--rb-ok);
-  font-weight: 700;
-}
-
-.pf-off {
-  opacity: 0.55;
-}
-
-.pf-off .pf-mark {
-  color: var(--rb-muted);
+.pf-experimental {
+  border-color: color-mix(in srgb, var(--rb-warn) 45%, transparent);
+  color: var(--rb-warn);
 }
 
 /* Guarantees: promises next to caveats */
@@ -242,76 +213,6 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.rg-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 0.9rem;
-}
-
-.rg-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  overflow: hidden;
-  padding: 1rem 1.1rem;
-  border: 1px solid var(--rb-border);
-  border-radius: 0.9rem;
-  background: var(--rb-card);
-  text-decoration: none !important;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-.rg-card:hover {
-  border-color: color-mix(in srgb, var(--pc) 50%, transparent);
-  transform: translateY(-1px);
-}
-
-.rg-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--content-headings);
-  font-weight: 650;
-}
-
-.rg-summary {
-  color: var(--rb-muted);
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-.rg-code {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: auto;
-  padding: 0.5rem 0.65rem;
-  border-radius: 0.55rem;
-  background: #0a0f1c;
-  font: 0.74rem/1.5 var(--code-mono);
-}
-
-.pass-grid .rg-code code {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-}
-
-.pass-grid .rg-before {
-  color: #8b949e;
-}
-
-.rg-arrow {
-  color: #4b5563;
-}
-
-.pass-grid .rg-after {
-  color: var(--pc);
 }
 
 @media (max-width: 640px) {

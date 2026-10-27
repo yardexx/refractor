@@ -3,14 +3,11 @@ import 'dart:math';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
-import '../rulebook/passes.dart';
 import 'highlight.dart';
 
 /// The before/after card behind `<PassCompare>`: both snippets highlighted
-/// and diffed, with a switch that turns the pass off (the "after" pane shows
-/// the original) and back on, replaying the glow.
-@client
-class PassCompareCard extends StatefulComponent {
+/// and diffed, side by side.
+class PassCompareCard extends StatelessComponent {
   const PassCompareCard({required this.pass, required this.before, required this.after, super.key});
 
   final String pass;
@@ -18,34 +15,17 @@ class PassCompareCard extends StatefulComponent {
   final String after;
 
   @override
-  State<PassCompareCard> createState() => _PassCompareCardState();
-}
-
-class _PassCompareCardState extends State<PassCompareCard> {
-  bool _applied = true;
-  late final List<CodeToken> _before, _after, _original;
-
-  @override
-  void initState() {
-    super.initState();
-    _before = highlight(component.before, 'dart');
-    _after = highlight(component.after, 'dart');
-    _diff(_before, _after);
-    // Unmarked, for the "after" pane while the pass is switched off.
-    _original = highlight(component.before, 'dart');
-  }
-
-  @override
   Component build(BuildContext context) {
-    final title = passBySlug(component.pass).title;
-    return div(classes: 'pg pc pc-${component.pass}${_applied ? '' : ' pc-off'}', [
+    final a = highlight(before, 'dart'), b = highlight(after, 'dart');
+    _diff(a, b);
+    return div(classes: 'pg pc pc-$pass', [
       div(classes: 'pg-stage', [
         _pane(
           [
             span(classes: 'pg-lights', [span([]), span([]), span([])]),
             span([Component.text('before')]),
           ],
-          _applied ? _before : _original,
+          a,
           output: false,
         ),
         _pane(
@@ -53,19 +33,8 @@ class _PassCompareCardState extends State<PassCompareCard> {
             span(classes: 'pc-dot', []),
             span([Component.text('after')]),
             span(classes: 'pg-tag', [Component.text('illustrative')]),
-            button(
-              classes: 'pc-switch',
-              attributes: {
-                'role': 'switch',
-                'aria-checked': '$_applied',
-                'aria-label': 'Apply $title',
-                'title': _applied ? 'Turn $title off' : 'Apply $title',
-              },
-              onClick: () => setState(() => _applied = !_applied),
-              [span(classes: 'pc-knob', [])],
-            ),
           ],
-          _applied ? _after : _original,
+          b,
           output: true,
         ),
       ]),

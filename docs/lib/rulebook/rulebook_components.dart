@@ -6,6 +6,7 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
+import '../components/cards.dart';
 import 'copy_chip.dart';
 import 'passes.dart';
 
@@ -24,9 +25,8 @@ PassInfo _passOf(Map<String, String> attributes, String tag) {
   return passBySlug(slug);
 }
 
-/// `<PassFacts pass="strings">`: the strip under a pass page's title with its
-/// group, config key, whether the starter config enables it, and the keep
-/// rules it honors.
+/// `<PassFacts pass="strings" />`: the strip under a pass page's title with
+/// its group, its config key (click to copy) and whether it is stable.
 class PassFacts extends CustomComponentBase {
   const PassFacts();
 
@@ -36,11 +36,6 @@ class PassFacts extends CustomComponentBase {
   @override
   Component apply(String name, Map<String, String> attributes, Component? child) {
     final pass = _passOf(attributes, name);
-    Component keep(String label, bool honored) => span(classes: 'pf-keep${honored ? '' : ' pf-off'}', [
-      span(classes: 'pf-mark', [Component.text(honored ? '✓' : '–')]),
-      Component.text(label),
-    ]);
-
     return Component.fragment([
       _styles(),
       div(classes: 'pass-facts pc-${pass.slug}', [
@@ -49,15 +44,14 @@ class PassFacts extends CustomComponentBase {
           Component.text(pass.group.label),
         ]),
         CopyChip(text: pass.configKey),
-        span(classes: 'pf-chip${pass.inStarterConfig ? ' pf-on' : ''}', [
-          Component.text(pass.inStarterConfig ? 'In the starter config' : 'Opt-in'),
-        ]),
-        span(classes: 'pf-chip pf-keeps', [
-          span(classes: 'pf-label', [Component.text('Keeps')]),
-          keep('excludes', true),
-          keep('@Refractor.keep()', true),
-          keep('entry point', pass.keepsEntryPoint),
-        ]),
+        if (pass.stable)
+          span(classes: 'pf-chip pf-stable', attributes: {'title': 'Shipped in 0.2.2'}, [Component.text('Stable')])
+        else
+          span(
+            classes: 'pf-chip pf-experimental',
+            attributes: {'title': 'New since 0.2.2; its behaviour may still change'},
+            [Component.text('Experimental')],
+          ),
       ]),
     ]);
   }
@@ -106,8 +100,7 @@ class PassPager extends CustomComponentBase {
   }
 }
 
-/// `<PassGrid>`: every pass as a card, grouped, with a one-line taste of what
-/// it does to code.
+/// `<PassGrid>`: every pass as a [card], grouped.
 class PassGrid extends CustomComponentBase {
   const PassGrid();
 
@@ -121,20 +114,9 @@ class PassGrid extends CustomComponentBase {
       div(classes: 'pass-grid', [
         for (final group in PassGroup.values) ...[
           h3(classes: 'rg-group', [Component.text(group.label)]),
-          div(classes: 'rg-cards', [
+          cardGrid([
             for (final p in rulebookPasses.where((p) => p.group == group))
-              a(classes: 'rg-card pc-${p.slug}', href: p.page, [
-                span(classes: 'rg-title', [
-                  span(classes: 'pf-dot', []),
-                  Component.text(p.title),
-                ]),
-                span(classes: 'rg-summary', [Component.text(p.summary)]),
-                span(classes: 'rg-code', [
-                  code(classes: 'rg-before', [Component.text(p.before)]),
-                  span(classes: 'rg-arrow', [Component.text('→')]),
-                  code(classes: 'rg-after', [Component.text(p.after)]),
-                ]),
-              ]),
+              card(title: p.title, href: p.page, color: p.slug, body: Component.text(p.summary)),
           ]),
         ],
       ]),

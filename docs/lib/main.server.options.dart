@@ -6,7 +6,6 @@
 
 import 'package:jaspr/server.dart';
 import 'package:docs/components/copy_code_button.dart' as _copy_code_button;
-import 'package:docs/components/pass_compare_card.dart' as _pass_compare_card;
 import 'package:docs/diagrams/blocks_diagram.dart' as _blocks_diagram;
 import 'package:docs/diagrams/pipeline_diagram.dart' as _pipeline_diagram;
 import 'package:docs/diagrams/policy_explorer.dart' as _policy_explorer;
@@ -47,11 +46,6 @@ ServerOptions get defaultServerOptions => ServerOptions(
         ClientTarget<_copy_code_button.CopyCodeButton>(
           'copy_code_button',
           params: __copy_code_buttonCopyCodeButton,
-        ),
-    _pass_compare_card.PassCompareCard:
-        ClientTarget<_pass_compare_card.PassCompareCard>(
-          'pass_compare_card',
-          params: __pass_compare_cardPassCompareCard,
         ),
     _blocks_diagram.BlocksDiagram: ClientTarget<_blocks_diagram.BlocksDiagram>(
       'blocks_diagram',
@@ -102,9 +96,6 @@ ServerOptions get defaultServerOptions => ServerOptions(
 Map<String, Object?> __copy_code_buttonCopyCodeButton(
   _copy_code_button.CopyCodeButton c,
 ) => {'text': c.text};
-Map<String, Object?> __pass_compare_cardPassCompareCard(
-  _pass_compare_card.PassCompareCard c,
-) => {'pass': c.pass, 'before': c.before, 'after': c.after};
 Map<String, Object?> __copy_chipCopyChip(_copy_chip.CopyChip c) => {
   'text': c.text,
 };
