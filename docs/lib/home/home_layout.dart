@@ -10,7 +10,7 @@ import 'playground.dart';
 class HomeLayout extends PageLayoutBase {
   const HomeLayout({required this.header});
 
-  /// The site header, usually the same [Header] the docs use minus the
+  /// The site header, usually the same `BrandHeader` the docs use minus the
   /// sidebar toggle.
   final Component header;
 
@@ -29,6 +29,7 @@ class HomeLayout extends PageLayoutBase {
       div(classes: 'home-header', [header]),
       main_([
         section(classes: 'home-hero', [
+          img(classes: 'home-icon', src: '/images/refractor-icon.svg', alt: ''),
           span(classes: 'home-pill', [
             span(classes: 'home-pill-dot', []),
             Component.text('Early preview · Dart 3.11.3'),
