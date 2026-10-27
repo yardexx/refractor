@@ -5,9 +5,12 @@
 // Generated with jaspr_builder
 
 import 'package:jaspr/server.dart';
+import 'package:docs/components/pass_compare_card.dart' as _pass_compare_card;
 import 'package:docs/home/playground.dart' as _playground;
+import 'package:docs/rulebook/copy_chip.dart' as _copy_chip;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
     as _code_block_copy_button;
+import 'package:jaspr_content/components/_internal/tab_bar.dart' as _tab_bar;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
     as _zoomable_image;
 import 'package:jaspr_content/components/callout.dart' as _callout;
@@ -16,6 +19,7 @@ import 'package:jaspr_content/components/github_button.dart' as _github_button;
 import 'package:jaspr_content/components/image.dart' as _image;
 import 'package:jaspr_content/components/sidebar_toggle_button.dart'
     as _sidebar_toggle_button;
+import 'package:jaspr_content/components/tabs.dart' as _tabs;
 import 'package:jaspr_content/components/theme_toggle.dart' as _theme_toggle;
 
 /// Default [ServerOptions] for use with your Jaspr project.
@@ -37,11 +41,24 @@ import 'package:jaspr_content/components/theme_toggle.dart' as _theme_toggle;
 ServerOptions get defaultServerOptions => ServerOptions(
   clientId: 'main.client.dart.js',
   clients: {
+    _pass_compare_card.PassCompareCard:
+        ClientTarget<_pass_compare_card.PassCompareCard>(
+          'pass_compare_card',
+          params: __pass_compare_cardPassCompareCard,
+        ),
     _playground.Playground: ClientTarget<_playground.Playground>('playground'),
+    _copy_chip.CopyChip: ClientTarget<_copy_chip.CopyChip>(
+      'copy_chip',
+      params: __copy_chipCopyChip,
+    ),
     _code_block_copy_button.CodeBlockCopyButton:
         ClientTarget<_code_block_copy_button.CodeBlockCopyButton>(
           'jaspr_content:code_block_copy_button',
         ),
+    _tab_bar.TabBar: ClientTarget<_tab_bar.TabBar>(
+      'jaspr_content:tab_bar',
+      params: __tab_barTabBar,
+    ),
     _zoomable_image.ZoomableImage: ClientTarget<_zoomable_image.ZoomableImage>(
       'jaspr_content:zoomable_image',
       params: __zoomable_imageZoomableImage,
@@ -63,11 +80,23 @@ ServerOptions get defaultServerOptions => ServerOptions(
     ..._code_block.CodeBlock.styles,
     ..._github_button.GitHubButton.styles,
     ..._image.Image.styles,
+    ..._tabs.Tabs.styles,
     ..._theme_toggle.ThemeToggleState.styles,
+    ..._tab_bar.TabBar.styles,
     ..._zoomable_image.ZoomableImage.styles,
   ],
 );
 
+Map<String, Object?> __pass_compare_cardPassCompareCard(
+  _pass_compare_card.PassCompareCard c,
+) => {'pass': c.pass, 'before': c.before, 'after': c.after};
+Map<String, Object?> __copy_chipCopyChip(_copy_chip.CopyChip c) => {
+  'text': c.text,
+};
+Map<String, Object?> __tab_barTabBar(_tab_bar.TabBar c) => {
+  'initialValue': c.initialValue,
+  'items': c.items,
+};
 Map<String, Object?> __zoomable_imageZoomableImage(
   _zoomable_image.ZoomableImage c,
 ) => {'src': c.src, 'alt': c.alt, 'caption': c.caption};

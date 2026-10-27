@@ -9,6 +9,7 @@ import 'package:jaspr_content/components/github_button.dart';
 import 'package:jaspr_content/components/image.dart';
 import 'package:jaspr_content/components/sidebar.dart';
 import 'package:jaspr_content/components/sidebar_toggle_button.dart';
+import 'package:jaspr_content/components/tabs.dart';
 import 'package:jaspr_content/components/theme_toggle.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
@@ -17,6 +18,7 @@ import 'components/brand_header.dart';
 import 'components/pass_compare.dart';
 import 'home/home_layout.dart';
 import 'main.server.options.dart';
+import 'rulebook/rulebook_components.dart';
 
 BrandHeader _header({required bool docs}) => BrandHeader(
   // The landing page has no sidebar to toggle, but links into the docs.
@@ -36,7 +38,20 @@ void main() {
       templateEngine: MustacheTemplateEngine(),
       parsers: [MarkdownParser()],
       extensions: [HeadingAnchorsExtension(), TableOfContentsExtension()],
-      components: [Callout(), CodeBlock(), Image(zoom: true), PassCompare()],
+      components: [
+        Callout(),
+        CodeBlock(),
+        Image(zoom: true),
+        const Tabs(),
+        PassCompare(),
+        // Rulebook pass pages.
+        const PassFacts(),
+        const PassPager(),
+        const PassGrid(),
+        const Guarantees(),
+        const Promises(),
+        const Caveats(),
+      ],
       layouts: [
         const EmptyLayout(),
         HomeLayout(header: _header(docs: false)),

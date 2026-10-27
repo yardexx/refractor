@@ -6,9 +6,14 @@
 
 import 'package:jaspr/client.dart';
 
+import 'package:docs/components/pass_compare_card.dart'
+    deferred as _pass_compare_card;
 import 'package:docs/home/playground.dart' deferred as _playground;
+import 'package:docs/rulebook/copy_chip.dart' deferred as _copy_chip;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
     deferred as _code_block_copy_button;
+import 'package:jaspr_content/components/_internal/tab_bar.dart'
+    deferred as _tab_bar;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
     deferred as _zoomable_image;
 import 'package:jaspr_content/components/github_button.dart'
@@ -36,13 +41,32 @@ import 'package:jaspr_content/components/theme_toggle.dart'
 /// ```
 ClientOptions get defaultClientOptions => ClientOptions(
   clients: {
+    'pass_compare_card': ClientLoader(
+      (p) => _pass_compare_card.PassCompareCard(
+        pass: p['pass'] as String,
+        before: p['before'] as String,
+        after: p['after'] as String,
+      ),
+      loader: _pass_compare_card.loadLibrary,
+    ),
     'playground': ClientLoader(
       (p) => _playground.Playground(),
       loader: _playground.loadLibrary,
     ),
+    'copy_chip': ClientLoader(
+      (p) => _copy_chip.CopyChip(text: p['text'] as String),
+      loader: _copy_chip.loadLibrary,
+    ),
     'jaspr_content:code_block_copy_button': ClientLoader(
       (p) => _code_block_copy_button.CodeBlockCopyButton(),
       loader: _code_block_copy_button.loadLibrary,
+    ),
+    'jaspr_content:tab_bar': ClientLoader(
+      (p) => _tab_bar.TabBar(
+        initialValue: p['initialValue'] as String,
+        items: (p['items'] as Map<String, Object?>).cast<String, String>(),
+      ),
+      loader: _tab_bar.loadLibrary,
     ),
     'jaspr_content:zoomable_image': ClientLoader(
       (p) => _zoomable_image.ZoomableImage(

@@ -1,0 +1,325 @@
+/*
+ * Rulebook page components: the facts strip, guarantees cards, the
+ * previous/next pager and the overview grid. Page colors follow ContentTheme
+ * (light/dark); pass colors (--pc via .pc-<slug>) come from code-card.css.
+ */
+
+:root {
+  --rb-border: color-mix(in srgb, var(--content-headings) 12%, transparent);
+  --rb-card: color-mix(in srgb, var(--content-headings) 3%, var(--background));
+  --rb-muted: color-mix(in srgb, var(--text) 72%, transparent);
+  --rb-ok: #16a34a;
+  --rb-warn: #d97706;
+}
+
+[data-theme="dark"] {
+  --rb-ok: #4ade80;
+  --rb-warn: #fbbf24;
+}
+
+/* A pass's dot, wherever it appears. */
+.pf-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--pc, var(--primary));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc, var(--primary)) 22%, transparent);
+}
+
+/* A thin pass-colored edge along the top of a card. */
+.pp-card::before,
+.rg-card::before,
+.pass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--edge, var(--pc)), transparent 85%);
+}
+
+/* Facts strip under the title */
+
+.pass-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -0.75rem 0 2rem;
+}
+
+.pf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--rb-border);
+  border-radius: 999px;
+  background: var(--rb-card);
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.pf-group {
+  border-color: color-mix(in srgb, var(--pc) 45%, transparent);
+  background: color-mix(in srgb, var(--pc) 10%, var(--background));
+  color: var(--content-headings);
+  font-weight: 600;
+}
+
+.pf-copy {
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.pf-copy:hover {
+  border-color: color-mix(in srgb, var(--pc) 55%, transparent);
+}
+
+.pass-facts .pf-copy code {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--content-headings);
+  font: 600 0.8rem var(--code-mono);
+}
+
+.pf-copy-state {
+  color: var(--rb-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pf-on {
+  border-color: color-mix(in srgb, var(--rb-ok) 40%, transparent);
+  color: var(--rb-ok);
+}
+
+.pf-keeps {
+  gap: 0.65rem;
+}
+
+.pf-label {
+  color: var(--content-headings);
+  font-weight: 600;
+}
+
+.pf-keep {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.pf-keeps {
+  flex-wrap: wrap;
+  row-gap: 0.15rem;
+}
+
+.pf-mark {
+  color: var(--rb-ok);
+  font-weight: 700;
+}
+
+.pf-off {
+  opacity: 0.55;
+}
+
+.pf-off .pf-mark {
+  color: var(--rb-muted);
+}
+
+/* Guarantees: promises next to caveats */
+
+.pass-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.pass-card {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.2rem 0.25rem;
+  border: 1px solid var(--rb-border);
+  border-radius: 0.9rem;
+  background: var(--rb-card);
+}
+
+.pass-card-ok { --edge: var(--rb-ok); }
+.pass-card-warn { --edge: var(--rb-warn); }
+
+.pass-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--content-headings);
+  font-weight: 700;
+}
+
+.pass-card-mark {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--edge);
+  color: var(--background);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.pass-card-body ul {
+  margin: 0.5rem 0;
+  padding-left: 1.1rem;
+}
+
+.pass-card-body li {
+  margin: 0.55rem 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+/* Previous / next pass */
+
+.pass-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 3.5rem;
+}
+
+.pp-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow: hidden;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--rb-border);
+  border-radius: 0.9rem;
+  background: var(--rb-card);
+  text-decoration: none !important;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.pp-card:hover {
+  border-color: color-mix(in srgb, var(--pc, var(--primary)) 50%, transparent);
+  transform: translateY(-1px);
+}
+
+.pp-next {
+  grid-column: 2;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.pp-dir {
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+}
+
+.pp-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--content-headings);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* Overview grid */
+
+.pass-grid .rg-group {
+  margin: 2rem 0 0.8rem;
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rg-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.9rem;
+}
+
+.rg-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--rb-border);
+  border-radius: 0.9rem;
+  background: var(--rb-card);
+  text-decoration: none !important;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.rg-card:hover {
+  border-color: color-mix(in srgb, var(--pc) 50%, transparent);
+  transform: translateY(-1px);
+}
+
+.rg-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--content-headings);
+  font-weight: 650;
+}
+
+.rg-summary {
+  color: var(--rb-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.rg-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.55rem;
+  background: #0a0f1c;
+  font: 0.74rem/1.5 var(--code-mono);
+}
+
+.pass-grid .rg-code code {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+}
+
+.pass-grid .rg-before {
+  color: #8b949e;
+}
+
+.rg-arrow {
+  color: #4b5563;
+}
+
+.pass-grid .rg-after {
+  color: var(--pc);
+}
+
+@media (max-width: 640px) {
+  .pass-pager {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pp-next {
+    grid-column: 1;
+  }
+}

@@ -610,7 +610,7 @@ packages:
     source: hosted
     version: "1.4.0"
   universal_web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: universal_web
       sha256: c58bee740bb9672a3df36cef9b8ee06e75e738d91bcb4309f1ada62a0763a1c0
