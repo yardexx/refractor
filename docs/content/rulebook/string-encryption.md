@@ -66,10 +66,27 @@ See [Policy](/architecture/policy).
 
 ## Example
 
-```dart
-// before
-final banner = 'Welcome to Acme';
+The `const` string has to stay a compile-time constant, so it is left alone; the other literal is replaced by a call to the injected decoder.
 
-// after (illustrative)
-final banner = _obfDecode$([0x1d, 0x2f, ...], 0x8c3f1a2b);
+<PassCompare pass="strings">
+
+```dart
+const appName = 'Acme Pay';
+
+String banner() {
+  final greeting = 'Welcome to Acme';
+  return greeting;
+}
 ```
+
+```dart
+const appName = 'Acme Pay';
+
+String banner() {
+  final greeting = refractorDecode(
+      [0x1d, 0x2f, 0x84, 0x3a, 0x5c, …], 0x8c3f1a2b);
+  return greeting;
+}
+```
+
+</PassCompare>

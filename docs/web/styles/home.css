@@ -1,7 +1,7 @@
 /*
  * Landing page (layout: home). Page colors come from ContentTheme's CSS
  * variables, so light and dark follow the header's theme toggle. The
- * playground card is dark in both themes, like a code editor.
+ * playground's code card comes from code-card.css.
  */
 
 .home {
@@ -10,16 +10,6 @@
   --home-muted: color-mix(in srgb, var(--text) 75%, transparent);
   --home-border: color-mix(in srgb, var(--content-headings) 11%, transparent);
   --home-card: color-mix(in srgb, var(--content-headings) 3%, var(--background));
-  --home-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  /* One color per pass: the chip, its prism band and the tokens it changes.
-     They run down the rainbow in pass order, like the logo's spectrum. */
-  --ray-rename: #ef4444;
-  --ray-strings: #f97316;
-  --ray-ints: #facc15;
-  --ray-arith: #22c55e;
-  --ray-flatten: #3b82f6;
-  --ray-dead: #a855f7;
 
   min-height: 100vh;
   overflow-x: clip;
@@ -210,7 +200,7 @@
   border-radius: 0.6rem;
   background: transparent;
   color: var(--home-muted);
-  font: 0.8rem/1.4 var(--home-mono);
+  font: 0.8rem/1.4 var(--code-mono);
   white-space: nowrap;
 }
 
@@ -246,28 +236,8 @@
   text-decoration: underline;
 }
 
-.pg {
-  --pg-bg: #0a0f1c;
-  --pg-pane: #0e1525;
-  --pg-line: rgba(255, 255, 255, 0.07);
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.1rem;
-  background: var(--pg-bg);
-  color: #c9d1d9;
-  box-shadow:
-    0 30px 80px -30px rgba(0, 40, 100, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.pg::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(64, 196, 255, 0.7), rgba(139, 92, 246, 0.7), transparent);
-}
+/* Playground-only parts of the code card (the card itself, panes, tokens and
+   prism are in code-card.css). */
 
 .pg-toolbar {
   display: flex;
@@ -357,173 +327,24 @@
 }
 
 /* The output runs much wider than the source, so it gets the larger share. */
-.pg-stage {
-  display: grid;
+.home-demo .pg-stage {
   grid-template-columns: minmax(0, 0.9fr) 9rem minmax(0, 1.3fr);
 }
 
+/* Tall enough for the longest output (17 lines), so toggling never jumps. */
+.home-demo .pg .pg-code {
+  min-height: calc(17 * 1.75em + 1.8rem);
+}
+
 @media (max-width: 1200px) {
-  .pg-stage {
+  .home-demo .pg-stage {
     grid-template-columns: minmax(0, 0.9fr) 7rem minmax(0, 1.3fr);
   }
 
-  .pg-code {
+  .home-demo .pg .pg-code {
     font-size: 11.5px;
   }
 }
-
-.pg-pane {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  background: var(--pg-pane);
-}
-
-.pg-pane-head {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.9rem;
-  border-bottom: 1px solid var(--pg-line);
-  color: #8b949e;
-  font: 0.75rem var(--home-mono);
-}
-
-.pg-lights {
-  display: inline-flex;
-  gap: 0.3rem;
-}
-
-.pg-lights span {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.pg-tag {
-  margin-left: auto;
-  padding: 0.1rem 0.45rem;
-  border-radius: 0.35rem;
-  background: rgba(255, 255, 255, 0.05);
-  color: #6e7681;
-  font-size: 0.68rem;
-}
-
-.pg-code {
-  flex: 1;
-  /* Tall enough for the longest output (17 lines), so toggling never jumps. */
-  min-height: calc(17 * 1.75em + 1.8rem);
-  margin: 0;
-  padding: 0.9rem 0;
-  overflow-x: auto;
-  counter-reset: ln;
-  background: transparent;
-  color: #c9d1d9;
-  font: 12.5px/1.75 var(--home-mono);
-}
-
-.pg-line {
-  display: block;
-  min-height: 1.75em;
-  padding-right: 1rem;
-  white-space: pre;
-}
-
-.pg-line::before {
-  content: counter(ln);
-  counter-increment: ln;
-  display: inline-block;
-  width: 2.4rem;
-  padding-right: 0.9rem;
-  color: #3d4654;
-  text-align: right;
-  user-select: none;
-}
-
-.tk-kw { color: #ff7b72; }
-.tk-ty { color: #ffa657; }
-.tk-id { color: #e6edf3; }
-.tk-fn { color: #d2a8ff; }
-.tk-str { color: #a5d6ff; }
-.tk-num { color: #7ee787; }
-.tk-lbl { color: #8b949e; font-style: italic; }
-.tk-p { color: #8b949e; }
-
-.pg .sym {
-  cursor: help;
-}
-
-/* Tokens a pass produced glow in that pass's color. */
-.pg-out .fx {
-  --c: #fff;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--c) 9%, transparent);
-  box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--c) 65%, transparent);
-  animation: pg-in 0.6s ease-out;
-}
-
-.fx-rename { --c: var(--ray-rename); }
-.fx-strings { --c: var(--ray-strings); }
-.fx-ints { --c: var(--ray-ints); }
-.fx-arith { --c: var(--ray-arith); }
-.fx-flatten { --c: var(--ray-flatten); }
-.fx-dead { --c: var(--ray-dead); }
-
-@keyframes pg-in {
-  from {
-    opacity: 0;
-    filter: blur(4px);
-    background: color-mix(in srgb, var(--c) 45%, transparent);
-  }
-}
-
-.pg .hl {
-  border-radius: 3px;
-  background: color-mix(in srgb, #40c4ff 30%, transparent);
-  box-shadow: 0 0 0 1px rgba(64, 196, 255, 0.75);
-  color: #fff;
-}
-
-.pg-prism {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-right: 1px solid var(--pg-line);
-  border-left: 1px solid var(--pg-line);
-  background: radial-gradient(closest-side, rgba(64, 196, 255, 0.08), transparent), var(--pg-bg);
-}
-
-.pg-prism svg {
-  width: 100%;
-  height: auto;
-  max-height: 18rem;
-  overflow: visible;
-}
-
-.pg-prism .glass {
-  fill: #fff;
-}
-
-.pg-prism .beam {
-  animation: pg-beam 3s ease-in-out infinite;
-}
-
-@keyframes pg-beam {
-  50% { opacity: 0.55; }
-}
-
-.pg-prism .ray {
-  opacity: 0.12;
-  transition: opacity 0.45s ease;
-}
-
-.ray-rename { fill: var(--ray-rename); }
-.ray-strings { fill: var(--ray-strings); }
-.ray-ints { fill: var(--ray-ints); }
-.ray-arith { fill: var(--ray-arith); }
-.ray-flatten { fill: var(--ray-flatten); }
-.ray-dead { fill: var(--ray-dead); }
 
 .pg.on-rename .ray-rename,
 .pg.on-strings .ray-strings,
@@ -542,7 +363,7 @@
   padding: 0.6rem 1rem;
   border-top: 1px solid var(--pg-line);
   color: #8b949e;
-  font: 0.75rem var(--home-mono);
+  font: 0.75rem var(--code-mono);
 }
 
 .pg-lookup {
@@ -561,29 +382,11 @@
     order: 3;
   }
 
-  .pg-stage {
+  .home-demo .pg-stage {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* A full-width strip: the prism stays upright, as in the logo. */
-  .pg-prism {
-    height: 7.5rem;
-    border: 0;
-    border-top: 1px solid var(--pg-line);
-    border-bottom: 1px solid var(--pg-line);
-  }
-
-  .pg-prism svg {
-    width: auto;
-    height: 7rem;
-    max-height: none;
-  }
-
-  .pg-code {
-    font-size: 11.5px;
-  }
-
-  .pg-pane:first-child .pg-code {
+  .home-demo .pg-pane:first-child .pg-code {
     min-height: 0;
   }
 }

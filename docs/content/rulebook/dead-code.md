@@ -60,18 +60,26 @@ is left untouched. The entry point's name is irrelevant to it. See
 
 ## Example
 
-```dart
-// before
-int scale(int p) {
-  return p * 2;
-}
+The guard reads the `int` parameter `p`, so the compiler can't fold it away, and a masked square is never negative, so the block never runs.
 
-// after (illustrative; guard is always false)
+<PassCompare pass="dead">
+
+```dart
+int scale(int p) {
+  final factor = p * 2;
+  return factor + 1;
+}
+```
+
+```dart
 int scale(int p) {
   if ((p & 0xFFFF) * (p & 0xFFFF) < 0) {
     p + 40503;
     p * 12789;
   }
-  return p * 2;
+  final factor = p * 2;
+  return factor + 1;
 }
 ```
+
+</PassCompare>

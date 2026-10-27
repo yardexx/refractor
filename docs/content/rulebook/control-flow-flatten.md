@@ -61,20 +61,29 @@ keeps its control flow intact. The entry point's name is irrelevant to it. See
 
 ## Example
 
-```dart
-// before
-void render() {
-  setup();
-  draw();
-  teardown();
-}
+The four statements become shuffled cases entered at case 2. The `continue` labels still run them in their original order, and `total` is hoisted so every case can see it.
 
-// after (illustrative: a switch state machine entered at case 0)
-void render() {
-  switch (0) {
-    case 1: draw(); continue L2;
-    case 0: setup(); continue L1;
-    case 2: teardown(); break;
+<PassCompare pass="flatten">
+
+```dart
+int checkout(Cart cart) {
+  final total = cart.sum();
+  log(total);
+  charge(total);
+  return total;
+}
+```
+
+```dart
+int checkout(Cart cart) {
+  int total;
+  switch (2) {
+    L0: case 0: log(total); continue L3;
+    L1: case 1: return total;
+    L2: case 2: total = cart.sum(); continue L0;
+    L3: case 3: charge(total); continue L1;
   }
 }
 ```
+
+</PassCompare>

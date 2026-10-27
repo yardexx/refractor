@@ -6,7 +6,8 @@ import 'playground.dart';
 
 /// The landing page: a hero, the pass [Playground], and a short pitch.
 ///
-/// Selected with `layout: home`. Styles live in `web/styles/home.css`.
+/// Selected with `layout: home`. Styles live in `web/styles/home.css`, and the
+/// playground's code card in `web/styles/code-card.css`.
 class HomeLayout extends PageLayoutBase {
   const HomeLayout({required this.header});
 
@@ -20,6 +21,7 @@ class HomeLayout extends PageLayoutBase {
   @override
   Iterable<Component> buildHead(Page page) sync* {
     yield* super.buildHead(page);
+    yield link(id: 'code-card-css', rel: 'stylesheet', href: '/styles/code-card.css');
     yield link(rel: 'stylesheet', href: '/styles/home.css');
   }
 

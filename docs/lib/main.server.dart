@@ -14,6 +14,7 @@ import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
 import 'components/brand_header.dart';
+import 'components/pass_compare.dart';
 import 'home/home_layout.dart';
 import 'main.server.options.dart';
 
@@ -35,7 +36,7 @@ void main() {
       templateEngine: MustacheTemplateEngine(),
       parsers: [MarkdownParser()],
       extensions: [HeadingAnchorsExtension(), TableOfContentsExtension()],
-      components: [Callout(), CodeBlock(), Image(zoom: true)],
+      components: [Callout(), CodeBlock(), Image(zoom: true), PassCompare()],
       layouts: [
         const EmptyLayout(),
         HomeLayout(header: _header(docs: false)),

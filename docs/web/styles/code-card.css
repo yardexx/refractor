@@ -1,0 +1,287 @@
+/*
+ * The dark code card shared by the landing page playground and the Rulebook
+ * comparisons (PassCompare): panes, syntax colors, the glow on changed code,
+ * and the logo's prism between the panes.
+ */
+
+:root {
+  --code-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* One color per pass, down the rainbow in Rulebook order. The playground's
+     six passes use the first six; the chip, prism band and changed tokens of
+     a pass share its color. */
+  --ray-rename: #ef4444;
+  --ray-strings: #f97316;
+  --ray-ints: #facc15;
+  --ray-arith: #22c55e;
+  --ray-flatten: #3b82f6;
+  --ray-dead: #a855f7;
+  --ray-opaque: #06b6d4;
+  --ray-bogus: #ec4899;
+  --ray-call: #6366f1;
+}
+
+.pg {
+  --pg-bg: #0a0f1c;
+  --pg-pane: #0e1525;
+  --pg-line: rgba(255, 255, 255, 0.07);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.1rem;
+  background: var(--pg-bg);
+  color: #c9d1d9;
+  box-shadow:
+    0 30px 80px -30px rgba(0, 40, 100, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.pg::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(64, 196, 255, 0.7), rgba(139, 92, 246, 0.7), transparent);
+}
+
+.pg-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem minmax(0, 1fr);
+}
+
+.pg-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--pg-pane);
+}
+
+.pg-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--pg-line);
+  color: #8b949e;
+  font: 0.75rem var(--code-mono);
+}
+
+.pg-lights {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.pg-lights span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pg-tag {
+  margin-left: auto;
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: #6e7681;
+  font-size: 0.68rem;
+}
+
+/* Doubled class beats prose styles for `pre` inside docs content. */
+.pg .pg-code {
+  flex: 1;
+  margin: 0;
+  padding: 0.9rem 0;
+  overflow-x: auto;
+  counter-reset: ln;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #c9d1d9;
+  font: 12.5px/1.75 var(--code-mono);
+}
+
+.pg-line {
+  display: block;
+  min-height: 1.75em;
+  padding-right: 1rem;
+  white-space: pre;
+}
+
+.pg-line::before {
+  content: counter(ln);
+  counter-increment: ln;
+  display: inline-block;
+  width: 2.4rem;
+  padding-right: 0.9rem;
+  color: #3d4654;
+  text-align: right;
+  user-select: none;
+}
+
+.tk-kw { color: #ff7b72; }
+.tk-ty { color: #ffa657; }
+.tk-id { color: #e6edf3; }
+.tk-fn { color: #d2a8ff; }
+.tk-str { color: #a5d6ff; }
+.tk-num { color: #7ee787; }
+.tk-lbl { color: #8b949e; font-style: italic; }
+.tk-cm { color: #6e7681; font-style: italic; }
+.tk-p { color: #8b949e; }
+
+.pg .sym {
+  cursor: help;
+}
+
+/* Tokens a pass produced glow in that pass's color. */
+.pg-out .fx {
+  --c: #fff;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--c) 9%, transparent);
+  box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--c) 65%, transparent);
+  animation: pg-in 0.6s ease-out;
+}
+
+.fx-rename { --c: var(--ray-rename); }
+.fx-strings { --c: var(--ray-strings); }
+.fx-ints { --c: var(--ray-ints); }
+.fx-arith { --c: var(--ray-arith); }
+.fx-flatten { --c: var(--ray-flatten); }
+.fx-dead { --c: var(--ray-dead); }
+
+@keyframes pg-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    background: color-mix(in srgb, var(--c) 45%, transparent);
+  }
+}
+
+/* What the pass replaced, in the "before" pane. */
+.pg .gone {
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 -1.5px 0 rgba(255, 255, 255, 0.2);
+}
+
+.pg .hl {
+  border-radius: 3px;
+  background: color-mix(in srgb, #40c4ff 30%, transparent);
+  box-shadow: 0 0 0 1px rgba(64, 196, 255, 0.75);
+  color: #fff;
+}
+
+.pg-prism {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--pg-line);
+  border-left: 1px solid var(--pg-line);
+  background: radial-gradient(closest-side, rgba(64, 196, 255, 0.08), transparent), var(--pg-bg);
+}
+
+.pg-prism svg {
+  width: 100%;
+  height: auto;
+  max-height: 18rem;
+  overflow: visible;
+}
+
+.pg-prism .glass {
+  fill: #fff;
+}
+
+.pg-prism .beam {
+  animation: pg-beam 3s ease-in-out infinite;
+}
+
+@keyframes pg-beam {
+  50% { opacity: 0.55; }
+}
+
+.pg-prism .ray {
+  opacity: 0.12;
+  transition: opacity 0.45s ease;
+}
+
+.ray-rename { fill: var(--ray-rename); }
+.ray-strings { fill: var(--ray-strings); }
+.ray-ints { fill: var(--ray-ints); }
+.ray-arith { fill: var(--ray-arith); }
+.ray-flatten { fill: var(--ray-flatten); }
+.ray-dead { fill: var(--ray-dead); }
+
+/* Stacked: before above after, with the prism as an upright strip between.
+   The Rulebook cards always stack; any card stacks on narrow screens. */
+.pg-stacked .pg-stage {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pg-stacked .pg-prism {
+  height: 7.5rem;
+  border: 0;
+  border-top: 1px solid var(--pg-line);
+  border-bottom: 1px solid var(--pg-line);
+}
+
+.pg-stacked .pg-prism svg {
+  width: auto;
+  height: 7rem;
+  max-height: none;
+}
+
+@media (max-width: 900px) {
+  .pg-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pg-prism {
+    height: 7.5rem;
+    border: 0;
+    border-top: 1px solid var(--pg-line);
+    border-bottom: 1px solid var(--pg-line);
+  }
+
+  .pg-prism svg {
+    width: auto;
+    height: 7rem;
+    max-height: none;
+  }
+
+  .pg .pg-code {
+    font-size: 11.5px;
+  }
+}
+
+/* Rulebook comparisons: the pass's color lights the prism and the glow. */
+.pc {
+  --pc: #fff;
+  margin: 1.5rem 0;
+}
+
+.pc-rename { --pc: var(--ray-rename); }
+.pc-strings { --pc: var(--ray-strings); }
+.pc-ints { --pc: var(--ray-ints); }
+.pc-arith { --pc: var(--ray-arith); }
+.pc-flatten { --pc: var(--ray-flatten); }
+.pc-dead { --pc: var(--ray-dead); }
+.pc-opaque { --pc: var(--ray-opaque); }
+.pc-bogus { --pc: var(--ray-bogus); }
+.pc-call { --pc: var(--ray-call); }
+
+.pc .pg-prism .ray {
+  fill: var(--pc);
+  opacity: 1;
+}
+
+.pc .pg-out .fx {
+  --c: var(--pc);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg *,
+  .pg *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}

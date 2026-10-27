@@ -70,10 +70,22 @@ in scope to be routed). The entry point's name is irrelevant to it. See
 
 ## Example
 
-```dart
-// before
-final result = computeTotal(cart, taxRate);
+`sum` and `withTax` are top-level functions called with positional arguments, so both calls are routed through the forwarder; `as double` restores the static type.
 
-// after (illustrative)
-final result = refractorCall(computeTotal, [cart, taxRate]) as int;
+<PassCompare pass="call">
+
+```dart
+double total(List<double> items) {
+  final net = sum(items);
+  return withTax(net);
+}
 ```
+
+```dart
+double total(List<double> items) {
+  final net = refractorCall(sum, [items]) as double;
+  return refractorCall(withTax, [net]) as double;
+}
+```
+
+</PassCompare>

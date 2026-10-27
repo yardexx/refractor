@@ -65,14 +65,25 @@ it does not honor that keep source. See [Policy](/architecture/policy).
 
 ## Example
 
-```dart
-// before
-if (user.isAdmin) {
-  grantAccess();
-}
+`amount` is the nearest `int` in scope, so the predicate is keyed off it. A masked square is never negative, so the branch still depends only on `order.isPaid`.
 
-// after (illustrative; v is a live int in scope)
-if (user.isAdmin && (v & 0xFFFF) * (v & 0xFFFF) >= 0) {
-  grantAccess();
+<PassCompare pass="opaque">
+
+```dart
+void refund(Order order, int amount) {
+  if (order.isPaid) {
+    issueRefund(order, amount);
+  }
 }
 ```
+
+```dart
+void refund(Order order, int amount) {
+  if (order.isPaid &&
+      (amount & 0xFFFF) * (amount & 0xFFFF) >= 0) {
+    issueRefund(order, amount);
+  }
+}
+```
+
+</PassCompare>

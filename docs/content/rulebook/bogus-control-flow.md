@@ -69,21 +69,27 @@ keeps its control flow intact. The entry point's name is irrelevant to it. See
 
 ## Example
 
-```dart
-// before
-int fee(int amount) {
-  final base = amount * 2;
-  return base + 7;
-}
+The guard is always true, so only the first branch runs. The `else` is a clone of the real body rather than junk, so it can't be dismissed at a glance.
 
-// after (illustrative; guard is always true, else-branch never runs)
+<PassCompare pass="bogus">
+
+```dart
+int fee(int amount) {
+  final base = amount ~/ 40;
+  return base + 25;
+}
+```
+
+```dart
 int fee(int amount) {
   if ((amount & 0xFFFF) * (amount & 0xFFFF) >= 0) {
-    final base = amount * 2;
-    return base + 7;
+    final base = amount ~/ 40;
+    return base + 25;
   } else {
-    final base = amount * 2;
-    return base + 7;
+    final base = amount ~/ 40;
+    return base + 25;
   }
 }
 ```
+
+</PassCompare>

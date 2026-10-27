@@ -65,10 +65,26 @@ name is irrelevant to it. See [Policy](/architecture/policy).
 
 ## Example
 
-```dart
-// before
-int timeoutMs = 30000;
+`30000` is encoded behind the decoder; the `const` and the `1` (below `min_magnitude`) stay inline.
 
-// after (illustrative)
-int timeoutMs = refractorDecodeInt(0x6c21a9f3, 0x6c219c03);
+<PassCompare pass="ints">
+
+```dart
+const maxRetries = 3;
+
+Duration timeout(int attempt) {
+  final ms = 30000;
+  return Duration(milliseconds: ms * (attempt + 1));
+}
 ```
+
+```dart
+const maxRetries = 3;
+
+Duration timeout(int attempt) {
+  final ms = refractorDecodeInt(0x6c21a9f3, 0x6c21dcc3);
+  return Duration(milliseconds: ms * (attempt + 1));
+}
+```
+
+</PassCompare>

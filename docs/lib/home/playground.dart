@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
+import '../components/prism_art.dart';
+
 /// The passes the playground can toggle, in the order Refractor runs them.
 enum DemoPass {
   rename('Rename', 'rename'),
@@ -361,25 +363,6 @@ List<_Line> _render(Set<DemoPass> on) {
   return lines;
 }
 
-/// The logo's prism (same proportions, outline weight, crossbar beam and
-/// spectrum angles) with one band per pass. Bands light up via the
+/// The logo's prism with one band per pass; bands light up via the
 /// `on-<slug>` classes on the playground root.
-const _prismSvg = '''
-<svg viewBox="0 0 180 210" aria-hidden="true">
-  <defs>
-    <linearGradient id="pg-beam" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="51.1" y2="0">
-      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
-      <stop offset=".7" stop-color="#fff"/>
-    </linearGradient>
-  </defs>
-  <path class="beam" d="M0 126.8L62.8 115.7L62.8 120.9L0 129.8Z" fill="url(#pg-beam)"/>
-  <path class="ray ray-rename" d="M115.1 115.7L180 94L180 103.7L115.1 116.6Z"/>
-  <path class="ray ray-strings" d="M115.1 116.6L180 103.7L180 113.4L115.1 117.5Z"/>
-  <path class="ray ray-ints" d="M115.1 117.5L180 113.4L180 123.2L115.1 118.3Z"/>
-  <path class="ray ray-arith" d="M115.1 118.3L180 123.2L180 132.9L115.1 119.2Z"/>
-  <path class="ray ray-flatten" d="M115.1 119.2L180 132.9L180 142.7L115.1 120Z"/>
-  <path class="ray ray-dead" d="M115.1 120L180 142.7L180 152.4L115.1 120.9Z"/>
-  <path class="glass" d="M86 62L31.4 150L140.6 150ZM86 84.2L119.5 138.3L52.5 138.3Z" fill-rule="evenodd"/>
-  <path class="glass" d="M66.4 115.7L105.6 115.7L108.7 120.9L63.3 120.9Z"/>
-</svg>
-''';
+final _prismSvg = prismSvg([for (final pass in DemoPass.values) 'ray ray-${pass.slug}']);

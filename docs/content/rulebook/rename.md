@@ -67,14 +67,32 @@ annotations, and the entry point (`main`'s name is preserved). See
 
 ## Example
 
-```dart
-// before
-class PaymentProcessor {
-  String chargeCard(String token) => _gateway.charge(token);
-}
+`Gateway` comes from a dependency, so it and its `charge` method keep their names; everything declared in your package is renamed.
 
-// after (names illustrative)
-class a {
-  String b(String c) => _d.charge(c);
+<PassCompare pass="rename">
+
+```dart
+class PaymentProcessor {
+  final Gateway gateway;
+  PaymentProcessor(this.gateway);
+
+  String chargeCard(String token) {
+    final receipt = gateway.charge(token);
+    return receipt.id;
+  }
 }
 ```
+
+```dart
+class a {
+  final Gateway b;
+  a(this.b);
+
+  String c(String d) {
+    final e = b.charge(d);
+    return e.id;
+  }
+}
+```
+
+</PassCompare>

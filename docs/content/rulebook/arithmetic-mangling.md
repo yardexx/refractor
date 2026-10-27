@@ -57,10 +57,22 @@ name is irrelevant to it. See [Policy](/architecture/policy).
 
 ## Example
 
-```dart
-// before
-int total = price + tax;
+The `+` becomes the XOR/AND identity and the `*` is split around a constant; both compute the same number.
 
-// after (illustrative)
-int total = (price ^ tax) + ((price & tax) << 1);
+<PassCompare pass="arith">
+
+```dart
+int total(int price, int tax, int qty) {
+  final sum = price + tax;
+  return sum * qty;
+}
 ```
+
+```dart
+int total(int price, int tax, int qty) {
+  final sum = (price ^ tax) + ((price & tax) << 1);
+  return sum * (qty + 7) - sum * 7;
+}
+```
+
+</PassCompare>
