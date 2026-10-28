@@ -118,53 +118,119 @@
 /* Guarantees: promises next to caveats */
 
 .pass-cards {
+  --icon-shield: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E");
+  --icon-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
+  --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  --icon-bang: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6v7'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E");
+
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
   gap: 1rem;
-  margin: 1rem 0 1.5rem;
+  margin: 1.25rem 0 1.75rem;
 }
 
 .pass-card {
   position: relative;
   overflow: hidden;
-  padding: 1rem 1.2rem 0.25rem;
-  border: 1px solid var(--rb-border);
+  border: 1px solid color-mix(in srgb, var(--edge) 22%, var(--rb-border));
   border-radius: 0.9rem;
-  background: var(--rb-card);
+  background:
+    radial-gradient(110% 70% at 0% 0%, color-mix(in srgb, var(--edge) 9%, transparent), transparent 65%),
+    var(--rb-card);
 }
 
-.pass-card-ok { --edge: var(--rb-ok); }
-.pass-card-warn { --edge: var(--rb-warn); }
+.pass-card-ok {
+  --edge: var(--rb-ok);
+  --head-icon: var(--icon-shield);
+  --item-icon: var(--icon-check);
+}
+
+.pass-card-warn {
+  --edge: var(--rb-warn);
+  --head-icon: var(--icon-alert);
+  --item-icon: var(--icon-bang);
+}
 
 .pass-card-head {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.7rem;
+  padding: 0.95rem 1.15rem 0.85rem;
+  border-bottom: 1px solid var(--rb-border);
   color: var(--content-headings);
+  font-size: 0.98rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .pass-card-mark {
-  display: grid;
-  place-items: center;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 50%;
+  position: relative;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--edge) 15%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--edge) 30%, transparent);
+}
+
+.pass-card-mark::after,
+.pass-card-body li::after {
+  content: "";
+  position: absolute;
   background: var(--edge);
-  color: var(--background);
-  font-size: 0.78rem;
-  font-weight: 800;
+  -webkit-mask: var(--mask) center / contain no-repeat;
+  mask: var(--mask) center / contain no-repeat;
+}
+
+.pass-card-mark::after {
+  --mask: var(--head-icon);
+  inset: 0.45rem;
 }
 
 .pass-card-body ul {
-  margin: 0.5rem 0;
-  padding-left: 1.1rem;
+  margin: 0;
+  padding: 0.3rem 0;
+  list-style: none;
 }
 
 .pass-card-body li {
-  margin: 0.55rem 0;
+  position: relative;
+  margin: 0;
+  padding: 0.7rem 1.15rem 0.7rem 2.85rem;
   font-size: 0.92rem;
-  line-height: 1.55;
+  line-height: 1.6;
+}
+
+.pass-card-body li + li {
+  border-top: 1px dashed var(--rb-border);
+}
+
+/* The item marker: a tinted disc with the icon on top, centred on the first line. */
+.pass-card-body li::before {
+  content: "";
+  position: absolute;
+  top: calc(0.7rem + 0.8em - 0.6rem);
+  left: 1.15rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--edge) 16%, transparent);
+}
+
+.pass-card-body li::after {
+  --mask: var(--item-icon);
+  top: calc(0.7rem + 0.8em - 0.35rem);
+  left: calc(1.15rem + 0.25rem);
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+.pass-card-body li > :first-child {
+  margin-top: 0;
+}
+
+.pass-card-body li > :last-child {
+  margin-bottom: 0;
 }
 
 /* Previous / next pass */

@@ -149,7 +149,7 @@ class Promises extends CustomComponentBase {
 
   @override
   Component apply(String name, Map<String, String> attributes, Component? child) =>
-      _card('pass-card pass-card-ok', '✓', 'What it promises', child);
+      _card('pass-card pass-card-ok', 'What it promises', child);
 }
 
 class Caveats extends CustomComponentBase {
@@ -160,13 +160,14 @@ class Caveats extends CustomComponentBase {
 
   @override
   Component apply(String name, Map<String, String> attributes, Component? child) =>
-      _card('pass-card pass-card-warn', '!', "What it doesn't do", child);
+      _card('pass-card pass-card-warn', "What it doesn't do", child);
 }
 
-Component _card(String classes, String mark, String title, Component? child) {
+/// The icons (header tile and per-item markers) are CSS masks in rulebook.css.
+Component _card(String classes, String title, Component? child) {
   return div(classes: classes, [
     div(classes: 'pass-card-head', [
-      span(classes: 'pass-card-mark', [Component.text(mark)]),
+      span(classes: 'pass-card-mark', attributes: {'aria-hidden': 'true'}, []),
       Component.text(title),
     ]),
     div(classes: 'pass-card-body', [?child]),
