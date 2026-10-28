@@ -1,5 +1,5 @@
 /// Markdown components for the Rulebook pages. Styles live in
-/// `web/styles/rulebook.css`; pass colors come from `code-card.css`.
+/// `web/styles/rulebook.css`; category colors come from `code-card.css`.
 library;
 
 import 'package:jaspr/dom.dart';
@@ -38,7 +38,7 @@ class PassFacts extends CustomComponentBase {
     final pass = _passOf(attributes, name);
     return Component.fragment([
       _styles(),
-      div(classes: 'pass-facts pc-${pass.slug}', [
+      div(classes: 'pass-facts pc-${pass.group.slug}', [
         span(classes: 'pf-chip pf-group', [
           span(classes: 'pf-dot', []),
           Component.text(pass.group.label),
@@ -58,7 +58,7 @@ class PassFacts extends CustomComponentBase {
 }
 
 /// `<PassPager pass="strings">`: links to the previous and next pass, in
-/// Rulebook order, each tinted with its pass color.
+/// Rulebook order, each tinted with its category color.
 class PassPager extends CustomComponentBase {
   const PassPager();
 
@@ -72,13 +72,14 @@ class PassPager extends CustomComponentBase {
     final prev = i > 0 ? rulebookPasses[i - 1] : null;
     final next = i + 1 < rulebookPasses.length ? rulebookPasses[i + 1] : null;
 
-    Component card(PassInfo p, String direction) => a(classes: 'pp-card pp-$direction pc-${p.slug}', href: p.page, [
-      span(classes: 'pp-dir', [Component.text(direction == 'prev' ? '← Previous pass' : 'Next pass →')]),
-      span(classes: 'pp-title', [
-        span(classes: 'pf-dot', []),
-        Component.text(p.title),
-      ]),
-    ]);
+    Component card(PassInfo p, String direction) =>
+        a(classes: 'pp-card pp-$direction pc-${p.group.slug}', href: p.page, [
+          span(classes: 'pp-dir', [Component.text(direction == 'prev' ? '← Previous pass' : 'Next pass →')]),
+          span(classes: 'pp-title', [
+            span(classes: 'pf-dot', []),
+            Component.text(p.title),
+          ]),
+        ]);
 
     return Component.fragment([
       _styles(),
@@ -113,10 +114,13 @@ class PassGrid extends CustomComponentBase {
       _styles(),
       div(classes: 'pass-grid', [
         for (final group in PassGroup.values) ...[
-          h3(classes: 'rg-group', [Component.text(group.label)]),
+          h3(classes: 'rg-group pc-${group.slug}', [
+            span(classes: 'pf-dot', []),
+            Component.text(group.label),
+          ]),
           cardGrid([
             for (final p in rulebookPasses.where((p) => p.group == group))
-              card(title: p.title, href: p.page, color: p.slug, body: Component.text(p.summary)),
+              card(title: p.title, href: p.page, color: p.group.slug, body: Component.text(p.summary)),
           ]),
         ],
       ]),

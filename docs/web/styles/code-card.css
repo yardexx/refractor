@@ -7,18 +7,20 @@
 :root {
   --code-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* One color per pass, down the rainbow in Rulebook order. The playground's
-     six passes use the first six; the chip, prism band and changed tokens of
-     a pass share its color. */
+  /* The landing page playground: one color per pass, down the rainbow. A
+     pass's chip, prism band and changed tokens share its color. */
   --ray-rename: #ef4444;
   --ray-strings: #f97316;
   --ray-ints: #facc15;
   --ray-arith: #22c55e;
   --ray-flatten: #3b82f6;
   --ray-dead: #a855f7;
-  --ray-opaque: #06b6d4;
-  --ray-bogus: #ec4899;
-  --ray-call: #6366f1;
+
+  /* The docs pages: one color per Rulebook category, clear of the green and
+     amber that mark stable/experimental and promises/caveats. */
+  --group-naming: #ec4899;
+  --group-expressions: #06b6d4;
+  --group-control: #8b5cf6;
 }
 
 .pg {
@@ -241,7 +243,7 @@
 }
 
 /* Rulebook comparisons: before and after side by side, sized to the card
-   itself so they only stack when the card gets narrow. The pass's color runs
+   itself so they only stack when the card gets narrow. The category color runs
    along the top edge, marks the "after" pane and lights the changed code. */
 .pc {
   --pc: #fff;
@@ -249,15 +251,9 @@
   margin: 1.5rem 0;
 }
 
-.pc-rename { --pc: var(--ray-rename); }
-.pc-strings { --pc: var(--ray-strings); }
-.pc-ints { --pc: var(--ray-ints); }
-.pc-arith { --pc: var(--ray-arith); }
-.pc-flatten { --pc: var(--ray-flatten); }
-.pc-dead { --pc: var(--ray-dead); }
-.pc-opaque { --pc: var(--ray-opaque); }
-.pc-bogus { --pc: var(--ray-bogus); }
-.pc-call { --pc: var(--ray-call); }
+.pc-naming { --pc: var(--group-naming); }
+.pc-expressions { --pc: var(--group-expressions); }
+.pc-control { --pc: var(--group-control); }
 
 .pc::before {
   background: linear-gradient(90deg, transparent, var(--pc) 50%, transparent);

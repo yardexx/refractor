@@ -1,8 +1,8 @@
 /*
  * Cards (components/cards.dart): a grid of titled cards with a colored dot,
  * a short body and an optional link. Page colors follow ContentTheme
- * (light/dark); --pc comes from a pass's .pc-<slug> class (code-card.css) or
- * the card's own color attribute.
+ * (light/dark); --pc comes from a category's .pc-<slug> class (code-card.css)
+ * or the card's own color attribute.
  */
 
 .cards {

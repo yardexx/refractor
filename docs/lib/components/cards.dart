@@ -3,7 +3,7 @@
 ///
 /// ````md
 /// <Cards>
-/// <Card title="Rename" href="/rulebook/rename" color="rename">
+/// <Card title="Rename" href="/rulebook/rename" color="naming">
 ///
 /// Rewrites identifiers to short, meaningless names.
 ///
@@ -11,9 +11,9 @@
 /// </Cards>
 /// ````
 ///
-/// `color` is a pass slug (`rename`, `strings`, … as in code-card.css) or any
-/// CSS color; it tints the dot, the top edge and the hover border. Leave a blank
-/// line around the body so its markdown is parsed.
+/// `color` is a Rulebook category (`naming`, `expressions`, `control`, as in
+/// code-card.css) or any CSS color; it tints the dot, the top edge and the
+/// hover border. Leave a blank line around the body so its markdown is parsed.
 library;
 
 import 'package:jaspr/dom.dart';
@@ -64,9 +64,9 @@ Component cardGrid(List<Component> cards) => Component.fragment([
 
 /// One card. With [href] the whole card is a link.
 Component card({required String title, String? href, String? color, Component? body}) {
-  final isPass = color != null && rulebookPasses.any((pass) => pass.slug == color);
-  final classes = ['card', if (isPass) 'pc-$color'].join(' ');
-  final styles = color != null && !isPass ? Styles(raw: {'--pc': color}) : null;
+  final isGroup = color != null && PassGroup.values.any((group) => group.slug == color);
+  final classes = ['card', if (isGroup) 'pc-$color'].join(' ');
+  final styles = color != null && !isGroup ? Styles(raw: {'--pc': color}) : null;
   final content = [
     span(classes: 'card-title', [
       span(classes: 'card-dot', []),

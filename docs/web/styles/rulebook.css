@@ -2,7 +2,7 @@
  * Rulebook page components: the facts strip (group, config key, status), guarantees cards, the
  * previous/next pager and the overview grid's group headings (the cards
  * themselves are in cards.css). Page colors follow ContentTheme
- * (light/dark); pass colors (--pc via .pc-<slug>) come from code-card.css.
+ * (light/dark); category colors (--pc via .pc-<slug>) come from code-card.css.
  */
 
 :root {
@@ -18,7 +18,7 @@
   --rb-warn: #fbbf24;
 }
 
-/* A pass's dot, wherever it appears. */
+/* The colored dot beside a pass or category name. */
 .pf-dot {
   flex: none;
   width: 0.55rem;
@@ -284,6 +284,9 @@
 /* Overview grid */
 
 .pass-grid .rg-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin: 2rem 0 0.8rem;
   color: var(--rb-muted);
   font-size: 0.78rem;

@@ -3,14 +3,18 @@
 library;
 
 enum PassGroup {
-  naming('Naming & data'),
-  expressions('Expressions'),
-  controlFlow('Control flow')
+  naming('Naming & data', 'naming'),
+  expressions('Expressions', 'expressions'),
+  controlFlow('Control flow', 'control')
   ;
 
-  const PassGroup(this.label);
+  const PassGroup(this.label, this.slug);
 
   final String label;
+
+  /// Color hook (`pc-<slug>` in code-card.css). On the docs pages a pass takes
+  /// its category's color; per-pass colors are only for the landing page.
+  final String slug;
 }
 
 class PassInfo {
@@ -24,7 +28,7 @@ class PassInfo {
     this.stable = false,
   });
 
-  /// Color and CSS hook (`pc-<slug>`, `--ray-<slug>`).
+  /// The id the components' `pass="…"` attribute takes.
   final String slug;
 
   /// Path of the Rulebook page.

@@ -2,6 +2,7 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
+import '../rulebook/passes.dart';
 import 'pass_compare_card.dart';
 
 /// A side-by-side before/after comparison in the landing page's code card.
@@ -23,9 +24,8 @@ import 'pass_compare_card.dart';
 /// ````
 ///
 /// Both snippets are syntax-highlighted and diffed token by token: what the
-/// pass changed glows in its color in the "after" pane, and what it replaced
-/// is marked in the "before" pane. `pass` picks the color (`pc-<pass>` in
-/// `web/styles/code-card.css`).
+/// pass changed glows in its category's color in the "after" pane, and what it
+/// replaced is marked in the "before" pane.
 class PassCompare extends CustomComponent {
   PassCompare() : super.base();
 
@@ -40,7 +40,7 @@ class PassCompare extends CustomComponent {
         Document.head(
           children: [link(id: 'code-card-css', rel: 'stylesheet', href: '/styles/code-card.css')],
         ),
-        PassCompareCard(pass: attributes['pass'] ?? '', before: blocks[0], after: blocks[1]),
+        PassCompareCard(color: passBySlug(attributes['pass'] ?? '').group.slug, before: blocks[0], after: blocks[1]),
       ]);
     }
     return null;
