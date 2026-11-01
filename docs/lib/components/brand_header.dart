@@ -22,6 +22,17 @@ class BrandHeader extends StatelessComponent {
       Document.head(
         children: [
           link(rel: 'apple-touch-icon', href: '/apple-touch-icon.png'),
+          // The site's two faces: Schibsted Grotesk for text, JetBrains Mono
+          // for code. ContentTheme names them in main.server.dart.
+          link(rel: 'preconnect', href: 'https://fonts.googleapis.com'),
+          link(rel: 'preconnect', href: 'https://fonts.gstatic.com', attributes: {'crossorigin': ''}),
+          link(
+            rel: 'stylesheet',
+            href:
+                'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600'
+                '&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap',
+          ),
+          link(id: 'site-css', rel: 'stylesheet', href: '/styles/site.css'),
           Style(styles: _styles),
         ],
       ),
@@ -45,9 +56,6 @@ class BrandHeader extends StatelessComponent {
         height: 4.rem,
         padding: Padding.symmetric(horizontal: 1.rem, vertical: .25.rem),
         margin: Margin.symmetric(horizontal: Unit.auto),
-        border: Border.only(
-          bottom: BorderSide(color: Color('#0000000d'), width: 1.px),
-        ),
         alignItems: AlignItems.center,
         gap: Gap.column(1.rem),
       ),

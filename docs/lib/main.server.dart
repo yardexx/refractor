@@ -148,13 +148,30 @@ void main() {
           ),
         ),
       ],
+      // Ink on ground: color is kept for the passes (web/styles/site.css), so
+      // the theme's primary is the ink itself.
       theme: ContentTheme(
-        primary: ThemeColor(ThemeColors.blue.$500, dark: ThemeColors.blue.$300),
+        primary: ThemeColor(ThemeColors.zinc.$900, dark: ThemeColors.zinc.$100),
         background: ThemeColor(
           ThemeColors.slate.$50,
           dark: ThemeColors.zinc.$950,
         ),
-        colors: [ContentColors.quoteBorders.apply(ThemeColors.blue.$400)],
+        colors: [ContentColors.quoteBorders.apply(ThemeColors.zinc.$400)],
+        font: FontFamily.list([
+          FontFamily('Schibsted Grotesk'),
+          FontFamilies.uiSansSerif,
+          FontFamilies.systemUi,
+          FontFamilies.sansSerif,
+        ]),
+        codeFont: FontFamily.list([
+          FontFamily('JetBrains Mono'),
+          FontFamilies.uiMonospace,
+          FontFamily('Menlo'),
+          FontFamilies.monospace,
+        ]),
+        typography: ContentTypography.base.apply(
+          styles: Styles(fontSize: 1.0625.rem, lineHeight: 1.65.em),
+        ),
       ),
     ),
   );

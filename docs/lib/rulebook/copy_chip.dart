@@ -37,7 +37,7 @@ class _CopyChipState extends State<CopyChip> {
   @override
   Component build(BuildContext context) {
     return button(
-      classes: 'pf-chip pf-copy${_copied ? ' copied' : ''}',
+      classes: 'pf-copy${_copied ? ' copied' : ''}',
       attributes: {'title': _copied ? 'Copied' : 'Copy config key', 'aria-label': 'Copy ${component.text}'},
       onClick: _copy,
       [

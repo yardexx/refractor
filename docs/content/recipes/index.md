@@ -9,17 +9,17 @@ Short, task-oriented guides for common workflows. Unlike the
 (how it's built), these answer "how do I…?"
 
 <Cards>
-<Card title="Continuous integration" href="/recipes/ci" color="#3b82f6">
+<Card title="Continuous integration" href="/recipes/ci">
 
 Run Refractor in CI and read the build report.
 
 </Card>
-<Card title="Debugging with the symbol map" href="/recipes/symbolication" color="#a855f7">
+<Card title="Debugging with the symbol map" href="/recipes/symbolication">
 
 Turn obfuscated names in a stack trace back into the originals.
 
 </Card>
-<Card title="Flutter apps" href="/recipes/flutter" color="#06b6d4">
+<Card title="Flutter apps" href="/recipes/flutter">
 
 Notes on obfuscating a Flutter build.
 

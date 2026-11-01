@@ -1,239 +1,359 @@
 /*
- * Landing page (layout: home). Page colors come from ContentTheme's CSS
- * variables, so light and dark follow the header's theme toggle. The
- * playground's code card comes from code-card.css.
+ * Landing page (layout: home). Ink on ground, with color only where a pass
+ * is: the hero's spectrum, the playground and the split beam. Page colors
+ * come from ContentTheme's CSS variables, so light and dark follow the
+ * header's theme toggle; sizes and pass colors come from site.css, and the
+ * playground's code card from code-card.css.
  */
 
 .home {
-  --home-accent: #0066b4;
-  --home-accent-2: #40c4ff;
-  --home-muted: color-mix(in srgb, var(--text) 75%, transparent);
-  --home-border: color-mix(in srgb, var(--content-headings) 11%, transparent);
-  --home-card: color-mix(in srgb, var(--content-headings) 3%, var(--background));
+  --home-gutter: clamp(1rem, 0.4rem + 2.4vw, 2rem);
+  --home-muted: color-mix(in srgb, var(--text) 80%, transparent);
+  --home-tone: color-mix(in srgb, var(--content-headings) 5%, var(--background));
+  --home-tone-2: color-mix(in srgb, var(--content-headings) 9%, var(--background));
+  --home-tone-3: color-mix(in srgb, var(--content-headings) 14%, var(--background));
 
-  min-height: 100vh;
+  min-height: 100svh;
   overflow-x: clip;
+  color: var(--text);
+  font-size: var(--step-body);
 }
 
-[data-theme="dark"] .home {
-  --home-accent: #40c4ff;
-  --home-accent-2: #a78bfa;
+/* One frame for every section: equal margins, one measure. */
+.home-frame {
+  width: min(100% - 2 * var(--home-gutter), 80rem);
+  margin-inline: auto;
 }
 
-/* Header */
+.home h2 {
+  margin: 0;
+  color: var(--content-headings);
+  font-size: var(--step-head);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+/* Header: a plain bar on the page's ground, its edges on the frame's. */
 
 .home-header {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: color-mix(in srgb, var(--background) 72%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--background);
+}
+
+.home-header .header {
+  max-width: calc(80rem + 2 * var(--home-gutter));
+  padding-inline: var(--home-gutter);
 }
 
 .header-link {
   display: flex;
   align-items: center;
   padding: 0.5rem 0.75rem;
-  border-radius: 8px;
+  border-radius: var(--radius);
   color: inherit;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: var(--step-body);
+  font-weight: 600;
   text-decoration: none;
 }
 
 .header-link:hover {
-  background: color-mix(in srgb, currentColor 6%, transparent);
+  background: var(--home-tone-2);
 }
 
-/* On phones the hero's "Read the docs" button covers this, and the header
-   needs the room for the GitHub button. */
+/* On phones the repo name gives way, so the wordmark keeps its size and Docs
+   stays in the header. */
 @media (max-width: 560px) {
-  .header-link {
+  .home-header .github-button .github-info {
     display: none;
+  }
+
+  .home-header .header-title {
+    flex: 0 1 auto;
   }
 }
 
-/* Hero */
+/* Buttons: one shape, flat. The primary one is the ink itself. */
 
-.home-hero {
-  position: relative;
-  isolation: isolate;
-  max-width: 56rem;
-  margin: 0 auto;
-  padding: 4rem 1rem 2.5rem;
-  text-align: center;
-}
-
-.home-hero::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: -6rem;
-  left: 50%;
-  width: 72rem;
-  height: 44rem;
-  transform: translateX(-50%);
-  background:
-    radial-gradient(closest-side at 35% 42%, color-mix(in srgb, #40c4ff 30%, transparent), transparent),
-    radial-gradient(closest-side at 66% 36%, color-mix(in srgb, #8b5cf6 22%, transparent), transparent),
-    radial-gradient(closest-side at 50% 72%, color-mix(in srgb, #ec4899 12%, transparent), transparent);
-  filter: blur(24px);
-  pointer-events: none;
-}
-
-.home-hero::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: -6rem -50vw 0;
-  background-image:
-    linear-gradient(to right, var(--home-border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--home-border) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 55% 75% at 50% 15%, #000 15%, transparent 72%);
-  pointer-events: none;
-}
-
-.home-icon {
-  display: block;
-  width: 5.5rem;
-  height: 5.5rem;
-  margin: 0 auto 1.5rem;
-  border-radius: 1.2rem;
-  box-shadow:
-    0 18px 40px -14px rgba(10, 15, 28, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-.home-pill {
+.home-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.85rem;
-  border: 1px solid var(--home-border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--background) 70%, transparent);
-  color: var(--home-muted);
-  font-size: 0.8rem;
-  font-weight: 500;
+  height: 3rem;
+  padding: 0 1.4rem;
+  border-radius: var(--radius);
+  background: var(--home-tone-2);
+  color: var(--content-headings);
+  font-size: var(--step-body);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: pre;
+  transition: background-color 0.15s, transform 0.15s;
 }
 
-.home-pill-dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 25%, transparent);
+.home-btn:hover {
+  background: var(--home-tone-3);
+}
+
+.home-btn:active {
+  transform: translateY(1px);
+}
+
+.home-btn-primary {
+  background: var(--content-headings);
+  color: var(--background);
+}
+
+.home-btn-primary:hover {
+  background: color-mix(in srgb, var(--content-headings) 82%, var(--background));
+}
+
+.home a:focus-visible,
+.home button:focus-visible {
+  outline: 2px solid var(--content-headings);
+  outline-offset: 3px;
+}
+
+/* Hero: the words on the left, the prism and its nine passes on the right. */
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 3rem;
+  padding: 3.5rem 0 4rem;
 }
 
 .home-hero h1 {
-  margin: 1.25rem 0 0;
+  margin: 0;
   color: var(--content-headings);
-  font-size: clamp(2.6rem, 7vw, 4.75rem);
+  font-size: var(--step-display);
   font-weight: 800;
-  line-height: 1.04;
-  letter-spacing: -0.035em;
-}
-
-.home-grad {
-  background: linear-gradient(100deg, var(--home-accent) 5%, var(--home-accent-2) 55%, #ec4899 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
 }
 
 .home-lead {
-  max-width: 40rem;
-  margin: 1.25rem auto 0;
-  color: var(--home-muted);
-  font-size: 1.15rem;
-  line-height: 1.65;
+  max-width: 34rem;
+  margin: 1.75rem 0 0;
+  color: var(--text);
+  font-size: var(--step-lead);
+  line-height: 1.45;
 }
 
 .home-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 0.75rem;
   margin-top: 2rem;
 }
 
-.home-btn {
-  display: inline-flex;
-  align-items: center;
-  height: 2.75rem;
-  padding: 0 1.25rem;
-  border: 1px solid var(--home-border);
-  border-radius: 0.7rem;
-  background: var(--home-card);
-  color: var(--content-headings);
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: pre;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.home-btn:hover {
-  transform: translateY(-1px);
-}
-
-.home-btn-primary {
-  border-color: transparent;
-  background: linear-gradient(135deg, #0066b4, #1e88e5 55%, #40c4ff);
-  color: #fff;
-  box-shadow: 0 8px 24px -8px color-mix(in srgb, #0066b4 70%, transparent);
-}
-
-.home-btn-primary:hover {
-  box-shadow: 0 12px 28px -8px color-mix(in srgb, #0066b4 90%, transparent);
-}
-
 .home-install {
-  display: inline-block;
-  max-width: 100%;
-  margin-top: 1.5rem;
-  padding: 0.45rem 0.85rem;
-  overflow-x: auto;
-  vertical-align: top;
-  border: 1px dashed var(--home-border);
-  border-radius: 0.6rem;
-  background: transparent;
-  color: var(--home-muted);
-  font: 0.8rem/1.4 var(--code-mono);
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.55rem 0.55rem 1rem;
+  border-radius: var(--radius);
+  background: var(--home-tone);
 }
 
-.home-install-prompt {
+.home-install code {
+  flex: 1;
+  min-width: 0;
+  color: var(--content-headings);
+  font: var(--step-small) / 1.6 var(--code-mono);
+  overflow-wrap: break-word;
+}
+
+.home-install code::before {
+  content: "$ ";
   opacity: 0.5;
   user-select: none;
 }
 
+.home-install .cb-copy {
+  align-self: flex-start;
+  background: var(--home-tone-2);
+  color: var(--content-headings);
+}
+
+.home-install .cb-copy:hover,
+.home-install .cb-copy.copied {
+  background: var(--home-tone-3);
+  color: var(--content-headings);
+}
+
+/* On phones the command gets the box's full width, and Copy drops below. */
+@media (max-width: 560px) {
+  .home-install {
+    flex-wrap: wrap;
+  }
+
+  .home-install code {
+    flex-basis: 100%;
+  }
+
+  .home-install .cb-copy {
+    margin-left: auto;
+  }
+}
+
+/* The prerequisite for the install line below it. */
+.home-note {
+  margin: 1.75rem 0 0;
+  color: var(--home-muted);
+  font-size: var(--step-small);
+}
+
+/* The prism slider: source on the left of the prism, the build on its right. */
+
+@property --split {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 40%;
+}
+
+.hero-slider {
+  --split: 40%;
+  animation: hsl-sweep 1.6s cubic-bezier(0.77, 0, 0.175, 1) 0.3s both;
+}
+
+/* Once someone drags, their value wins over the opening sweep. */
+.hero-slider[data-touched] {
+  animation: none;
+}
+
+@keyframes hsl-sweep {
+  from {
+    --split: 100%;
+  }
+}
+
+.hsl-head .pg-tag code {
+  margin-right: 0.15em;
+}
+
+.hsl-stage {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  background: var(--pg-pane);
+}
+
+.hero-slider .hsl-code {
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 1.4rem 1.25rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--pg-pane);
+  color: #c9d1d9;
+  font: clamp(0.625rem, 0.3rem + 1.1vw, 1.0625rem) / 1.85 var(--code-mono);
+}
+
+.hsl-code .pg-line {
+  padding: 0;
+}
+
+.hsl-code .pg-line::before {
+  display: none;
+}
+
+.hsl-build {
+  clip-path: inset(0 0 0 var(--split));
+}
+
+/* The divider: a line of white light with the prism on its handle. */
+.hsl-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--split);
+  width: 2px;
+  margin-left: -1px;
+  background: #fff;
+  pointer-events: none;
+}
+
+.hsl-handle .prism-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0.55rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background-color: #0a0f1c;
+  transform: translate(-50%, -50%);
+  --pc: #fff;
+  -webkit-mask: none;
+  mask: none;
+}
+
+.hsl-handle .prism-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0.7rem 0.6rem 0.75rem;
+  background: #fff;
+  -webkit-mask: var(--prism-mask) center / contain no-repeat;
+  mask: var(--prism-mask) center / contain no-repeat;
+}
+
+.hsl-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+  touch-action: pan-y;
+}
+
+.hero-slider:has(.hsl-range:focus-visible) .hsl-handle .prism-mark {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Too narrow for the whole header: the paths alone say enough. */
+@media (max-width: 560px) {
+  .hsl-tag-note {
+    display: none;
+  }
+}
+
 /* Playground */
 
-.home-demo {
-  max-width: 76rem;
-  margin: 0 auto;
-  padding: 1rem 1rem 0;
+.home-demo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  margin-bottom: 1.5rem;
 }
 
-.home-demo-hint {
-  margin: 0 0 1rem;
-  color: var(--home-muted);
-  font-size: 0.9rem;
-  text-align: center;
+.home-demo-head p {
+  max-width: 38rem;
+  margin: 0;
+  color: var(--text);
 }
 
-.home-demo-hint a,
-.home-feature a {
-  color: var(--home-accent);
+.home-demo-head a,
+.home-point a {
+  color: var(--content-headings);
   font-weight: 600;
-  text-decoration: none;
-}
-
-.home-demo-hint a:hover,
-.home-feature a:hover {
   text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  white-space: pre;
 }
 
 /* Playground-only parts of the code card (the card itself, panes, tokens and
@@ -244,16 +364,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem 1rem;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--pg-line);
+  padding: 0.75rem 1rem;
+  background: var(--pg-head);
 }
 
 .pg-label {
-  color: #8b949e;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--pg-muted);
+  font-size: var(--step-small);
+  font-weight: 500;
 }
 
 .pg-chips {
@@ -263,67 +381,52 @@
   gap: 0.4rem;
 }
 
-.pg-chip {
-  --c: #8b949e;
+.pg-chip,
+.pg-replay {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.3rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #8b949e;
-  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--pg-muted);
+  font-family: inherit;
+  font-size: var(--step-small);
   font-weight: 500;
+  line-height: 1.2;
   cursor: pointer;
-  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  transition: color 0.2s, background-color 0.2s;
 }
 
-.pg-chip:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+.pg-chip:hover,
+.pg-replay:hover {
+  background: rgba(255, 255, 255, 0.1);
   color: #e6edf3;
+}
+
+.pg-chip .prism-mark {
+  opacity: 0.4;
+  transition: opacity 0.2s;
 }
 
 .pg-chip[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--c) 55%, transparent);
-  background: color-mix(in srgb, var(--c) 14%, transparent);
+  background: color-mix(in srgb, var(--pc) 22%, transparent);
   color: #fff;
 }
 
-.pg-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--c);
-  opacity: 0.35;
-  transition: opacity 0.2s, box-shadow 0.2s;
-}
-
-.pg-chip[aria-pressed="true"] .pg-dot {
+.pg-chip[aria-pressed="true"] .prism-mark {
   opacity: 1;
-  box-shadow: 0 0 8px var(--c);
 }
 
-.chip-rename { --c: var(--ray-rename); }
-.chip-strings { --c: var(--ray-strings); }
-.chip-ints { --c: var(--ray-ints); }
-.chip-arith { --c: var(--ray-arith); }
-.chip-flatten { --c: var(--ray-flatten); }
-.chip-dead { --c: var(--ray-dead); }
+.pg-chip:focus-visible,
+.pg-replay:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
 
 .pg-replay {
   margin-left: auto;
-  padding: 0.3rem 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.5rem;
-  background: transparent;
-  color: #8b949e;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.pg-replay:hover {
-  color: #e6edf3;
 }
 
 /* The output runs much wider than the source, so it gets the larger share. */
@@ -342,7 +445,7 @@
   }
 
   .home-demo .pg .pg-code {
-    font-size: 11.5px;
+    font-size: 0.75rem;
   }
 }
 
@@ -360,19 +463,15 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.5rem 1rem;
-  padding: 0.6rem 1rem;
-  border-top: 1px solid var(--pg-line);
-  color: #8b949e;
-  font: 0.75rem var(--code-mono);
+  padding: 0.65rem 1rem;
+  background: var(--pg-head);
+  color: var(--pg-muted);
+  font-size: var(--step-small);
 }
 
 .pg-lookup {
   color: #c9d1d9;
   white-space: pre;
-}
-
-.pg-report {
-  color: #7ee787;
 }
 
 @media (max-width: 900px) {
@@ -391,114 +490,178 @@
   }
 }
 
-/* Features */
+/* The split beam: white light across the page, a small prism, nine passes. */
 
-.home-features {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  max-width: 76rem;
-  margin: 0 auto;
-  padding: 5rem 1rem 0;
+.home-split {
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  margin-top: 8rem;
+  color: var(--content-headings);
 }
 
-.home-feature {
-  position: relative;
-  overflow: hidden;
-  padding: 1.5rem;
-  border: 1px solid var(--home-border);
-  border-radius: 1rem;
-  background: var(--home-card);
-}
-
-.home-feature::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
+.home-split-beam {
+  flex: 1;
   height: 2px;
-  background: linear-gradient(90deg, var(--edge), transparent 80%);
+  background: currentColor;
 }
 
-.home-feature:nth-child(1) { --edge: var(--ray-rename); }
-.home-feature:nth-child(2) { --edge: var(--ray-ints); }
-.home-feature:nth-child(3) { --edge: var(--ray-arith); }
+.home-split .home-split-prism {
+  width: 2.4rem;
+  height: 2rem;
+  margin: 0 -0.15rem;
+}
 
-.home-feature h3 {
+.home-split-rays {
+  flex: 1;
+  height: 1.6rem;
+}
+
+/* What you get: the claim on the left, its three proofs on the right. */
+
+.home-why {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 3rem;
+  padding-top: 6rem;
+}
+
+.home-points {
+  display: grid;
+  gap: 2.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-point h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   margin: 0;
   color: var(--content-headings);
-  font-size: 1.1rem;
+  font-size: var(--step-lead);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-.home-feature p {
-  margin: 0.6rem 0 1rem;
-  color: var(--home-muted);
-  font-size: 0.95rem;
+.home-point p {
+  max-width: 60ch;
+  margin: 0.6rem 0 0.8rem;
   line-height: 1.6;
 }
 
-.home-feature a {
-  font-size: 0.9rem;
-  white-space: pre;
-}
-
-@media (max-width: 900px) {
-  .home-features {
-    grid-template-columns: minmax(0, 1fr);
-    padding-top: 3.5rem;
-  }
-}
-
-/* Closing call to action and footer */
+/* Closing: the first commands, already open. */
 
 .home-cta {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  width: calc(100% - 2rem);
-  max-width: 74rem;
-  margin: 5rem auto 0;
-  padding: 3rem 1.5rem;
-  border: 1px solid var(--home-border);
-  border-radius: 1.25rem;
-  background: var(--home-card);
-  text-align: center;
+  margin-top: 8rem;
+  padding: 5.5rem 0;
+  background: var(--home-tone);
 }
 
-.home-cta::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: -40% -10%;
-  background:
-    radial-gradient(closest-side at 30% 50%, color-mix(in srgb, #40c4ff 18%, transparent), transparent),
-    radial-gradient(closest-side at 70% 50%, color-mix(in srgb, #8b5cf6 14%, transparent), transparent);
-  pointer-events: none;
+.home-cta-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 2.5rem 3rem;
 }
 
 .home-cta h2 {
-  margin: 0 0 1.5rem;
-  color: var(--content-headings);
-  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
-  letter-spacing: -0.02em;
+  grid-column: 1 / -1;
 }
+
+.home-cta p {
+  max-width: 34rem;
+  margin: 0 0 2rem;
+}
+
+.home-cta .cb {
+  margin: 0;
+}
+
+/* Footer: the wordmark, built as large as the frame, then the links. */
 
 .home-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.75rem;
-  max-width: 76rem;
-  margin: 4rem auto 0;
-  padding: 2rem 1rem 3rem;
-  border-top: 1px solid var(--home-border);
-  color: var(--home-muted);
-  font-size: 0.85rem;
+  padding: 6rem 0 3rem;
 }
 
-.home-footer a {
+.home-footer-mark {
+  display: block;
+}
+
+.home-footer-mark img {
+  width: 100%;
+  height: auto;
+}
+
+.home-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-top: 3rem;
+  color: var(--home-muted);
+  font-size: var(--step-small);
+}
+
+.home-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  font-size: var(--step-body);
+}
+
+.home-footer-links a {
+  color: var(--content-headings);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home-footer-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.home-footer p {
+  margin: 0;
+}
+
+.home-footer p a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+@media (max-width: 960px) {
+  .home-hero,
+  .home-why,
+  .home-cta-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-hero {
+    gap: 2.5rem;
+    padding-top: 2.5rem;
+  }
+
+  .home-split {
+    margin-top: 5rem;
+  }
+
+  .home-why {
+    gap: 2rem;
+    padding-top: 4rem;
+  }
+
+  .home-cta {
+    margin-top: 5rem;
+    padding: 4rem 0;
+  }
+
+  .home-footer {
+    padding-top: 4rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

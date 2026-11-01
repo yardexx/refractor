@@ -38,7 +38,7 @@ class _CopyCodeButtonState extends State<CopyCodeButton> {
       classes: 'cb-copy${_copied ? ' copied' : ''}',
       attributes: {'aria-label': 'Copy code'},
       onClick: _copy,
-      [Component.text(_copied ? '✓ Copied' : 'Copy')],
+      [Component.text(_copied ? 'Copied' : 'Copy')],
     );
   }
 }

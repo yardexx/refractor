@@ -1,5 +1,5 @@
 /// Markdown components for the Rulebook pages. Styles live in
-/// `web/styles/rulebook.css`; category colors come from `code-card.css`.
+/// `web/styles/rulebook.css`; pass colors come from `site.css`.
 library;
 
 import 'package:jaspr/dom.dart';
@@ -10,13 +10,10 @@ import '../components/cards.dart';
 import 'copy_chip.dart';
 import 'passes.dart';
 
-/// The stylesheets every Rulebook component needs. Head elements with the same
-/// id are merged, so each component can ask for them.
+/// The stylesheet every Rulebook component needs. Head elements with the same
+/// id are merged, so each component can ask for it.
 Component _styles() => Document.head(
-  children: [
-    link(id: 'code-card-css', rel: 'stylesheet', href: '/styles/code-card.css'),
-    link(id: 'rulebook-css', rel: 'stylesheet', href: '/styles/rulebook.css'),
-  ],
+  children: [link(id: 'rulebook-css', rel: 'stylesheet', href: '/styles/rulebook.css')],
 );
 
 PassInfo _passOf(Map<String, String> attributes, String tag) {
@@ -25,8 +22,9 @@ PassInfo _passOf(Map<String, String> attributes, String tag) {
   return passBySlug(slug);
 }
 
-/// `<PassFacts pass="strings" />`: the strip under a pass page's title with
-/// its group, its config key (click to copy) and whether it is stable.
+/// `<PassFacts pass="strings" />`: the line under a pass page's title with
+/// its prism marker, its group, its config key (click to copy) and whether it
+/// is stable.
 class PassFacts extends CustomComponentBase {
   const PassFacts();
 
@@ -38,17 +36,16 @@ class PassFacts extends CustomComponentBase {
     final pass = _passOf(attributes, name);
     return Component.fragment([
       _styles(),
-      div(classes: 'pass-facts pc-${pass.group.slug}', [
-        span(classes: 'pf-chip pf-group', [
-          span(classes: 'pf-dot', []),
+      div(classes: 'pass-facts pc-${pass.slug}', [
+        span(classes: 'pf-group', [
+          span(classes: 'prism-mark', []),
           Component.text(pass.group.label),
         ]),
         CopyChip(text: pass.configKey),
         if (pass.stable)
-          span(classes: 'pf-chip pf-stable', attributes: {'title': 'Shipped in 0.2.2'}, [Component.text('Stable')])
+          span(attributes: {'title': 'Shipped in 0.2.2'}, [Component.text('Stable')])
         else
           span(
-            classes: 'pf-chip pf-experimental',
             attributes: {'title': 'New since 0.2.2; its behaviour may still change'},
             [Component.text('Experimental')],
           ),
@@ -58,7 +55,7 @@ class PassFacts extends CustomComponentBase {
 }
 
 /// `<PassPager pass="strings">`: links to the previous and next pass, in
-/// Rulebook order, each tinted with its category color.
+/// Rulebook order, each with its prism marker.
 class PassPager extends CustomComponentBase {
   const PassPager();
 
@@ -72,14 +69,13 @@ class PassPager extends CustomComponentBase {
     final prev = i > 0 ? rulebookPasses[i - 1] : null;
     final next = i + 1 < rulebookPasses.length ? rulebookPasses[i + 1] : null;
 
-    Component card(PassInfo p, String direction) =>
-        a(classes: 'pp-card pp-$direction pc-${p.group.slug}', href: p.page, [
-          span(classes: 'pp-dir', [Component.text(direction == 'prev' ? '← Previous pass' : 'Next pass →')]),
-          span(classes: 'pp-title', [
-            span(classes: 'pf-dot', []),
-            Component.text(p.title),
-          ]),
-        ]);
+    Component card(PassInfo p, String direction) => a(classes: 'pp-card pp-$direction pc-${p.slug}', href: p.page, [
+      span(classes: 'pp-dir', [Component.text(direction == 'prev' ? '← Previous pass' : 'Next pass →')]),
+      span(classes: 'pp-title', [
+        span(classes: 'prism-mark', []),
+        Component.text(p.title),
+      ]),
+    ]);
 
     return Component.fragment([
       _styles(),
@@ -114,13 +110,10 @@ class PassGrid extends CustomComponentBase {
       _styles(),
       div(classes: 'pass-grid', [
         for (final group in PassGroup.values) ...[
-          h3(classes: 'rg-group pc-${group.slug}', [
-            span(classes: 'pf-dot', []),
-            Component.text(group.label),
-          ]),
+          h3(classes: 'rg-group', [Component.text(group.label)]),
           cardGrid([
             for (final p in rulebookPasses.where((p) => p.group == group))
-              card(title: p.title, href: p.page, color: p.group.slug, body: Component.text(p.summary)),
+              card(title: p.title, href: p.page, color: p.slug, body: Component.text(p.summary)),
           ]),
         ],
       ]),
@@ -167,13 +160,10 @@ class Caveats extends CustomComponentBase {
       _card('pass-card pass-card-warn', "What it doesn't do", child);
 }
 
-/// The icons (header tile and per-item markers) are CSS masks in rulebook.css.
+/// The item markers are CSS masks in rulebook.css.
 Component _card(String classes, String title, Component? child) {
   return div(classes: classes, [
-    div(classes: 'pass-card-head', [
-      span(classes: 'pass-card-mark', attributes: {'aria-hidden': 'true'}, []),
-      Component.text(title),
-    ]),
+    div(classes: 'pass-card-head', [Component.text(title)]),
     div(classes: 'pass-card-body', [?child]),
   ]);
 }

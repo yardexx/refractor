@@ -6,8 +6,8 @@ import 'copy_code_button.dart';
 import 'highlight.dart';
 
 /// Renders every fenced code block as a code panel: the site's dark editor
-/// card with a header (window dots, language, copy button) and the shared
-/// syntax colors. Replaces jaspr_content's `CodeBlock`.
+/// card with a header (language, copy button) and the shared syntax colors.
+/// Replaces jaspr_content's `CodeBlock`.
 ///
 /// The fence's language picks the highlighter: `dart`, `yaml`, `sh`, `json`,
 /// or `text`. Shell lines get a `$` prompt that isn't part of the copied text.
@@ -53,7 +53,6 @@ class _CodePanel extends StatelessComponent {
       ),
       div(classes: 'cb cb-$language', [
         div(classes: 'cb-head', [
-          span(classes: 'pg-lights', [span([]), span([]), span([])]),
           span(classes: 'cb-lang', [Component.text(label)]),
           CopyCodeButton(text: source),
         ]),

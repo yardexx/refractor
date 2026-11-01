@@ -57,7 +57,7 @@ class _DependencyRule extends StatelessComponent {
         span(classes: 'dr-arrow', []),
         node('Config', 'typed'),
         span(classes: 'dr-arrow dr-io', [
-          span(classes: 'dr-io-label', [Component.text('no dart:io past here')]),
+          span(classes: 'dr-io-label', [Component.text('No dart:io past here')]),
         ]),
         node('Engine', 'zero dart:io', extra: ' dr-engine'),
       ]),

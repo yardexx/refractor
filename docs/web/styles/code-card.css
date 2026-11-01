@@ -1,49 +1,24 @@
 /*
  * The dark code card shared by the landing page playground and the Rulebook
  * comparisons (PassCompare): panes, syntax colors, the glow on changed code,
- * and the logo's prism between the panes.
+ * and the logo's prism between the panes. Surfaces are told apart by tone,
+ * not by lines; pass colors (--pass-*, .ray-*, .pc-*) come from site.css.
  */
 
 :root {
-  --code-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  /* The landing page playground: one color per pass, down the rainbow. A
-     pass's chip, prism band and changed tokens share its color. */
-  --ray-rename: #ef4444;
-  --ray-strings: #f97316;
-  --ray-ints: #facc15;
-  --ray-arith: #22c55e;
-  --ray-flatten: #3b82f6;
-  --ray-dead: #a855f7;
-
-  /* The docs pages: one color per Rulebook category, clear of the green and
-     amber that mark stable/experimental and promises/caveats. */
-  --group-naming: #ec4899;
-  --group-expressions: #06b6d4;
-  --group-control: #8b5cf6;
+  --code-mono: var(--content-code-font, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
 }
 
 .pg {
   --pg-bg: #0a0f1c;
   --pg-pane: #0e1525;
-  --pg-line: rgba(255, 255, 255, 0.07);
+  --pg-head: #131c30;
+  --pg-muted: #9aa4b2;
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.1rem;
+  border-radius: var(--radius);
   background: var(--pg-bg);
   color: #c9d1d9;
-  box-shadow:
-    0 30px 80px -30px rgba(0, 40, 100, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.pg::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(64, 196, 255, 0.7), rgba(139, 92, 246, 0.7), transparent);
 }
 
 .pg-stage {
@@ -64,34 +39,24 @@
   display: flex;
   box-sizing: border-box;
   align-items: center;
-  gap: 0.6rem;
-  height: 2.3rem;
-  padding: 0 0.9rem;
-  border-bottom: 1px solid var(--pg-line);
-  color: #8b949e;
-  font: 0.75rem var(--code-mono);
+  gap: 0.55rem;
+  height: 2.4rem;
+  padding: 0 1rem;
+  background: var(--pg-head);
+  color: var(--pg-muted);
+  font-size: var(--step-small);
+  font-weight: 500;
 }
 
-.pg-lights {
-  display: inline-flex;
-  gap: 0.3rem;
-}
-
-.pg-lights span {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
+/* File paths in a pane head are code, so they keep the mono face. */
+.pg-path {
+  font-family: var(--code-mono);
+  font-size: inherit;
 }
 
 .pg-tag {
   margin-left: auto;
-  padding: 0.1rem 0.45rem;
-  border-radius: 0.35rem;
-  background: rgba(255, 255, 255, 0.05);
-  color: #6e7681;
-  font-size: 0.68rem;
-  line-height: 1.5;
+  color: var(--pg-muted);
 }
 
 /* Doubled class beats prose styles for `pre` inside docs content. */
@@ -105,7 +70,7 @@
   border-radius: 0;
   background: transparent;
   color: #c9d1d9;
-  font: 12.5px/1.75 var(--code-mono);
+  font: var(--code-size) / 1.75 var(--code-mono);
 }
 
 .pg-line {
@@ -150,17 +115,16 @@
   animation: pg-in 0.6s ease-out;
 }
 
-.fx-rename { --c: var(--ray-rename); }
-.fx-strings { --c: var(--ray-strings); }
-.fx-ints { --c: var(--ray-ints); }
-.fx-arith { --c: var(--ray-arith); }
-.fx-flatten { --c: var(--ray-flatten); }
-.fx-dead { --c: var(--ray-dead); }
+.fx-rename { --c: var(--pass-rename); }
+.fx-strings { --c: var(--pass-strings); }
+.fx-ints { --c: var(--pass-ints); }
+.fx-arith { --c: var(--pass-arith); }
+.fx-flatten { --c: var(--pass-flatten); }
+.fx-dead { --c: var(--pass-dead); }
 
 @keyframes pg-in {
   from {
     opacity: 0;
-    filter: blur(4px);
     background: color-mix(in srgb, var(--c) 45%, transparent);
   }
 }
@@ -172,10 +136,11 @@
   box-shadow: inset 0 -1.5px 0 rgba(255, 255, 255, 0.2);
 }
 
+/* A name under the pointer, in both panes: white light, not a pass color. */
 .pg .hl {
   border-radius: 3px;
-  background: color-mix(in srgb, #40c4ff 30%, transparent);
-  box-shadow: 0 0 0 1px rgba(64, 196, 255, 0.75);
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
   color: #fff;
 }
 
@@ -183,9 +148,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid var(--pg-line);
-  border-left: 1px solid var(--pg-line);
-  background: radial-gradient(closest-side, rgba(64, 196, 255, 0.08), transparent), var(--pg-bg);
+  background: var(--pg-bg);
 }
 
 .pg-prism svg {
@@ -212,64 +175,44 @@
   transition: opacity 0.45s ease;
 }
 
-.ray-rename { fill: var(--ray-rename); }
-.ray-strings { fill: var(--ray-strings); }
-.ray-ints { fill: var(--ray-ints); }
-.ray-arith { fill: var(--ray-arith); }
-.ray-flatten { fill: var(--ray-flatten); }
-.ray-dead { fill: var(--ray-dead); }
-
 @media (max-width: 900px) {
   .pg-stage {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .pg-prism {
-    height: 7.5rem;
-    border: 0;
-    border-top: 1px solid var(--pg-line);
-    border-bottom: 1px solid var(--pg-line);
+    height: 4.5rem;
   }
 
   .pg-prism svg {
     width: auto;
-    height: 7rem;
+    height: 4.25rem;
     max-height: none;
   }
 
   .pg .pg-code {
-    font-size: 11.5px;
+    font-size: 0.75rem;
   }
 }
 
 /* Rulebook comparisons: before and after side by side, sized to the card
-   itself so they only stack when the card gets narrow. The category color runs
-   along the top edge, marks the "after" pane and lights the changed code. */
+   itself so they only stack when the card gets narrow. A 2px seam of the
+   card's ground keeps the panes apart. The pass's color marks the "after"
+   pane and lights the changed code. */
 .pc {
   --pc: #fff;
   container-type: inline-size;
   margin: 1.5rem 0;
 }
 
-.pc-naming { --pc: var(--group-naming); }
-.pc-expressions { --pc: var(--group-expressions); }
-.pc-control { --pc: var(--group-control); }
-
-.pc::before {
-  background: linear-gradient(90deg, transparent, var(--pc) 50%, transparent);
-}
-
 .pc .pg-stage {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-
-.pc .pg-pane + .pg-pane {
-  border-left: 1px solid var(--pg-line);
+  gap: 2px;
 }
 
 /* No line numbers: the panes need every column for code. */
 .pc .pg-code {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* A line too long for a narrow pane wraps with a hanging indent instead of
@@ -284,104 +227,76 @@
   display: none;
 }
 
-.pc-dot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: var(--pc);
-  box-shadow: 0 0 8px var(--pc);
-}
-
 .pc .pg-out .fx {
   --c: var(--pc);
-}
-
-@container (max-width: 680px) {
-  .pc .pg-code {
-    font-size: 11.5px;
-  }
 }
 
 @container (max-width: 540px) {
   .pc .pg-stage {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .pc .pg-pane + .pg-pane {
-    border-top: 1px solid var(--pg-line);
-    border-left: 0;
-  }
 }
 
-/* Code panels: every fenced code block in the docs (CodePanel). The same dark
-   editor card, with a header for the language and a copy button. */
+/* Code panels: every fenced code block in the docs (CodePanel), and the
+   landing page's closing commands. The same dark card, with a header for the
+   language and a copy button. */
 .cb {
-  position: relative;
   overflow: hidden;
   margin: 1.25rem 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.85rem;
+  border-radius: var(--radius);
   background: #0a0f1c;
   color: #c9d1d9;
-  box-shadow: 0 18px 40px -26px rgba(0, 40, 100, 0.5);
-}
-
-.cb::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(64, 196, 255, 0.55), rgba(139, 92, 246, 0.55), transparent);
 }
 
 .cb-head {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.45rem 0.55rem 0.45rem 0.9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: #0e1525;
+  padding: 0.4rem 0.5rem 0.4rem 1.1rem;
+  background: #131c30;
 }
 
 .cb-lang {
-  color: #8b949e;
-  font: 600 0.68rem var(--code-mono);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  color: #9aa4b2;
+  font-size: var(--step-small);
+  font-weight: 500;
 }
 
 .cb-copy {
   margin-left: auto;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.45rem;
-  background: transparent;
-  color: #8b949e;
-  font: 0.72rem var(--code-mono);
+  padding: 0.25rem 0.65rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.06);
+  color: #c9d1d9;
+  font-family: inherit;
+  font-size: var(--step-small);
+  font-weight: 500;
+  line-height: 1.4;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .cb-copy:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  color: #e6edf3;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }
 
 .cb-copy.copied {
-  border-color: rgba(126, 231, 135, 0.4);
-  color: #7ee787;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
 }
 
 /* Doubled classes beat the prose styles for pre and code inside docs content. */
 .cb .cb-code {
   margin: 0;
-  padding: 0.85rem 1.1rem;
+  padding: 0.9rem 1.1rem;
   overflow-x: auto;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: #c9d1d9;
-  font: 13px/1.7 var(--code-mono);
+  font: var(--code-size) / 1.7 var(--code-mono);
 }
 
 .cb .cb-code code {
@@ -410,7 +325,7 @@
   color: #c9d1d9;
 }
 
-
+@media (prefers-reduced-motion: reduce) {
   .pg *,
   .pg *::before {
     animation: none !important;

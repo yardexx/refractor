@@ -8,10 +8,10 @@ import 'highlight.dart';
 /// The before/after card behind `<PassCompare>`: both snippets highlighted
 /// and diffed, side by side.
 class PassCompareCard extends StatelessComponent {
-  const PassCompareCard({required this.color, required this.before, required this.after, super.key});
+  const PassCompareCard({required this.pass, required this.before, required this.after, super.key});
 
-  /// A category slug (`pc-<color>` in code-card.css).
-  final String color;
+  /// A pass slug (`pc-<pass>` in site.css).
+  final String pass;
   final String before;
   final String after;
 
@@ -19,21 +19,20 @@ class PassCompareCard extends StatelessComponent {
   Component build(BuildContext context) {
     final a = highlight(before, 'dart'), b = highlight(after, 'dart');
     _diff(a, b);
-    return div(classes: 'pg pc pc-$color', [
+    return div(classes: 'pg pc pc-$pass', attributes: {'data-ui': ''}, [
       div(classes: 'pg-stage', [
         _pane(
           [
-            span(classes: 'pg-lights', [span([]), span([]), span([])]),
-            span([Component.text('before')]),
+            span([Component.text('Before')]),
           ],
           a,
           output: false,
         ),
         _pane(
           [
-            span(classes: 'pc-dot', []),
-            span([Component.text('after')]),
-            span(classes: 'pg-tag', [Component.text('illustrative')]),
+            span(classes: 'prism-mark', []),
+            span([Component.text('After')]),
+            span(classes: 'pg-tag', [Component.text('Illustrative')]),
           ],
           b,
           output: true,

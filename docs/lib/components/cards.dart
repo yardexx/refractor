@@ -1,9 +1,9 @@
-/// Cards for any docs page: a title with a colored dot, a short markdown body,
-/// and an optional link. Styles live in `web/styles/cards.css`.
+/// Cards for any docs page: a title with a prism marker, a short markdown
+/// body, and an optional link. Styles live in `web/styles/cards.css`.
 ///
 /// ````md
 /// <Cards>
-/// <Card title="Rename" href="/rulebook/rename" color="naming">
+/// <Card title="Rename" href="/rulebook/rename" color="rename">
 ///
 /// Rewrites identifiers to short, meaningless names.
 ///
@@ -11,9 +11,10 @@
 /// </Cards>
 /// ````
 ///
-/// `color` is a Rulebook category (`naming`, `expressions`, `control`, as in
-/// code-card.css) or any CSS color; it tints the dot, the top edge and the
-/// hover border. Leave a blank line around the body so its markdown is parsed.
+/// `color` is a pass slug (`rename`, `strings`, … as in site.css) or any CSS
+/// color, and paints the marker; without it the marker is in ink. Color means
+/// a pass on this site, so leave it off cards that aren't about one. Leave a
+/// blank line around the body so its markdown is parsed.
 library;
 
 import 'package:jaspr/dom.dart';
@@ -48,12 +49,9 @@ class Card extends CustomComponentBase {
   }
 }
 
-/// The stylesheets a card needs; head elements with the same id are merged.
+/// The stylesheet a card needs; head elements with the same id are merged.
 Component _styles() => Document.head(
-  children: [
-    link(id: 'code-card-css', rel: 'stylesheet', href: '/styles/code-card.css'),
-    link(id: 'cards-css', rel: 'stylesheet', href: '/styles/cards.css'),
-  ],
+  children: [link(id: 'cards-css', rel: 'stylesheet', href: '/styles/cards.css')],
 );
 
 /// A grid of [cards].
@@ -64,12 +62,12 @@ Component cardGrid(List<Component> cards) => Component.fragment([
 
 /// One card. With [href] the whole card is a link.
 Component card({required String title, String? href, String? color, Component? body}) {
-  final isGroup = color != null && PassGroup.values.any((group) => group.slug == color);
-  final classes = ['card', if (isGroup) 'pc-$color'].join(' ');
-  final styles = color != null && !isGroup ? Styles(raw: {'--pc': color}) : null;
+  final isPass = color != null && rulebookPasses.any((pass) => pass.slug == color);
+  final classes = ['card', if (isPass) 'pc-$color'].join(' ');
+  final styles = color != null && !isPass ? Styles(raw: {'--pc': color}) : null;
   final content = [
     span(classes: 'card-title', [
-      span(classes: 'card-dot', []),
+      span(classes: 'prism-mark', []),
       Component.text(title),
     ]),
     if (body != null) div(classes: 'card-body', [body]),

@@ -82,17 +82,20 @@ class _PlaygroundState extends State<Playground> {
   Component build(BuildContext context) {
     return div(
       classes: ['pg', for (final pass in _on) 'on-${pass.slug}'].join(' '),
+      // An interface fragment: it keeps the editor's own look (mono paths,
+      // panes) inside the page.
+      attributes: {'data-ui': ''},
       [
         div(classes: 'pg-toolbar', [
           span(classes: 'pg-label', [Component.text('Passes')]),
           div(classes: 'pg-chips', [
             for (final pass in DemoPass.values)
               button(
-                classes: 'pg-chip chip-${pass.slug}',
+                classes: 'pg-chip pc-${pass.slug}',
                 attributes: {'aria-pressed': '${_on.contains(pass)}'},
                 onClick: () => _toggle(pass),
                 [
-                  span(classes: 'pg-dot', []),
+                  span(classes: 'prism-mark', []),
                   Component.text(pass.label),
                 ],
               ),
@@ -117,9 +120,8 @@ class _PlaygroundState extends State<Playground> {
   Component _pane(String file, List<_Line> lines, {required bool output}) {
     return div(classes: 'pg-pane${output ? ' pg-out' : ''}', [
       div(classes: 'pg-pane-head', [
-        span(classes: 'pg-lights', [span([]), span([]), span([])]),
-        span([Component.text(file)]),
-        if (output) span(classes: 'pg-tag', [Component.text('as Dart, illustrative')]),
+        code(classes: 'pg-path', [Component.text(file)]),
+        if (output) span(classes: 'pg-tag', [Component.text('Shown as Dart, illustrative')]),
       ]),
       pre(classes: 'pg-code', [
         for (final line in lines)
@@ -167,7 +169,7 @@ class _PlaygroundState extends State<Playground> {
       DemoPass.flatten: '1 function',
       DemoPass.deadCode: '1 block',
     };
-    return '✓ ${[for (final pass in DemoPass.values)
+    return 'Changed ${[for (final pass in DemoPass.values)
       if (_on.contains(pass)) counts[pass]!].join(' · ')}';
   }
 }

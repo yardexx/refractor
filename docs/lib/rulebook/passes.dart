@@ -3,18 +3,14 @@
 library;
 
 enum PassGroup {
-  naming('Naming & data', 'naming'),
-  expressions('Expressions', 'expressions'),
-  controlFlow('Control flow', 'control')
+  naming('Naming & data'),
+  expressions('Expressions'),
+  controlFlow('Control flow')
   ;
 
-  const PassGroup(this.label, this.slug);
+  const PassGroup(this.label);
 
   final String label;
-
-  /// Color hook (`pc-<slug>` in code-card.css). On the docs pages a pass takes
-  /// its category's color; per-pass colors are only for the landing page.
-  final String slug;
 }
 
 class PassInfo {
@@ -28,13 +24,15 @@ class PassInfo {
     this.stable = false,
   });
 
-  /// The id the components' `pass="…"` attribute takes.
+  /// The id the components' `pass="…"` attribute takes, and the pass's color
+  /// hook everywhere (`--pass-<slug>`, `pc-<slug>`, `ray-<slug>` in site.css).
   final String slug;
 
   /// Path of the Rulebook page.
   final String page;
 
   final String title;
+
   final PassGroup group;
 
   /// The key under `refractor.passes` in `refractor.yaml`.
