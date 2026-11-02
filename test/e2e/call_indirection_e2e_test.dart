@@ -31,12 +31,23 @@ void main() {
 }
 ''';
 
-/// `call_indirection` on its own: with `rename` also enabled the forwarder is
-/// renamed before this pass resolves it, so nothing would be indirected.
+/// `call_indirection` on its own: with `rename` also enabled the pass currently
+/// indirects nothing, which would make this test vacuous.
 const _configYaml = '''
 refractor:
   verbose: false
   passes:
+    call_indirection: true
+''';
+
+/// `string_encrypt` first, so its `refractorDecode(bytes, key)` calls are
+/// routed through the forwarder too.
+const _withStringEncryptYaml = '''
+refractor:
+  verbose: false
+  passes:
+    string_encrypt:
+      seed: 3
     call_indirection: true
 ''';
 
@@ -54,6 +65,44 @@ void main() {
     tempDir.deleteSync(recursive: true);
   });
 
+  /// Obfuscates [sourcePath] with [configYaml], builds it for [target], runs
+  /// it, and returns the `call_indirection` count with the program's stdout.
+  Future<({int indirected, String output})> buildAndRun(
+    Target target,
+    String configYaml,
+  ) async {
+    final outputPath = p.join(tempDir.path, 'main${target.extension}');
+    final result =
+        await RefractorEngine(
+          compiler: DartCompiler(),
+          kernelIO: FileKernelIO(),
+        ).run(
+          config: RefractorConfig.fromYaml(configYaml),
+          request: BuildRequest(
+            input: sourcePath,
+            output: outputPath,
+            target: target,
+            workDirectory: tempDir.path,
+            projectRootUri: Uri.directory('${tempDir.path}/'),
+            projectPackageName: null,
+          ),
+        );
+
+    final report = result.passResults.reports.singleWhere(
+      (r) => r.passName == 'call_indirection',
+    );
+    final output = _run(switch (target) {
+      Target.exe => Process.runSync(outputPath, []),
+      Target.jit => Process.runSync('dart', ['run', outputPath]),
+      Target.aot => Process.runSync(_dartAotRuntime(), [outputPath]),
+      Target.kernel => Process.runSync('dart', [outputPath]),
+    });
+    return (
+      indirected: int.parse(report.metadata['calls_indirected'] ?? '0'),
+      output: output,
+    );
+  }
+
   // Regression: the pass used to emit a bare `StaticTearOff` expression,
   // which only the kernel target tolerated. The VM rejects it (JIT: "Unexpected
   // tag 17 (StaticTearOff)"; AOT: type-flow analysis "Unexpected node
@@ -64,42 +113,37 @@ void main() {
         'program', () async {
       final expected = _run(Process.runSync('dart', ['run', sourcePath]));
 
-      final outputPath = p.join(tempDir.path, 'main${target.extension}');
-      final result =
-          await RefractorEngine(
-            compiler: DartCompiler(),
-            kernelIO: FileKernelIO(),
-          ).run(
-            config: RefractorConfig.fromYaml(_configYaml),
-            request: BuildRequest(
-              input: sourcePath,
-              output: outputPath,
-              target: target,
-              workDirectory: tempDir.path,
-              projectRootUri: Uri.directory('${tempDir.path}/'),
-              projectPackageName: null,
-            ),
-          );
+      final run = await buildAndRun(target, _configYaml);
 
-      final report = result.passResults.reports.singleWhere(
-        (r) => r.passName == 'call_indirection',
-      );
       expect(
-        int.parse(report.metadata['calls_indirected'] ?? '0'),
+        run.indirected,
         equals(6),
         reason: 'all six calls should be routed through the forwarder',
       );
-
-      final actual = _run(switch (target) {
-        Target.exe => Process.runSync(outputPath, []),
-        Target.jit => Process.runSync('dart', ['run', outputPath]),
-        Target.aot => Process.runSync(_dartAotRuntime(), [outputPath]),
-        Target.kernel => Process.runSync('dart', [outputPath]),
-      });
-      expect(actual, equals(expected));
-      expect(actual, equals('30\nnested=40\nok'));
+      expect(run.output, equals(expected));
+      expect(run.output, equals('30\nnested=40\nok'));
     });
   }
+
+  // Regression: string_encrypt emitted its byte list as an untyped
+  // (`List<dynamic>`) literal. A direct call to `refractorDecode(List<int>,
+  // int)` never checks that, but `Function.apply` in the forwarder does and
+  // threw "type 'List<dynamic>' is not a subtype of type 'List<int>'".
+  test(
+    'string_encrypt + call_indirection: exe decodes routed strings',
+    () async {
+      final run = await buildAndRun(Target.exe, _withStringEncryptYaml);
+
+      expect(
+        run.indirected,
+        greaterThan(6),
+        reason:
+            'the decoder calls should be routed as well as the six '
+            'program calls',
+      );
+      expect(run.output, equals('30\nnested=40\nok'));
+    },
+  );
 }
 
 String _run(ProcessResult result) {

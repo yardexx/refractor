@@ -73,6 +73,13 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
   final Procedure decodeProcedure;
   final StringEncryptPlan plan;
 
+  /// The element type of the decoder's `bytes` parameter (`int`).
+  late final DartType _bytesElementType =
+      (decodeProcedure.function.positionalParameters.first.type
+              as InterfaceType)
+          .typeArguments
+          .single;
+
   int encryptedCount = 0;
   final List<StringEncryptionRecord> records = [];
 
@@ -101,6 +108,11 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
           rewrite.encodedBytes
               .map((byte) => IntLiteral(byte) as Expression)
               .toList(),
+          // Typed to match `refractorDecode(List<int> bytes, ...)`. An untyped
+          // literal is a `List<dynamic>`: a direct call never checks it, but a
+          // call routed through `Function.apply` (call_indirection) does and
+          // throws a TypeError.
+          typeArgument: _bytesElementType,
         ),
         IntLiteral(rewrite.key),
       ]),
