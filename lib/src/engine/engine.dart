@@ -1,6 +1,5 @@
 import 'package:kernel/ast.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:refractor/src/cli/project_workspace.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
@@ -25,15 +24,6 @@ class BuildRequest {
     required this.projectRootUri,
     required this.projectPackageName,
   });
-
-  BuildRequest.withWorkspace({
-    required this.input,
-    required this.target,
-    required ProjectWorkspace workspace,
-  }) : output = workspace.primaryOutputPath(target.extension),
-       workDirectory = workspace.buildDirectory.path,
-       projectRootUri = workspace.root.uri,
-       projectPackageName = workspace.packageName;
 
   final String input;
   final String output;

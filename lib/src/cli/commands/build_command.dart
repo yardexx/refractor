@@ -76,10 +76,9 @@ class BuildCommand extends RefractorCommand {
       logger.level = Level.verbose;
     }
 
-    final request = BuildRequest.withWorkspace(
+    final request = workspace.toBuildRequest(
       input: input,
       target: target,
-      workspace: workspace,
     );
 
     try {
