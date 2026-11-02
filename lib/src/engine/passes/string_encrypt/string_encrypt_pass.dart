@@ -1,4 +1,5 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_config.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_plan.dart';
@@ -29,12 +30,14 @@ class StringEncryptPass
   StringEncryptPass({
     required this.config,
     required this.scope,
+    required this.helpers,
   }) : _excludedLiteralPatterns = config.excludePatterns
            .map(RegExp.new)
            .toList(growable: false);
 
   final StringEncryptPassConfig config;
   final ObfuscationScope scope;
+  final RuntimeHelpers helpers;
 
   /// Literals matching any of these stay in plaintext. Built from the pass
   /// config — a pass parameter, not a keep policy.
@@ -59,7 +62,10 @@ class StringEncryptPass
   Future<StringEncryptTransformOutput> transform(
     Component component,
     StringEncryptPlan plan,
-  ) => StringEncryptTransformer(scope: scope).apply(component, plan);
+  ) => StringEncryptTransformer(
+    scope: scope,
+    helpers: helpers,
+  ).apply(component, plan);
 
   @override
   StringEncryptArtifact? buildArtifact(StringEncryptTransformOutput output) =>

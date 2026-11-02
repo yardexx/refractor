@@ -1,4 +1,5 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/int_encrypt/config/int_encrypt_config.dart';
 import 'package:refractor/src/engine/passes/int_encrypt/planning/int_encrypt_plan.dart';
@@ -27,10 +28,12 @@ class IntEncryptPass
   IntEncryptPass({
     required this.config,
     required this.scope,
+    required this.helpers,
   });
 
   final IntEncryptPassConfig config;
   final ObfuscationScope scope;
+  final RuntimeHelpers helpers;
 
   @override
   String get name => 'int_encrypt';
@@ -51,7 +54,10 @@ class IntEncryptPass
   Future<IntEncryptTransformOutput> transform(
     Component component,
     IntEncryptPlan plan,
-  ) => IntEncryptTransformer(scope: scope).apply(component, plan);
+  ) => IntEncryptTransformer(
+    scope: scope,
+    helpers: helpers,
+  ).apply(component, plan);
 
   @override
   PassReport buildReport(

@@ -1,3 +1,4 @@
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/engine/passes/arithmetic_mangle/arithmetic_mangle_pass.dart';
@@ -47,6 +48,7 @@ void main() {
       final pass = definition.createPass(
         config: const OpaquePredicatePassConfig(),
         scope: makeObfuscationScope(),
+        helpers: RuntimeHelpers.none,
       );
       expect(pass, isA<OpaquePredicatePass>());
     });
@@ -78,6 +80,7 @@ void main() {
       final pass = definition.createPass(
         config: const ArithmeticManglePassConfig(),
         scope: makeObfuscationScope(),
+        helpers: RuntimeHelpers.none,
       );
       expect(pass, isA<ArithmeticManglePass>());
     });
@@ -112,6 +115,7 @@ void main() {
       final pass = definition.createPass(
         config: const ControlFlowFlattenPassConfig(),
         scope: makeObfuscationScope(),
+        helpers: RuntimeHelpers.none,
       );
       expect(pass, isA<ControlFlowFlattenPass>());
     });
@@ -143,6 +147,7 @@ void main() {
       final pass = definition.createPass(
         config: const DeadCodePassConfig(),
         scope: makeObfuscationScope(),
+        helpers: RuntimeHelpers.none,
       );
       expect(pass, isA<DeadCodePass>());
     });

@@ -1,5 +1,5 @@
 import 'package:kernel/ast.dart';
-import 'package:refractor/src/engine/kernel/injected_helpers.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/call_indirection/planning/call_indirection_plan.dart';
@@ -15,9 +15,12 @@ class CallIndirectionTransformer
         PassTransformer<CallIndirectionPlan, CallIndirectionTransformOutput> {
   CallIndirectionTransformer({
     required ObfuscationScope scope,
-  }) : _scope = scope;
+    required RuntimeHelpers helpers,
+  }) : _scope = scope,
+       _helpers = helpers;
 
   final ObfuscationScope _scope;
+  final RuntimeHelpers _helpers;
 
   @override
   Future<CallIndirectionTransformOutput> apply(
@@ -28,10 +31,7 @@ class CallIndirectionTransformer
       return const CallIndirectionTransformOutput(indirectedCount: 0);
     }
 
-    final forwarder = _resolveForwarder(component);
-    if (forwarder == null) {
-      return const CallIndirectionTransformOutput(indirectedCount: 0);
-    }
+    final forwarder = _helpers.require(callIndirectionHelperName);
 
     final visitor = _CallIndirectionVisitor(
       forwarder: forwarder,
@@ -43,9 +43,6 @@ class CallIndirectionTransformer
       indirectedCount: visitor.indirectedCount,
     );
   }
-
-  Procedure? _resolveForwarder(Component component) =>
-      InjectedHelpers.resolve(component, callIndirectionHelperName);
 }
 
 final class _CallIndirectionVisitor extends ScopedKernelTransformer {

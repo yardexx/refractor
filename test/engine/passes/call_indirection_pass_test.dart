@@ -1,5 +1,7 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
+import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/call_indirection/call_indirection_pass.dart';
 import 'package:refractor/src/engine/passes/call_indirection/config/call_indirection_config.dart';
 import 'package:refractor/src/engine/passes/call_indirection/config/call_indirection_definition.dart';
@@ -19,7 +21,10 @@ void main() {
     late ProjectScope projectScope;
     late InterfaceType intType;
 
+    late RuntimeHelpers helpers;
+
     setUp(() {
+      helpers = RuntimeHelpers.none;
       coreLib = makeDartCoreLibrary();
       userLib = makeUserLibrary();
       projectScope = makeProjectScope();
@@ -28,15 +33,15 @@ void main() {
     });
 
     void addForwarderStandIn() {
-      userLib.addProcedure(
-        Procedure(
-          Name(callIndirectionHelperName, userLib),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: userLib.fileUri,
-          isStatic: true,
-        ),
+      final standIn = Procedure(
+        Name(callIndirectionHelperName, userLib),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+        isStatic: true,
       );
+      userLib.addProcedure(standIn);
+      helpers = RuntimeHelpers({callIndirectionHelperName: standIn});
     }
 
     CallIndirectionPass makePass(Component component) {
@@ -48,6 +53,7 @@ void main() {
       );
       return CallIndirectionPass(
         config: config,
+        helpers: helpers,
         scope: ObfuscationScope(
           project: projectScope,
           keep: keepResolver.resolve(
@@ -166,7 +172,7 @@ void main() {
       expect(result.report.isEmpty, isTrue);
     });
 
-    test('no forwarder helper means the pass is a no-op', () async {
+    test('a missing forwarder helper fails the pass', () async {
       final caller = addTargetAndCaller(
         returnType: intType,
         callerBody: (target) => ReturnStatement(
@@ -182,7 +188,8 @@ void main() {
           (caller.function.body! as Block).statements.first as ReturnStatement;
       expect(ret.expression, isA<StaticInvocation>());
       expect((ret.expression! as StaticInvocation).target.name.text, 'target');
-      expect(result.report.isEmpty, isTrue);
+      expect(result, isA<PassFailed>());
+      expect(result.report.message, contains(callIndirectionHelperName));
     });
   });
 }

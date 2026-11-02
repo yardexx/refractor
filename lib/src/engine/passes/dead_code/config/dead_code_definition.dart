@@ -1,4 +1,5 @@
 import 'package:refractor/src/engine/kernel/helper_source.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
@@ -33,6 +34,7 @@ final class DeadCodeDefinition implements PassDefinition<DeadCodePassConfig> {
   Pass createPass({
     required DeadCodePassConfig config,
     required ObfuscationScope scope,
+    required RuntimeHelpers helpers,
   }) {
     return DeadCodePass(config: config, scope: scope);
   }

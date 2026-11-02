@@ -1,8 +1,10 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encrypt_artifact.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_runtime.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_codec.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
 import 'package:refractor/src/policy/keep_resolver.dart';
@@ -51,7 +53,10 @@ void main() {
     late Component component;
     late ProjectScope projectScope;
 
+    late RuntimeHelpers helpers;
+
     setUp(() {
+      helpers = RuntimeHelpers.none;
       coreLib = makeDartCoreLibrary();
       convertLib = makeDartConvertLibrary();
       userLib = makeUserLibrary();
@@ -65,9 +70,14 @@ void main() {
         extraLibraries: [convertLib],
       );
       // In a real build the engine injects the decode helper before the pass
-      // runs; the pass resolves it by name. Supply a stand-in for these unit
-      // tests so each rewritten literal has a procedure to call.
-      addDecodeHelperStandIn(coreLib: coreLib, userLib: userLib);
+      // runs and hands it over as RuntimeHelpers. Supply a stand-in for these
+      // unit tests so each rewritten literal has a procedure to call.
+      helpers = RuntimeHelpers({
+        decodeRuntimeHelperName: addDecodeHelperStandIn(
+          coreLib: coreLib,
+          userLib: userLib,
+        ),
+      });
       return component;
     }
 
@@ -82,6 +92,7 @@ void main() {
       );
       return StringEncryptPass(
         config: config,
+        helpers: helpers,
         scope: ObfuscationScope(
           project: projectScope,
           keep: keepResolver.resolve(

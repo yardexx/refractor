@@ -1,6 +1,7 @@
 import 'package:glob/glob.dart';
 import 'package:kernel/ast.dart';
 import 'package:refractor/src/engine/kernel/helper_source.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
@@ -53,7 +54,8 @@ final class PassRegistry {
   }
 
   /// The runtime helpers declared by every enabled pass in [configs]. The
-  /// engine injects these into the component once, before the passes run.
+  /// engine injects these into the component once, before the passes run, and
+  /// passes the injected procedures back to [createAll].
   Set<HelperSource> collectRuntimeHelpers(Iterable<PassConfig> configs) {
     final helpers = <HelperSource>{};
     for (final config in configs) {
@@ -68,6 +70,7 @@ final class PassRegistry {
     required Component component,
     required List<Glob> globalExcludes,
     required ProjectScope projectScope,
+    RuntimeHelpers helpers = RuntimeHelpers.none,
   }) {
     final keepResolver = KeepResolver(
       component: component,
@@ -76,7 +79,8 @@ final class PassRegistry {
     );
     return [
       for (final config in configs)
-        if (config.enabled) _createPass(config, keepResolver, projectScope),
+        if (config.enabled)
+          _createPass(config, keepResolver, projectScope, helpers),
     ];
   }
 
@@ -84,12 +88,14 @@ final class PassRegistry {
     PassConfig config,
     KeepResolver keepResolver,
     ProjectScope projectScope,
+    RuntimeHelpers helpers,
   ) {
     final definition = _definitionFor(config);
     final keep = keepResolver.resolve(definition.keepSources, config.exclude);
     return definition.createPass(
       config: config,
       scope: ObfuscationScope(project: projectScope, keep: keep),
+      helpers: helpers,
     );
   }
 

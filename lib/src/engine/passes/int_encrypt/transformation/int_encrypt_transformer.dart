@@ -1,5 +1,5 @@
 import 'package:kernel/ast.dart';
-import 'package:refractor/src/engine/kernel/injected_helpers.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/int_encrypt/planning/int_encrypt_plan.dart';
@@ -11,9 +11,12 @@ class IntEncryptTransformer
     implements PassTransformer<IntEncryptPlan, IntEncryptTransformOutput> {
   IntEncryptTransformer({
     required ObfuscationScope scope,
-  }) : _scope = scope;
+    required RuntimeHelpers helpers,
+  }) : _scope = scope,
+       _helpers = helpers;
 
   final ObfuscationScope _scope;
+  final RuntimeHelpers _helpers;
 
   @override
   Future<IntEncryptTransformOutput> apply(
@@ -24,10 +27,7 @@ class IntEncryptTransformer
       return const IntEncryptTransformOutput(encryptedCount: 0);
     }
 
-    final decodeProcedure = _resolveDecodeProcedure(component);
-    if (decodeProcedure == null) {
-      return const IntEncryptTransformOutput(encryptedCount: 0);
-    }
+    final decodeProcedure = _helpers.require(intDecodeRuntimeHelperName);
 
     final visitor = _IntEncryptVisitor(
       decodeProcedure: decodeProcedure,
@@ -37,11 +37,6 @@ class IntEncryptTransformer
     component.transformChildren(visitor);
     return IntEncryptTransformOutput(encryptedCount: visitor.encryptedCount);
   }
-
-  /// Finds the decode helper the engine injected into the program. Returns null
-  /// when it is absent, in which case no literal is rewritten.
-  Procedure? _resolveDecodeProcedure(Component component) =>
-      InjectedHelpers.resolve(component, intDecodeRuntimeHelperName);
 }
 
 final class _IntEncryptVisitor extends ScopedKernelTransformer {

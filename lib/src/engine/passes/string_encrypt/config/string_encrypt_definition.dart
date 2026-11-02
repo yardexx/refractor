@@ -1,4 +1,5 @@
 import 'package:refractor/src/engine/kernel/helper_source.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
@@ -26,8 +27,8 @@ final class StringEncryptDefinition
   };
 
   // The decode helper, authored as plain Dart (see decode_runtime.dart) and
-  // injected once by the engine. The transformer resolves it by name and
-  // replaces each plaintext literal with a call to it.
+  // injected once by the engine. The transformer takes it from the injected
+  // `RuntimeHelpers` and replaces each plaintext literal with a call to it.
   @override
   Set<HelperSource> get runtimeHelpers => const {
     HelperSource(
@@ -45,8 +46,9 @@ final class StringEncryptDefinition
   Pass createPass({
     required StringEncryptPassConfig config,
     required ObfuscationScope scope,
+    required RuntimeHelpers helpers,
   }) {
-    return StringEncryptPass(config: config, scope: scope);
+    return StringEncryptPass(config: config, scope: scope, helpers: helpers);
   }
 
   @override
