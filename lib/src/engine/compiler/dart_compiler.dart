@@ -15,16 +15,26 @@ class DartCompiler implements Compiler {
 
   @override
   void compileToKernel(String sourcePath, String outputPath) {
-    _run(['compile', 'kernel', sourcePath, '-o', outputPath]);
+    _run(['compile', 'kernel', '-o', outputPath, sourcePath]);
   }
 
   @override
   void compileToTarget(String dillPath, String outputPath, Target target) {
-    _run(['compile', target.value, dillPath, '-o', outputPath]);
+    // Remove output from a previous build so the existence check below cannot
+    // mistake a stale file for this build's output.
+    final expectedOutput = File(outputPath);
+    if (expectedOutput.existsSync()) {
+      expectedOutput.deleteSync();
+    }
+
+    // Options must precede the input: `dart compile jit-snapshot` treats
+    // everything after the entry point as training arguments for the run it
+    // performs at build time, so a trailing `-o <out>` would reach the
+    // program's `main` as `args`.
+    _run(['compile', target.value, '-o', outputPath, dillPath]);
 
     // `dart compile` for snapshot targets may ignore `-o` when the input is a
     // `.dill` file and instead emit next to the kernel path.
-    final expectedOutput = File(outputPath);
     if (expectedOutput.existsSync()) {
       return;
     }
