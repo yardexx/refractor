@@ -12,11 +12,21 @@ import 'package:refractor/src/engine/passes/rename/reporting/symbol_map_key.dart
 final class RenameSafetyNormalizer {
   const RenameSafetyNormalizer();
 
+  /// [spelledSelectors] are names some code refers to by spelling where
+  /// rename cannot rewrite it; every instance member with one of those names
+  /// keeps it.
   RenameMapping normalize(
     Component component,
-    RenameMapping mapping,
-  ) {
+    RenameMapping mapping, {
+    Set<Name> spelledSelectors = const {},
+  }) {
     final normalizedMembers = Map<Member, Name>.from(mapping.members);
+    for (final member in mapping.members.keys) {
+      if (MemberModel.isInstanceDispatch(member) &&
+          spelledSelectors.contains(member.name)) {
+        normalizedMembers[member] = member.name;
+      }
+    }
     final normalizedVariables = Map<VariableDeclaration, String>.from(
       mapping.variables,
     );

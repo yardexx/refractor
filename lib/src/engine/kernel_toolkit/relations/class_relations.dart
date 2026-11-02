@@ -56,6 +56,16 @@ class ClassRelationIndex {
     return false;
   }
 
+  /// Whether some class in scope is a subtype of both [a] and [b] (either
+  /// one counts as its own subtype), so a single object can be reached
+  /// through both interfaces.
+  bool shareSubtype(Class a, Class b) {
+    final subsA = _allSubtypes[a];
+    final subsB = _allSubtypes[b];
+    if (subsA == null || subsB == null) return false;
+    return subsA.any(subsB.contains);
+  }
+
   /// Whether [a] and [b] share a common supertype that declares an
   /// overridable member named [memberName].
   bool shareDeclaringSupertypeForName(Class a, Class b, String memberName) {

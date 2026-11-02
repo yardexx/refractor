@@ -2,6 +2,7 @@ import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
+import 'package:refractor/src/engine/passes/rename/planning/name_generator/sequential_generator.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
@@ -1711,6 +1712,167 @@ void main() {
 
       expect(staticMethod.name.text, isNot('helper'));
       expect(instanceMethod.name.text, isNot('helper'));
+    });
+
+    test(
+      'member inherited from an unrelated superclass shares a name with the '
+      'interface member it implements',
+      () async {
+        final named = Class(
+          name: 'Named',
+          fileUri: userLib.fileUri,
+          isAbstract: true,
+        );
+        final interfaceLabel = makeProcedure('label', named);
+        final base = Class(name: 'Base', fileUri: userLib.fileUri);
+        final baseLabel = makeProcedure('label', base);
+        userLib
+          ..addClass(named)
+          ..addClass(base);
+        final derived = Class(
+          name: 'Derived',
+          fileUri: userLib.fileUri,
+          supertype: base.asThisSupertype,
+          implementedTypes: [named.asThisSupertype],
+        );
+        userLib.addClass(derived);
+
+        await runPass();
+
+        expect(baseLabel.name.text, isNot('label'));
+        expect(baseLabel.name.text, equals(interfaceLabel.name.text));
+      },
+    );
+
+    test(
+      'member called dynamically from a dependency keeps its name',
+      () async {
+        final thing = Class(name: 'Thing', fileUri: userLib.fileUri);
+        final describe = makeProcedure('describe', thing);
+        final other = makeProcedure('other', thing);
+        userLib.addClass(thing);
+
+        final depUri = Uri.parse('package:dep/dep.dart');
+        final depLib = Library(depUri, fileUri: depUri);
+        final receiver = VariableDeclaration('x');
+        depLib.addProcedure(
+          Procedure(
+            Name('describeAll'),
+            ProcedureKind.Method,
+            FunctionNode(
+              ExpressionStatement(
+                DynamicInvocation(
+                  DynamicAccessKind.Dynamic,
+                  VariableGet(receiver),
+                  Name('describe'),
+                  Arguments.empty(),
+                ),
+              ),
+              positionalParameters: [receiver],
+              requiredParameterCount: 1,
+            ),
+            fileUri: depUri,
+            isStatic: true,
+          ),
+        );
+
+        component = Component(
+          libraries: [coreLib, annotationLib, depLib, userLib],
+        )..setMainMethodAndMode(null, true);
+        await makePass(component).run(component);
+
+        expect(describe.name.text, equals('describe'));
+        expect(other.name.text, isNot('other'));
+      },
+    );
+
+    test('member named by a symbol keeps its name', () async {
+      final speaker = Class(name: 'Speaker', fileUri: userLib.fileUri);
+      final speak = makeProcedure('speak', speaker);
+      final other = makeProcedure('other', speaker);
+      userLib
+        ..addClass(speaker)
+        ..addProcedure(
+          Procedure(
+            Name('matches'),
+            ProcedureKind.Method,
+            FunctionNode(
+              ExpressionStatement(
+                ConstantExpression(SymbolConstant('speak', null)),
+              ),
+            ),
+            fileUri: userLib.fileUri,
+            isStatic: true,
+          ),
+        );
+
+      await runPass();
+
+      expect(speak.name.text, equals('speak'));
+      expect(other.name.text, isNot('other'));
+    });
+
+    test(
+      'no member is renamed to a name inherited from a non-project class',
+      () async {
+        final extUri = Uri.parse('package:geometry/point.dart');
+        final extLib = Library(extUri, fileUri: extUri);
+        final point = Class(name: 'Point', fileUri: extUri);
+        // The first names the sequential generator hands out.
+        for (final name in ['a', 'b', 'c']) {
+          makeProcedure(name, point);
+        }
+        extLib.addClass(point);
+
+        final pixel = Class(
+          name: 'Pixel',
+          fileUri: userLib.fileUri,
+          supertype: point.asThisSupertype,
+        );
+        final area = makeProcedure('area', pixel);
+        userLib.addClass(pixel);
+
+        component = Component(
+          libraries: [coreLib, annotationLib, extLib, userLib],
+        )..setMainMethodAndMode(null, true);
+        final keepResolver = KeepResolver(
+          component: component,
+          projectScope: projectScope,
+          globalExcludes: const [],
+        );
+        await RenamePass(
+          config: const RenamePassConfig(),
+          scope: ObfuscationScope(
+            project: projectScope,
+            keep: keepResolver.resolve(
+              const RenameDefinition().keepSources,
+              const [],
+            ),
+          ),
+          generatorFactory: SequentialGenerator.new,
+        ).run(component);
+
+        expect(area.name.text, isNot('area'));
+        expect(['a', 'b', 'c'], isNot(contains(area.name.text)));
+      },
+    );
+
+    test('member overridden in a kept subclass keeps its name', () async {
+      final parent = Class(name: 'Parent', fileUri: userLib.fileUri);
+      final parentRun = makeProcedure('run', parent);
+      userLib.addClass(parent);
+      final kept = Class(
+        name: 'Kept',
+        fileUri: userLib.fileUri,
+        supertype: parent.asThisSupertype,
+      )..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
+      final keptRun = makeProcedure('run', kept);
+      userLib.addClass(kept);
+
+      await runPass();
+
+      expect(keptRun.name.text, equals('run'));
+      expect(parentRun.name.text, equals('run'));
     });
   });
 }

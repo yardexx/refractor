@@ -25,12 +25,22 @@ abstract class NameGenerator {
   /// Returns the next raw name string.
   String nextName();
 
-  /// Generate names for everything in [requests].
+  /// Generate names for everything in [requests], never handing out one of
+  /// the [reserved] names.
   Future<Map<RenameNameRequest, String>> generateNames(
-    List<RenameNameRequest> requests,
-  ) async {
+    List<RenameNameRequest> requests, {
+    Set<String> reserved = const {},
+  }) async {
+    String nextFreeName() {
+      var name = nextName();
+      while (reserved.contains(name)) {
+        name = nextName();
+      }
+      return name;
+    }
+
     return {
-      for (final request in requests) request: nextName(),
+      for (final request in requests) request: nextFreeName(),
     };
   }
 }
