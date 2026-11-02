@@ -67,15 +67,7 @@ void main() {
       // In a real build the engine injects the decode helper before the pass
       // runs; the pass resolves it by name. Supply a stand-in for these unit
       // tests so each rewritten literal has a procedure to call.
-      userLib.addProcedure(
-        Procedure(
-          Name('refractorDecode', userLib),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: userLib.fileUri,
-          isStatic: true,
-        ),
-      );
+      addDecodeHelperStandIn(coreLib: coreLib, userLib: userLib);
       return component;
     }
 

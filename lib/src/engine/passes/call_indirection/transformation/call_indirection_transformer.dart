@@ -80,7 +80,14 @@ final class _CallIndirectionVisitor extends ScopedKernelTransformer {
     final forwarded = StaticInvocation(
       forwarder,
       Arguments([
-        StaticTearOff(target),
+        // The VM only accepts static tear-offs as constants: the CFE always
+        // lowers `f` to `ConstantExpression(StaticTearOffConstant(f))`, and
+        // neither the JIT reader nor AOT type-flow analysis handles a bare
+        // `StaticTearOff` expression.
+        ConstantExpression(
+          StaticTearOffConstant(target),
+          target.function.computeFunctionType(Nullability.nonNullable),
+        ),
         ListLiteral(node.arguments.positional),
       ]),
     );

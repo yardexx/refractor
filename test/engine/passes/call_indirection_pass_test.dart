@@ -102,7 +102,13 @@ void main() {
       expect(as.type, intType);
       final invoke = as.operand as StaticInvocation;
       expect(invoke.target.name.text, callIndirectionHelperName);
-      expect(invoke.arguments.positional[0], isA<StaticTearOff>());
+      // A constant tear-off, as the CFE emits: the VM rejects a bare
+      // StaticTearOff expression.
+      final tearOff = invoke.arguments.positional[0] as ConstantExpression;
+      expect(
+        (tearOff.constant as StaticTearOffConstant).target.name.text,
+        'target',
+      );
       expect(invoke.arguments.positional[1], isA<ListLiteral>());
       expect(
         (invoke.arguments.positional[1] as ListLiteral).expressions,

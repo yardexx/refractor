@@ -25,15 +25,7 @@ void main() {
       // The engine injects the decode helper before the transformer runs; the
       // transformer resolves it by name. Supply a stand-in for these unit
       // tests so each rewritten literal has a procedure to call.
-      userLib.addProcedure(
-        Procedure(
-          Name('refractorDecode', userLib),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: userLib.fileUri,
-          isStatic: true,
-        ),
-      );
+      addDecodeHelperStandIn(coreLib: coreLib, userLib: userLib);
     });
 
     test('returns explicit transform output with encrypted count', () async {
@@ -100,6 +92,16 @@ void main() {
             .map((literal) => literal.value)
             .toList(),
         firstRewrite.encodedBytes,
+      );
+      // A `List<int>`, not `List<dynamic>`: Function.apply (call_indirection)
+      // type-checks the argument against `refractorDecode(List<int>, int)`.
+      expect(
+        (firstCall.arguments.positional[0] as ListLiteral).typeArgument,
+        isA<InterfaceType>().having(
+          (type) => type.classNode.name,
+          'class',
+          'int',
+        ),
       );
     });
 
