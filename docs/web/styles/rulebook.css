@@ -217,3 +217,7 @@
     grid-column: 1;
   }
 }
+
+.pass-facts > span > code {
+  font-size: 0.9em;
+}

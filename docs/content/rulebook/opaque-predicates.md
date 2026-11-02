@@ -1,6 +1,6 @@
 ---
 title: Opaque predicates
-description: Adds always-true checks to your if conditions, built from live variables.
+description: Joins an always-true check to your if conditions.
 layout: docs
 ---
 
@@ -8,11 +8,12 @@ layout: docs
 
 ## What it does
 
-Opaque predicates make your existing `if` conditions harder to reason about.
-Each condition gets an extra check that is always true, though that isn't obvious
-from reading it. The check reads a variable that is live at that point, so the
-compiler can't prove it constant and remove it, and the original condition still
-decides which branch runs.
+A plain `if` condition tells a reader exactly when a branch runs. This pass
+joins an extra check to each one, so `if (c)` becomes `if (c && check)`. The
+check is always true, though that isn't obvious from reading it, so the
+original condition still decides which branch runs.
+
+<PassAnimation pass="opaque" />
 
 ## Example
 
@@ -39,19 +40,20 @@ void refund(Order o, int n) {
 
 </PassCompare>
 
-## What it targets
+## What it changes
 
-It works on `if` statements in your project's code outside `const` contexts.
-For each one it picks the nearest `int` in scope, a parameter or a local, and
-builds the check from it. Where there's no `int` in scope, it falls back to a
-check built from constants.
+- Every `if` statement in your project's code outside a `const` context,
+  including those in getters and `async` functions.
+- Where an `int` variable is in scope, the check reads it:
+  `(n & 0xFFFF) * (n & 0xFFFF) >= 0`. Where there's none, the check is built
+  from constants, such as `k * k >= k`.
 
-It follows `exclude` globs and `@Refractor.keep()`, like every pass.
+## What it leaves alone
+
+- Conditional expressions (`?:`) and loop conditions.
+- Code kept with `exclude` or `@Refractor.keep()`.
 
 ## Configuration
-
-<Tabs defaultValue="minimal">
-<TabItem label="Minimal" value="minimal">
 
 ```yaml
 refractor:
@@ -59,46 +61,51 @@ refractor:
     opaque_predicate: true
 ```
 
-</TabItem>
-<TabItem label="All options" value="all">
-
-```yaml
-refractor:
-  passes:
-    opaque_predicate:
-      enabled: true
-      seed: 0x05A1    # default
-      exclude: []     # extra library globs
-```
-
-</TabItem>
-</Tabs>
-
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turns the pass on or off. |
-| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
-| `seed` | int | `0x05A1` | Seeds which template and which variable each condition uses, for reproducible builds. |
+| `seed` | int | `0x05A1` | Seeds which variable and, for checks built from constants, which template and constant each condition gets. |
+
+`enabled` and `exclude` work as on every pass; see
+[Configuration](/guide/configuration#pass-options).
+
+## Cost and strength
+
+**Cost.** Small. The check only runs when the original condition is true, so in
+a typical hot loop the difference was within measurement noise. In the worst
+case, a condition that is always true in a tight loop that the compiler
+inlines, it added about a third. Each strengthened condition adds about 30
+bytes of code.
+
+**Strength.** Only checks that read a variable survive into a native build.
+Checks built from constants are folded away by the AOT compiler, and so are
+variable checks when the compiler can work out the variable's value. The
+checks that do survive all share one shape, the masked square, so once a
+reader has seen one they can spot the rest.
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- Behaviour doesn't change: the added check is always true, so the original condition alone picks the branch.
-- The check reads a live variable (for example, a masked square that can never be negative), so the optimizer can't drop it.
-- The `seed` varies the template and the variable from one condition to the next, so the added checks don't all look alike.
+- The added check is always true, so the original condition alone picks the branch.
+- The check runs only after the original condition, so it can't change which side effects happen.
 
 </Promises>
 <Caveats>
 
+- **Known issue:** the variable it picks isn't checked for being nullable, `late` or not yet assigned. Reading such a variable crashes the program at runtime with a null error, a `LateInitializationError` or a failed assertion. A fix is in progress; until then, `exclude` or `@Refractor.keep()` code where the nearest `int` before an `if` can be null or unassigned.
 - It only strengthens conditions that are already there. It doesn't add or reorder control flow; [control-flow flattening](/rulebook/control-flow-flatten) and [bogus control flow](/rulebook/bogus-control-flow) do that.
 
 </Caveats>
 </Guarantees>
 
-## Output
+## Works with
 
-The build report counts `conditions_strengthened`.
+- **Dead code and bogus control flow.** List this pass before them in
+  `refractor.yaml`. Listed after, it strengthens their guards too, which
+  produces visibly contradictory checks such as `x < 0 && x >= 0`. Passes run
+  in the order they're listed.
+- **Integer encryption.** Listed after this pass, it encrypts the `0xFFFF`
+  masks and constants in the checks.
 
 <PassPager pass="opaque" />

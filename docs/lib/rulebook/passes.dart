@@ -21,6 +21,7 @@ class PassInfo {
     required this.group,
     required this.configKey,
     required this.summary,
+    required this.reports,
     this.stable = false,
   });
 
@@ -40,6 +41,9 @@ class PassInfo {
 
   final String summary;
 
+  /// The metric keys the pass adds to the build report.
+  final List<String> reports;
+
   /// Whether the pass shipped in a release (0.2.2). The rest are new on dev
   /// and marked experimental.
   final bool stable;
@@ -53,6 +57,7 @@ const rulebookPasses = [
     group: PassGroup.naming,
     configKey: 'rename',
     summary: 'Rewrites identifiers to short, meaningless names.',
+    reports: ['classes', 'members', 'variables'],
     stable: true,
   ),
   PassInfo(
@@ -62,6 +67,7 @@ const rulebookPasses = [
     group: PassGroup.naming,
     configKey: 'string_encrypt',
     summary: 'Hides string literals behind a runtime decoder.',
+    reports: ['strings_encrypted'],
     stable: true,
   ),
   PassInfo(
@@ -71,6 +77,7 @@ const rulebookPasses = [
     group: PassGroup.naming,
     configKey: 'int_encrypt',
     summary: 'Hides integer literals behind a runtime decoder.',
+    reports: ['ints_encrypted'],
   ),
   PassInfo(
     slug: 'arith',
@@ -79,6 +86,7 @@ const rulebookPasses = [
     group: PassGroup.expressions,
     configKey: 'arithmetic_mangle',
     summary: 'Rewrites + and * into equivalent, uglier expressions.',
+    reports: ['operations_mangled'],
   ),
   PassInfo(
     slug: 'opaque',
@@ -87,6 +95,7 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'opaque_predicate',
     summary: 'Entangles branch conditions with always-true predicates.',
+    reports: ['conditions_strengthened'],
   ),
   PassInfo(
     slug: 'flatten',
@@ -95,6 +104,7 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'control_flow_flatten',
     summary: 'Turns a straight-line body into a switch state machine.',
+    reports: ['functions_flattened'],
   ),
   PassInfo(
     slug: 'dead',
@@ -103,6 +113,7 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'dead_code',
     summary: 'Inserts never-executed, opaquely guarded junk.',
+    reports: ['blocks_inserted'],
   ),
   PassInfo(
     slug: 'bogus',
@@ -111,6 +122,7 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'bogus_control_flow',
     summary: 'Wraps a body in an always-true branch over a real-looking clone.',
+    reports: ['bogus_branches_inserted'],
   ),
   PassInfo(
     slug: 'call',
@@ -119,6 +131,7 @@ const rulebookPasses = [
     group: PassGroup.controlFlow,
     configKey: 'call_indirection',
     summary: 'Routes static calls through a never-inline forwarder.',
+    reports: ['calls_indirected'],
   ),
 ];
 

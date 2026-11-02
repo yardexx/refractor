@@ -8,12 +8,13 @@ layout: docs
 
 ## What it does
 
-Call indirection sends direct calls to static functions through a forwarder that
-Refractor adds to your program. `f(a, b)` becomes `refractorCall(f, [a, b]) as R`,
-and `refractorCall` makes the call with `Function.apply`. Tools that rebuild a
-program's call graph from its direct calls lose the link between caller and
-callee. The forwarder is marked never-inline, so the compiler can't turn it back
-into a direct call.
+Tools that rebuild a program's call graph follow its direct calls: this
+function calls that one. This pass sends direct calls to static functions
+through a forwarder that Refractor adds to your program. `f(a, b)` becomes
+`refractorCall(f, [a, b]) as R`, and `refractorCall` makes the call with
+`Function.apply`, so the direct edge from caller to callee is gone.
+
+<PassAnimation pass="call" />
 
 ## Example
 
@@ -39,20 +40,21 @@ double total(List<double> items) {
 
 </PassCompare>
 
-## What it targets
+## What it changes
 
-It routes direct calls in your project's code to top-level or `static` functions
-that are themselves in your project, aren't generic, and take positional
-arguments only. Calls with named or type arguments, calls to the SDK or to kept
-code, and calls in `const` contexts stay direct, so the forwarding is always
-exact.
+- Calls in your project's code to top-level or `static` functions in your
+  project, with positional arguments only, including optional ones and calls
+  with no arguments, in sync and `async` code alike.
 
-It follows `exclude` globs and `@Refractor.keep()`, like every pass.
+## What it leaves alone
+
+- Calls with named or type arguments, and calls to generic functions.
+- Instance methods, constructors and factories.
+- Calls to the SDK or to kept code, and calls in `const` contexts.
+- Calls through a variable that holds a function.
+- Code kept with `exclude` or `@Refractor.keep()`.
 
 ## Configuration
-
-<Tabs defaultValue="minimal">
-<TabItem label="Minimal" value="minimal">
 
 ```yaml
 refractor:
@@ -60,44 +62,51 @@ refractor:
     call_indirection: true
 ```
 
-</TabItem>
-<TabItem label="All options" value="all">
+It has no options of its own. `enabled` and `exclude` work as on every pass;
+see [Configuration](/guide/configuration#pass-options).
 
-```yaml
-refractor:
-  passes:
-    call_indirection:
-      enabled: true
-      exclude: []     # extra library globs
-```
+## Cost and strength
 
-</TabItem>
-</Tabs>
+**Cost.** High per call. In a native executable on an Apple-silicon Mac, a
+routed call took about 180 nanoseconds against under 2 for a direct one,
+because `Function.apply` builds an argument list and dispatches dynamically.
+Keep it out of hot code with `exclude`.
 
-| Option | Type | Default | Meaning |
-|---|---|---|---|
-| `enabled` | bool | `true` | Turns the pass on or off. |
-| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
+**Strength.** The direct edges are gone from the call graph, but the callee is
+still named at the call site, through the reference passed to the forwarder.
+Worse for now: those references keep function names in the executable that the
+native compiler would otherwise strip, so `strings` finds names it didn't find
+before, and [rename](/rulebook/rename) can't currently hide them (see below).
 
 ## Guarantees & limitations
 
 <Guarantees>
 <Promises>
 
-- Behaviour doesn't change. `Function.apply` passes the exact positional arguments, and the `as R` cast restores the result's type. It can't fail, because the value always has that type. Calls that return `void` or `dynamic` need no cast.
-- The call becomes an indirect, dynamic one that the compiler can't turn back into a direct call, so the edge disappears from the static call graph.
+- Behaviour doesn't change. `Function.apply` passes the exact positional arguments, and the `as R` cast restores the result's type. Calls that return `void` need no cast.
+- The forwarder is marked never-inline, so the compiler can't turn the call back into a direct one.
 
 </Promises>
 <Caveats>
 
-- The function is still named at the call site, because the tear-off refers to it. Hiding the name as well would take a dispatcher that routes by id, which is a bigger change.
-- Each routed call goes through `Function.apply`, which costs time, so exclude hot code.
+- **Known issues, fixes in progress:** listed after [string encryption](/rulebook/string-encryption), routed decoder calls crash at runtime with a type error; and it doesn't combine with rename yet (see below).
+- Routed function names stay visible in the binary.
+- Each routed call costs about a hundred times a direct one.
 
 </Caveats>
 </Guarantees>
 
-## Output
+## Works with
 
-The build report counts `calls_indirected`.
+- **Rename.** Not yet, in either order. Listed before this pass, rename
+  renames the forwarder itself, and this pass then silently routes nothing.
+  Listed after, rename leaves every routed function with its original name.
+- **String encryption.** Listed before this pass, the decoder calls get routed
+  too, and they crash at runtime with a type error. List call indirection
+  first until that's fixed.
+- **Integer encryption.** Listed before this pass, its decoder calls are routed
+  as well: that hides them from the call graph, at about 250 nanoseconds per
+  decoded number. Passes run in the order they're listed.
+- **Control-flow flattening** works in either order.
 
 <PassPager pass="call" />

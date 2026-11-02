@@ -12,6 +12,7 @@ import 'package:docs/diagrams/policy_explorer.dart' as _policy_explorer;
 import 'package:docs/diagrams/stages_diagram.dart' as _stages_diagram;
 import 'package:docs/home/playground.dart' as _playground;
 import 'package:docs/rulebook/copy_chip.dart' as _copy_chip;
+import 'package:docs/rulebook/pass_animation.dart' as _pass_animation;
 import 'package:jaspr_content/components/_internal/tab_bar.dart' as _tab_bar;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
     as _zoomable_image;
@@ -62,6 +63,10 @@ ServerOptions get defaultServerOptions => ServerOptions(
       'copy_chip',
       params: __copy_chipCopyChip,
     ),
+    _pass_animation.PassAnimation: ClientTarget<_pass_animation.PassAnimation>(
+      'pass_animation',
+      params: __pass_animationPassAnimation,
+    ),
     _tab_bar.TabBar: ClientTarget<_tab_bar.TabBar>(
       'jaspr_content:tab_bar',
       params: __tab_barTabBar,
@@ -99,6 +104,9 @@ Map<String, Object?> __copy_code_buttonCopyCodeButton(
 Map<String, Object?> __copy_chipCopyChip(_copy_chip.CopyChip c) => {
   'text': c.text,
 };
+Map<String, Object?> __pass_animationPassAnimation(
+  _pass_animation.PassAnimation c,
+) => {'pass': c.pass};
 Map<String, Object?> __tab_barTabBar(_tab_bar.TabBar c) => {
   'initialValue': c.initialValue,
   'items': c.items,

@@ -8,6 +8,7 @@ import 'package:jaspr_content/jaspr_content.dart';
 
 import '../components/cards.dart';
 import 'copy_chip.dart';
+import 'pass_animation.dart';
 import 'passes.dart';
 
 /// The stylesheet every Rulebook component needs. Head elements with the same
@@ -23,8 +24,8 @@ PassInfo _passOf(Map<String, String> attributes, String tag) {
 }
 
 /// `<PassFacts pass="strings" />`: the line under a pass page's title with
-/// its prism marker, its group, its config key (click to copy) and whether it
-/// is stable.
+/// its prism marker, its group, its config key (click to copy), whether it
+/// is stable, and the metrics it adds to the build report.
 class PassFacts extends CustomComponentBase {
   const PassFacts();
 
@@ -49,7 +50,40 @@ class PassFacts extends CustomComponentBase {
             attributes: {'title': 'New since 0.2.2; its behaviour may still change'},
             [Component.text('Experimental')],
           ),
+        span(
+          attributes: {'title': 'Metrics this pass adds to the build report'},
+          [
+            Component.text('Reports '),
+            for (final (i, key) in pass.reports.indexed) ...[
+              if (i > 0) Component.text(', '),
+              code([Component.text(key)]),
+            ],
+          ],
+        ),
       ]),
+    ]);
+  }
+}
+
+/// `<PassAnimation pass="strings" />`: the idea of the pass as a short
+/// animation, for the top of "What it does" ([PassAnimation]).
+class PassAnimationTag extends CustomComponentBase {
+  const PassAnimationTag();
+
+  @override
+  Pattern get pattern => 'PassAnimation';
+
+  @override
+  Component apply(String name, Map<String, String> attributes, Component? child) {
+    final pass = _passOf(attributes, name);
+    return Component.fragment([
+      Document.head(
+        children: [
+          link(id: 'diagrams-css', rel: 'stylesheet', href: '/styles/diagrams.css'),
+          link(id: 'pass-animation-css', rel: 'stylesheet', href: '/styles/pass-animation.css'),
+        ],
+      ),
+      PassAnimation(pass: pass.slug),
     ]);
   }
 }

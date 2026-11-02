@@ -8,10 +8,12 @@ layout: docs
 
 ## What it does
 
-String encryption replaces each string literal with a call to a small decoder
-that Refractor adds to your program. The text is stored in encoded form, so it
-no longer shows up in the binary, and the decoder rebuilds it when the code
-runs.
+The text of your strings is often the quickest way into a binary: run `strings`
+on it and URLs, error messages and feature names fall out. This pass stores each
+literal encoded, with its own key, and swaps the literal for a call to a small
+decoder that Refractor adds to your program.
+
+<PassAnimation pass="strings" />
 
 ## Example
 
@@ -40,50 +42,50 @@ String banner() {
 
 </PassCompare>
 
-## What it targets
+## What it changes
 
-It encodes non-empty string literals in your project's code. It leaves alone
-strings in a `const` context or an annotation, which have to stay constant, empty
-strings, and any literal whose text matches one of your `exclude_patterns`, for
-example to keep URLs readable.
+- Non-empty string literals in your project's code.
+- The literal parts of interpolated strings: in `'Fee: $fee'`, the `'Fee: '`
+  part is encoded and `$fee` is left as it is.
 
-It follows `exclude` globs and `@Refractor.keep()`, but not the entry point:
-keeping `main`'s name says nothing about the strings inside it.
+## What it leaves alone
+
+- Strings in a `const` context or an annotation, which have to stay constant.
+- Empty strings.
+- Literals whose text matches one of your `exclude_patterns`.
+- Code kept with `exclude` or `@Refractor.keep()` (see [Policy](/architecture/policy)).
 
 ## Configuration
-
-<Tabs defaultValue="minimal">
-<TabItem label="Minimal" value="minimal">
-
-```yaml
-refractor:
-  passes:
-    string_encrypt: true
-```
-
-</TabItem>
-<TabItem label="All options" value="all">
 
 ```yaml
 refractor:
   passes:
     string_encrypt:
-      enabled: true
-      seed: 0x5A              # default
-      exclude: []             # extra library globs
-      exclude_patterns: []    # literal regexes kept
-                              # in plaintext
+      exclude_patterns:
+        - "^https://"   # keep URLs readable
 ```
-
-</TabItem>
-</Tabs>
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turns the pass on or off. |
-| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
 | `seed` | int | `0x5A` | Seeds the random generator that picks each literal's key. Every literal still gets a different key. |
 | `exclude_patterns` | regex list | `[]` | Literals whose text matches any of these stay in plain text. |
+
+`enabled` and `exclude` work as on every pass; see
+[Configuration](/guide/configuration#pass-options).
+
+## Cost and strength
+
+**Cost.** Nothing is cached: every time an encrypted literal is evaluated, the
+decoder rebuilds the string. In a native executable on an Apple-silicon Mac,
+that came to about 0.3 µs per evaluation for a 27-character string, against
+practically nothing for the plain literal. The decoder added 16 KB to a small
+test app. A literal evaluated once is free in practice; one inside a hot loop
+is not, so move it out of the loop or `exclude` that library.
+
+**Strength.** `strings` on the built executable no longer finds the text, and
+neither does a search through the binary for it. That stops casual browsing and
+simple tooling. It does not stop someone who finds the decoder: the keys ship
+in the same binary, and running the decoder gives the text back.
 
 ## Guarantees & limitations
 
@@ -91,21 +93,36 @@ refractor:
 <Promises>
 
 - Every literal gets its own key, derived from the `seed`, so two identical strings don't produce the same bytes.
-- Refractor adds one decoder per build, marked `@pragma('vm:never-inline')` so the compiler keeps it as a separate function.
+- The decoder is a single function, marked `@pragma('vm:never-inline')` so the compiler keeps it in one place instead of copying it into every call site.
 
 </Promises>
 <Caveats>
 
-- It isn't a way to protect secrets. It defeats `strings` and casual browsing, but the keys ship inside the binary, so someone determined can recover the text. Don't use it to hide credentials.
+- It isn't a way to protect secrets. The keys ship inside the binary, so don't use it to hide credentials or API keys.
 - `const` strings stay readable, by design.
 
 </Caveats>
 </Guarantees>
 
+## Works with
+
+- **Rename.** Without it, the decoder keeps its name, `refractorDecode`, in the
+  binary, which points straight at every encrypted string. Turn rename on as
+  well.
+- **Integer encryption.** It also encrypts the decoder's own constants, which
+  makes the decoder harder to read and each decode slower. Listed after string
+  encryption in `refractor.yaml`, it goes further and encrypts every byte of
+  every encoded string as well: in a test that made each decode about a fifth
+  slower, against about a seventh when listed before.
+- **Call indirection.** Listed after string encryption in `refractor.yaml`, it
+  routes the decoder calls through its forwarder too, which currently crashes
+  at runtime with a type error (a fix is in progress). List call indirection
+  first for now. Passes run in the order they're listed.
+
 ## Output
 
-The build report counts `strings_encrypted`. A record for each literal (its
-text, encoded bytes, key and location) goes into `build_artifacts.json`, so keep
-that file out of anything you ship.
+A record for each literal (its text, encoded bytes, key and location) goes into
+`build_artifacts.json`. That file undoes the encryption, so keep it out of
+anything you ship.
 
 <PassPager pass="strings" />

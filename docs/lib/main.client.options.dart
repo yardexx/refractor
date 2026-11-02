@@ -16,6 +16,7 @@ import 'package:docs/diagrams/policy_explorer.dart'
 import 'package:docs/diagrams/stages_diagram.dart' deferred as _stages_diagram;
 import 'package:docs/home/playground.dart' deferred as _playground;
 import 'package:docs/rulebook/copy_chip.dart' deferred as _copy_chip;
+import 'package:docs/rulebook/pass_animation.dart' deferred as _pass_animation;
 import 'package:jaspr_content/components/_internal/tab_bar.dart'
     deferred as _tab_bar;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
@@ -72,6 +73,10 @@ ClientOptions get defaultClientOptions => ClientOptions(
     'copy_chip': ClientLoader(
       (p) => _copy_chip.CopyChip(text: p['text'] as String),
       loader: _copy_chip.loadLibrary,
+    ),
+    'pass_animation': ClientLoader(
+      (p) => _pass_animation.PassAnimation(pass: p['pass'] as String),
+      loader: _pass_animation.loadLibrary,
     ),
     'jaspr_content:tab_bar': ClientLoader(
       (p) => _tab_bar.TabBar(

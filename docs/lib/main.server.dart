@@ -50,6 +50,7 @@ void main() {
         const Card(),
         // Rulebook pass pages.
         const PassFacts(),
+        const PassAnimationTag(),
         const PassPager(),
         const PassGrid(),
         const Guarantees(),

@@ -9,10 +9,13 @@ layout: docs
 ## What it does
 
 Integer encryption does for numbers what
-[string encryption](/rulebook/string-encryption) does for text. Each integer
-literal is XOR-encoded with its own key and replaced by a call to an injected
-decoder, so magic numbers like timeouts, limits and offsets no longer appear in
-the binary.
+[string encryption](/rulebook/string-encryption) does for text. Magic numbers,
+such as timeouts, limits, offsets and protocol constants, tell a reader a lot
+about what code does. This pass XOR-encodes each integer literal with its own
+key and replaces it with a call to a small decoder that Refractor adds to your
+program.
+
+<PassAnimation pass="ints" />
 
 ## Example
 
@@ -41,49 +44,49 @@ int backoff(int attempt) {
 
 </PassCompare>
 
-## What it targets
+## What it changes
 
-It encodes integer literals in your project's code whose absolute value is at
-least `min_magnitude`. By default that leaves `-1`, `0` and `1` alone, so loop
-counters and indexes don't all turn into function calls. Literals in a `const`
-context or an annotation stay as they are, since kernel stores them as constants
-rather than literals.
+- Integer literals in your project's code whose absolute value is at least
+  `min_magnitude` (2 by default).
 
-It follows `exclude` globs and `@Refractor.keep()`, like every pass. The entry point doesn't matter to it.
+## What it leaves alone
+
+- `-1`, `0` and `1` by default, so loop counters and indexes don't all turn
+  into function calls.
+- Literals in a `const` context or an annotation, which have to stay constant.
+- Code kept with `exclude` or `@Refractor.keep()`.
 
 ## Configuration
-
-<Tabs defaultValue="minimal">
-<TabItem label="Minimal" value="minimal">
-
-```yaml
-refractor:
-  passes:
-    int_encrypt: true
-```
-
-</TabItem>
-<TabItem label="All options" value="all">
 
 ```yaml
 refractor:
   passes:
     int_encrypt:
-      enabled: true
-      seed: 0x1F           # default
-      min_magnitude: 2     # default: -1, 0, 1 stay inline
-      exclude: []          # extra library globs
+      min_magnitude: 2   # -1, 0 and 1 stay inline
 ```
-
-</TabItem>
-</Tabs>
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `enabled` | bool | `true` | Turns the pass on or off. |
-| `exclude` | glob list | `[]` | More libraries for this pass to skip, on top of the global `exclude`. |
 | `seed` | int | `0x1F` | Seeds the random generator that picks each literal's 64-bit key. |
 | `min_magnitude` | int | `2` | Literals whose absolute value is below this stay inline. Set it to `0` to encode every literal. |
+
+`enabled` and `exclude` work as on every pass; see
+[Configuration](/guide/configuration#pass-options).
+
+## Cost and strength
+
+**Cost.** Each encoded literal becomes a call to a decoder that is a single XOR.
+In a native executable on an Apple-silicon Mac that came to about 0.3
+nanoseconds per decode, measured over a hundred million loop iterations. That's
+small, but a literal inside a tight loop pays it every time. The decoder and
+the calls added about 50 bytes of code per literal.
+
+**Strength.** The number no longer appears in the machine code: in a
+disassembly of the built executable, the constants that were plain immediates
+are gone, replaced by a load of two values and a call. That defeats reading
+the code for magic numbers. It does not hold up against someone who finds the
+decoder: the encoded value and its key are stored next to each other, and one
+XOR gives the number back.
 
 ## Guarantees & limitations
 
@@ -96,14 +99,24 @@ refractor:
 </Promises>
 <Caveats>
 
-- It only stops casual reading. The keys are in the binary, so don't use it to hide key material.
-- Each encoded literal becomes a function call, so keep `min_magnitude` sensible in hot code.
+- It isn't a way to protect secrets. The keys ship in the binary, right next to the values they decode, so don't use it to hide key material.
+- Each encoded literal becomes a function call; raise `min_magnitude` or `exclude` the library for hot code.
 
 </Caveats>
 </Guarantees>
 
-## Output
+## Works with
 
-The build report counts `ints_encrypted`.
+- **Arithmetic mangling.** Mangling adds constants of its own (`a * b` becomes
+  `a * (b + k) - a * k`). List integer encryption after it in
+  `refractor.yaml` and those constants get encrypted too; listed before, they
+  stay readable. Passes run in the order they're listed.
+- **String encryption.** Integer encryption also encrypts the string decoder's
+  own constants. Listed after string encryption, it goes further and encrypts
+  every byte of every encoded string: that hides more, and made each string
+  decode about a fifth slower in a test, against about a seventh when listed
+  before.
+- **Rename.** Without it, the decoder keeps its name, `refractorDecodeInt`, in
+  the binary. With rename on, in either order, it's renamed.
 
 <PassPager pass="ints" />
