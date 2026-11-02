@@ -26,14 +26,16 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
     Component component,
     RenameSelection selection,
   ) async {
-    final memberFamilies = _buildMemberFamilies(
-      selection.instanceMembersByClass,
-    );
+    final memberFamilies = _buildMemberFamilies(selection);
     final requests = _buildRequests(selection, memberFamilies);
-    final generatedNames = await generator.generateNames(requests);
+    final generatedNames = await generator.generateNames(
+      requests,
+      reserved: _reservedNames(selection),
+    );
     final mapping = _safetyNormalizer.normalize(
       component,
       _materialize(generatedNames),
+      spelledSelectors: selection.spelledSelectors,
     );
 
     return RenamePlan(
@@ -162,11 +164,29 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
         .length;
   }
 
-  List<_MemberFamily> _buildMemberFamilies(
-    Map<Class, List<Member>> instanceMembersByClass,
-  ) {
+  /// Names no declaration may be renamed to: a member renamed to one of them
+  /// could override, or be called in place of, a member that keeps its name.
+  /// Covers every name a project class must keep, every original instance
+  /// member name in the project (some survive normalization unrenamed), and
+  /// selectors referred to by spelling.
+  Set<String> _reservedNames(RenameSelection selection) {
+    return {
+      for (final entry in selection.fixedNamesByClass.entries) ...[
+        ...entry.value,
+        for (final member in [...entry.key.procedures, ...entry.key.fields])
+          if (MemberModel.isInstanceDispatch(member)) member.name.text,
+      ],
+      for (final selector in selection.spelledSelectors) selector.text,
+    };
+  }
+
+  List<_MemberFamily> _buildMemberFamilies(RenameSelection selection) {
+    final instanceMembersByClass = selection.instanceMembersByClass;
     final classes = instanceMembersByClass.keys.toList();
-    final hierarchy = ClassRelationIndex.build(classes);
+    final hierarchy = ClassRelationIndex.build({
+      ...classes,
+      ...selection.fixedNamesByClass.keys,
+    });
     final grouped = <(String, Uri?), List<(Member, Class)>>{};
 
     for (final cls in classes) {
@@ -190,7 +210,7 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
         final (memberA, classA) = members[i];
         for (var j = i + 1; j < members.length; j++) {
           final (memberB, classB) = members[j];
-          if (hierarchy.areRelated(classA, classB) ||
+          if (hierarchy.shareSubtype(classA, classB) ||
               hierarchy.shareDeclaringSupertypeForName(
                 classA,
                 classB,
@@ -210,15 +230,30 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
       }
     }
 
+    bool touchesFixedName(Set<Member> family) {
+      for (final member in family) {
+        final cls = member.enclosingClass;
+        if (cls == null) continue;
+        final name = MemberModel.nameText(member);
+        for (final sub in hierarchy.subtypesOf(cls)) {
+          if (selection.fixedNamesByClass[sub]?.contains(name) ?? false) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
     return [
       for (final entry in rootToMembers.entries)
-        _MemberFamily(
-          members: entry.value,
-          originalName: MemberModel.nameText(entry.key),
-          privacyScope: MemberModel.nameText(entry.key).startsWith('_')
-              ? entry.key.enclosingLibrary
-              : null,
-        ),
+        if (!touchesFixedName(entry.value))
+          _MemberFamily(
+            members: entry.value,
+            originalName: MemberModel.nameText(entry.key),
+            privacyScope: MemberModel.nameText(entry.key).startsWith('_')
+                ? entry.key.enclosingLibrary
+                : null,
+          ),
     ];
   }
 }
