@@ -31,8 +31,7 @@ void main() {
 }
 ''';
 
-/// `call_indirection` on its own: with `rename` also enabled the pass currently
-/// indirects nothing, which would make this test vacuous.
+/// `call_indirection` on its own.
 const _configYaml = '''
 refractor:
   verbose: false
@@ -51,6 +50,41 @@ refractor:
     call_indirection: true
 ''';
 
+/// A routed callee with a name distinctive enough to find with `strings`, plus
+/// a tear-off with a named parameter called through the closure, whose label
+/// must survive rename.
+const _sentinelProgram = r'''
+int refractorSentinelCallee(int amount) => amount * 3 + 1;
+
+String labelled(int value, {String prefix = '?'}) => '$prefix$value';
+
+void main() {
+  print(refractorSentinelCallee(13));
+  final format = labelled;
+  print(format(refractorSentinelCallee(2), prefix: '#'));
+}
+''';
+
+const _sentinelName = 'refractorSentinelCallee';
+
+/// `rename` and `call_indirection` in both orders.
+const _passOrders = {
+  'rename then call_indirection': '''
+refractor:
+  verbose: false
+  passes:
+    rename: true
+    call_indirection: true
+''',
+  'call_indirection then rename': '''
+refractor:
+  verbose: false
+  passes:
+    call_indirection: true
+    rename: true
+''',
+};
+
 void main() {
   late Directory tempDir;
   late String sourcePath;
@@ -66,8 +100,9 @@ void main() {
   });
 
   /// Obfuscates [sourcePath] with [configYaml], builds it for [target], runs
-  /// it, and returns the `call_indirection` count with the program's stdout.
-  Future<({int indirected, String output})> buildAndRun(
+  /// it, and returns the `call_indirection` count with the program's stdout
+  /// and the path of the built output.
+  Future<({int indirected, String output, String outputPath})> buildAndRun(
     Target target,
     String configYaml,
   ) async {
@@ -100,6 +135,7 @@ void main() {
     return (
       indirected: int.parse(report.metadata['calls_indirected'] ?? '0'),
       output: output,
+      outputPath: outputPath,
     );
   }
 
@@ -144,6 +180,36 @@ void main() {
       expect(run.output, equals('30\nnested=40\nok'));
     },
   );
+
+  // Regression: helpers are injected before any pass runs, so a `rename`
+  // listed first renamed `refractorCall` and call_indirection, looking it up
+  // by name, indirected nothing. Listed after, rename kept every routed callee
+  // (and its parameters) under its original name because the forwarder tears
+  // it off, and AOT then kept that name in the binary for the closure.
+  for (final MapEntry(key: order, value: configYaml) in _passOrders.entries) {
+    test('$order: exe indirects calls and renames the callees', () async {
+      File(sourcePath).writeAsStringSync(_sentinelProgram);
+
+      final run = await buildAndRun(Target.exe, configYaml);
+
+      expect(run.indirected, greaterThan(0));
+      expect(run.output, equals('40\n#7'));
+
+      final strings = Process.runSync('strings', [run.outputPath]);
+      if (strings.exitCode != 0) {
+        markTestSkipped('`strings` is unavailable: ${strings.stderr}');
+        return;
+      }
+      final stringsOutput = strings.stdout as String;
+      for (final name in [_sentinelName, 'refractorCall']) {
+        expect(
+          stringsOutput.contains(name),
+          isFalse,
+          reason: '`$name` should have been renamed out of the binary',
+        );
+      }
+    });
+  }
 }
 
 String _run(ProcessResult result) {

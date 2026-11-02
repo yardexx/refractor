@@ -1,4 +1,5 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/injected_helpers.dart';
 import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/int_encrypt/planning/int_encrypt_plan.dart';
@@ -39,14 +40,8 @@ class IntEncryptTransformer
 
   /// Finds the decode helper the engine injected into the program. Returns null
   /// when it is absent, in which case no literal is rewritten.
-  Procedure? _resolveDecodeProcedure(Component component) {
-    for (final library in component.libraries) {
-      for (final procedure in library.procedures) {
-        if (procedure.name.text == intDecodeRuntimeHelperName) return procedure;
-      }
-    }
-    return null;
-  }
+  Procedure? _resolveDecodeProcedure(Component component) =>
+      InjectedHelpers.resolve(component, intDecodeRuntimeHelperName);
 }
 
 final class _IntEncryptVisitor extends ScopedKernelTransformer {

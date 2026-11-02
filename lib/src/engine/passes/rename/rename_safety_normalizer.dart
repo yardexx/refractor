@@ -132,25 +132,47 @@ final class RenameSafetyNormalizer {
       }
 
       normalizedMembers[member] = originalName;
+      _preserveParameterNames(
+        member,
+        normalizedVariables,
+        includePositional: true,
+      );
+    }
 
-      final function = switch (member) {
-        Procedure() => member.function,
-        Constructor() => member.function,
-        _ => null,
-      };
-      if (function == null) continue;
+    // A torn-off static procedure keeps its new name: the tear-off references
+    // it, not its name. Only the named parameters stay, because a call through
+    // the closure (or `Function.apply`) passes named arguments by label.
+    for (final procedure in collector.staticProcedures) {
+      _preserveParameterNames(
+        procedure,
+        normalizedVariables,
+        includePositional: false,
+      );
+    }
+  }
 
-      for (final parameter in [
-        ...function.positionalParameters,
-        ...function.namedParameters,
-      ]) {
-        final originalParameterName = parameter.name;
-        if (originalParameterName == null || originalParameterName.isEmpty) {
-          continue;
-        }
-        if (normalizedVariables.containsKey(parameter)) {
-          normalizedVariables[parameter] = originalParameterName;
-        }
+  void _preserveParameterNames(
+    Member member,
+    Map<VariableDeclaration, String> normalizedVariables, {
+    required bool includePositional,
+  }) {
+    final function = switch (member) {
+      Procedure() => member.function,
+      Constructor() => member.function,
+      _ => null,
+    };
+    if (function == null) return;
+
+    for (final parameter in [
+      if (includePositional) ...function.positionalParameters,
+      ...function.namedParameters,
+    ]) {
+      final originalParameterName = parameter.name;
+      if (originalParameterName == null || originalParameterName.isEmpty) {
+        continue;
+      }
+      if (normalizedVariables.containsKey(parameter)) {
+        normalizedVariables[parameter] = originalParameterName;
       }
     }
   }
@@ -203,12 +225,26 @@ class _DynamicSelectorCollector extends RecursiveVisitor {
   }
 }
 
+/// Collects the members whose callable surface a tear-off exposes.
+///
+/// Torn-off static procedures go to [staticProcedures]: their name can change
+/// safely, only their named parameters cannot. Every other torn-off member
+/// goes to [members] and keeps its name and parameter names.
 class _CallableSurfaceCollector extends RecursiveVisitor {
   final Set<Member> members = <Member>{};
+  final Set<Procedure> staticProcedures = <Procedure>{};
+
+  void _addStaticTarget(Member target) {
+    if (target is Procedure && target.isStatic) {
+      staticProcedures.add(target);
+    } else {
+      members.add(target);
+    }
+  }
 
   @override
   void visitStaticTearOff(StaticTearOff node) {
-    members.add(node.target);
+    _addStaticTarget(node.target);
     super.visitStaticTearOff(node);
   }
 
@@ -239,7 +275,7 @@ class _CallableSurfaceCollector extends RecursiveVisitor {
   void _visitConstant(Constant constant) {
     switch (constant) {
       case StaticTearOffConstant():
-        members.add(constant.target);
+        _addStaticTarget(constant.target);
       case ConstructorTearOffConstant():
         members.add(constant.target);
       case RedirectingFactoryTearOffConstant():

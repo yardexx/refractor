@@ -3,7 +3,7 @@
 ///
 /// A pass declares the helpers it needs via `PassDefinition.runtimeHelpers`;
 /// the engine injects them once, before passes run, and each pass resolves the
-/// reparented procedures from the component by name.
+/// reparented procedures through `InjectedHelpers`.
 class HelperSource {
   const HelperSource({
     required this.source,
