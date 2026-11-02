@@ -63,5 +63,30 @@ void main(List<String> args) {
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
+
+    test(
+      'jit target replaces a snapshot left by a previous build',
+      () {
+        final dir = Directory.systemTemp.createTempSync('dart_compiler_jit_');
+        addTearDown(() => dir.deleteSync(recursive: true));
+
+        final source = File('${dir.path}/main.dart');
+        final dillPath = '${dir.path}/main.dill';
+        final snapshotPath = '${dir.path}/main.jit';
+        final compiler = DartCompiler();
+
+        for (final version in ['v1', 'v2']) {
+          source.writeAsStringSync("void main() => print('$version');\n");
+          compiler
+            ..compileToKernel(source.path, dillPath)
+            ..compileToTarget(dillPath, snapshotPath, Target.jit);
+        }
+
+        final result = Process.runSync('dart', [snapshotPath]);
+        expect(result.exitCode, 0, reason: '${result.stderr}');
+        expect((result.stdout as String).trim(), 'v2');
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
   });
 }
