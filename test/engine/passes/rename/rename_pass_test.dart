@@ -1145,8 +1145,8 @@ void main() {
     );
 
     test(
-      'FunctionInvocation through variable tear-off renames the callee but keeps '
-      'its named parameters',
+      'FunctionInvocation through variable tear-off renames the callee but '
+      'keeps its named parameters',
       () async {
         final namedParam = VariableDeclaration('debug');
         final callee = Procedure(
