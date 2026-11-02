@@ -33,13 +33,39 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
   final Map<IfStatement, VariableDeclaration> liveVariables =
       <IfStatement, VariableDeclaration>{};
 
-  // Int variables in scope at the current point, in declaration order; the
+  // Int variables safe to read at the current point, in declaration order; the
   // last is the nearest. Holds parameters and block-local declarations alike,
   // pushed as they are visited and popped when their function or block ends.
   final List<VariableDeclaration> _intScope = <VariableDeclaration>[];
 
-  static bool _isInt(DartType type) =>
-      type is InterfaceType && type.classNode.name == 'int';
+  static bool _isNonNullableInt(DartType type) =>
+      type is InterfaceType &&
+      type.classNode.name == 'int' &&
+      type.nullability == Nullability.nonNullable;
+
+  /// Whether reading [node] anywhere after its declaration in the same scope
+  /// yields a non-null `int` without throwing.
+  ///
+  /// Parameters always hold a value. Locals must be non-`late` (a read before
+  /// assignment throws) and carry an initializer, so they are definitely
+  /// assigned from the declaration on — an uninitialised local may be read
+  /// before any assignment reaches it. `const` locals are left out because a
+  /// guard over them folds to a constant. Only parameters and block statements
+  /// count: `let` temporaries and loop variables are scoped to a sub-expression
+  /// or loop the following `if` statements may lie outside of.
+  static bool _isSafeLiveVariable(VariableDeclaration node) {
+    if (!_isNonNullableInt(node.type)) {
+      return false;
+    }
+    final parent = node.parent;
+    if (parent is FunctionNode) {
+      return true;
+    }
+    return parent is Block &&
+        !node.isLate &&
+        !node.isConst &&
+        node.initializer != null;
+  }
 
   @override
   void visitLibrary(Library node) {
@@ -117,7 +143,7 @@ final class _OpaquePredicateSelectionCollector extends RecursiveVisitor
     // Visit the initializer first (the variable is not yet in scope there),
     // then make it available to following statements.
     super.visitVariableDeclaration(node);
-    if (_isInt(node.type)) {
+    if (_isSafeLiveVariable(node)) {
       _intScope.add(node);
     }
   }
