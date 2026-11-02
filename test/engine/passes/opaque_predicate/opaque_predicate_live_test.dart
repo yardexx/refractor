@@ -25,6 +25,27 @@ class _VariableGetCollector extends RecursiveVisitor {
   }
 }
 
+int _reads(Expression expression, VariableDeclaration variable) {
+  final collector = _VariableGetCounter(variable);
+  expression.accept(collector);
+  return collector.count;
+}
+
+class _VariableGetCounter extends RecursiveVisitor {
+  _VariableGetCounter(this.variable);
+
+  final VariableDeclaration variable;
+  int count = 0;
+
+  @override
+  void visitVariableGet(VariableGet node) {
+    if (node.variable == variable) {
+      count++;
+    }
+    super.visitVariableGet(node);
+  }
+}
+
 void main() {
   group('OpaquePredicatePass (live variable)', () {
     late Directory dir;
@@ -153,6 +174,106 @@ void main() {
         final run = Process.runSync(exe, const []);
         expect(run.exitCode, 0, reason: '${run.stderr}');
         expect(run.stdout.toString().trim(), 'big');
+      },
+      timeout: const Timeout(Duration(minutes: 3)),
+    );
+
+    test(
+      'never reads a nullable, late or unassigned int',
+      () async {
+        final root = dir.resolveSymbolicLinksSync();
+        final appDart = '$root/app.dart';
+        final appDill = '$root/app.dill';
+        File(appDart).writeAsStringSync('''
+int orZero(int? v) {
+  if (v == null) return 0;
+  return v;
+}
+
+int lateLocal(bool c) {
+  late int z;
+  if (c) z = 5;
+  if (!c) return 0;
+  return z;
+}
+
+int unassigned(bool c) {
+  int y;
+  if (c) {
+    y = 1;
+  } else {
+    y = 2;
+  }
+  return y;
+}
+
+void main() {
+  print(orZero(null));
+  print(orZero(int.parse('7')));
+  print(lateLocal(int.parse('0') == 1));
+  print(lateLocal(int.parse('1') == 1));
+  print(unassigned(int.parse('1') == 1));
+  print(unassigned(int.parse('0') == 1));
+}
+''');
+        compiler.compileToKernel(appDart, appDill);
+        final component = io.load(appDill);
+
+        final scope = ObfuscationScope(
+          project: ProjectScope(
+            projectRootUri: Uri.directory(root),
+            projectPackageName: null,
+          ),
+          keep: KeepPolicy.empty,
+        );
+
+        final result = await OpaquePredicatePass(
+          config: const OpaquePredicatePassConfig(),
+          scope: scope,
+        ).run(component);
+        expect(result, isA<PassSucceeded>());
+
+        // No strengthened condition reads `v` (nullable), `z` (late) or `y`
+        // (declared without an initializer) beyond what the source already did.
+        final procedures = component.mainMethod!.enclosingLibrary.procedures;
+        Procedure named(String name) =>
+            procedures.firstWhere((procedure) => procedure.name.text == name);
+
+        final orZero = named('orZero').function;
+        final v = orZero.positionalParameters.first;
+        final vCheck = (orZero.body! as Block).statements
+            .whereType<IfStatement>()
+            .first;
+        expect(_reads(vCheck.condition, v), 1);
+
+        for (final name in ['lateLocal', 'unassigned']) {
+          final body = named(name).function.body! as Block;
+          final local = body.statements.whereType<VariableDeclaration>().first;
+          for (final site in body.statements.whereType<IfStatement>()) {
+            expect(
+              _reads(site.condition, local),
+              0,
+              reason: '$name must not read ${local.name} in a condition',
+            );
+          }
+        }
+
+        final outDill = '$root/out.dill';
+        io.write(component, outDill);
+        final exe = '$root/app_exe';
+        compiler.compileToTarget(outDill, exe, Target.exe);
+
+        final run = Process.runSync(exe, const []);
+        expect(run.exitCode, 0, reason: '${run.stderr}');
+        expect(
+          run.stdout
+              .toString()
+              .trim()
+              .split('\n')
+              .map((l) => l.trim())
+              .toList(),
+          ['0', '7', '0', '5', '1', '2'],
+        );
       },
       timeout: const Timeout(Duration(minutes: 3)),
     );
