@@ -47,6 +47,18 @@ class _CallRewriter extends Transformer {
   }
 }
 
+bool _containsAscii(List<int> bytes, String needle) {
+  final pattern = needle.codeUnits;
+  outer:
+  for (var i = 0; i <= bytes.length - pattern.length; i++) {
+    for (var j = 0; j < pattern.length; j++) {
+      if (bytes[i + j] != pattern[j]) continue outer;
+    }
+    return true;
+  }
+  return false;
+}
+
 void main() {
   group('SourceHelperInjector', () {
     late Directory dir;
@@ -103,8 +115,49 @@ void main() {
         final result = Process.runSync(exe, const []);
         expect(result.exitCode, 0, reason: '${result.stderr}');
         expect(result.stdout.toString().trim(), 'hello');
+        expect(
+          _containsAscii(File(exe).readAsBytesSync(), 'refractor_helper'),
+          isFalse,
+          reason: 'The helper temp path leaked into the executable.',
+        );
       },
       timeout: const Timeout(Duration(minutes: 3)),
     );
+
+    test('leaves no helper temp path and writes reproducible kernel', () {
+      final appDart = '${dir.path}/app.dart';
+      final appDill = '${dir.path}/app.dill';
+      File(appDart).writeAsStringSync("void main() { print('x'); }");
+      compiler.compileToKernel(appDart, appDill);
+
+      List<int> injectAndWrite(String name) {
+        final component = io.load(appDill);
+        final target = component.mainMethod!.enclosingLibrary;
+        final decode = SourceHelperInjector(compiler: compiler).inject(
+          component,
+          const HelperSource(
+            source: decodeRuntimeSource,
+            procedureNames: {decodeRuntimeHelperName},
+          ),
+          targetLibrary: target,
+        )[decodeRuntimeHelperName]!;
+
+        expect(decode.fileUri, target.fileUri);
+        expect(
+          component.uriToSource.keys.map((uri) => '$uri'),
+          everyElement(isNot(contains('refractor_helper'))),
+        );
+
+        final path = '${dir.path}/$name.dill';
+        io.write(component, path);
+        return File(path).readAsBytesSync();
+      }
+
+      final first = injectAndWrite('first');
+      expect(_containsAscii(first, 'refractor_helper'), isFalse);
+      // Each injection compiles from a fresh random temp dir; the output must
+      // not depend on it.
+      expect(injectAndWrite('second'), first);
+    });
   });
 }
