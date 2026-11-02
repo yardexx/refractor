@@ -54,6 +54,12 @@ Compile, obfuscate, and build.
 
 The build output is always written to `build/out.<ext>` in the project root.
 
+The `jit` target runs the program once at build time: `dart compile
+jit-snapshot` executes `main` to warm up the JIT before writing the snapshot.
+That training run gets no arguments, so `main` must exit cleanly when `args` is
+empty, and any side effects it has (files, network, long-running loops) happen
+during the build.
+
 ```bash
 refractor build --target kernel
 ```
