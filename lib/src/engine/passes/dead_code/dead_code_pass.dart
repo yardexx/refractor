@@ -15,8 +15,9 @@ import 'package:refractor/src/policy/obfuscation_scope.dart';
 /// The guard is an always-false predicate over a live `int` in scope at the
 /// insertion point — a parameter at the start of the body, or a block-local
 /// just after it is declared. The block never runs (behaviour is preserved) but
-/// is not a compile-time constant the optimizer can drop. Richer junk is a
-/// follow-up.
+/// is not a compile-time constant the optimizer can drop. The block's junk ends
+/// in an effect (a write to a live variable, a `return` or a `throw`) so the
+/// AOT compiler keeps it in the machine code.
 ///
 /// Each stage delegates to its own class; the methods below are the seam.
 class DeadCodePass

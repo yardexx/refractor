@@ -89,4 +89,67 @@ void main() {
       );
     });
   });
+
+  group('sink eligibility', () {
+    DeadCodeSite paramSite(FunctionNode node) =>
+        DeadCodeSite(insertionIndex: 0, variable: node.positionalParameters[0]);
+
+    test('reassign needs a later read of the guard variable', () {
+      final param = intParam();
+      final reads = function(
+        [param],
+        body: Block([ReturnStatement(VariableGet(param))]),
+      );
+      expect(canReassign(reads, paramSite(reads)), isTrue);
+
+      final ignores = function([intParam()], body: Block([ReturnStatement()]));
+      expect(canReassign(ignores, paramSite(ignores)), isFalse);
+    });
+
+    test('reassign is ruled out by a later write or a final variable', () {
+      final param = intParam();
+      final overwritten = function(
+        [param],
+        body: Block([
+          ExpressionStatement(VariableSet(param, IntLiteral(2))),
+          ReturnStatement(VariableGet(param)),
+        ]),
+      );
+      expect(canReassign(overwritten, paramSite(overwritten)), isFalse);
+
+      final local = intLocal()..isFinal = true;
+      final finalLocal = function(
+        [],
+        body: Block([local, ReturnStatement(VariableGet(local))]),
+      );
+      expect(
+        canReassign(
+          finalLocal,
+          DeadCodeSite(insertionIndex: 1, variable: local),
+        ),
+        isFalse,
+      );
+    });
+
+    test('return needs a synchronous int-returning function', () {
+      expect(
+        canReturnInt(FunctionNode(Block([]), returnType: intType)),
+        isTrue,
+      );
+      expect(
+        canReturnInt(FunctionNode(Block([]), returnType: nullableIntType)),
+        isFalse,
+      );
+      expect(
+        canReturnInt(
+          FunctionNode(
+            Block([]),
+            returnType: intType,
+            asyncMarker: AsyncMarker.Async,
+          ),
+        ),
+        isFalse,
+      );
+    });
+  });
 }

@@ -72,6 +72,28 @@ List<DeadCodeSite> deadCodeSites(FunctionNode function) {
   return sites;
 }
 
+/// Whether the dead block at [site] may write its junk back into the guard
+/// variable: the variable is assignable and the live path reads it after the
+/// site, so the compiler must keep the write. A later write anywhere in the
+/// body could make ours dead, so any later write rules it out.
+bool canReassign(FunctionNode function, DeadCodeSite site) {
+  final variable = site.variable;
+  if (variable.isFinal || variable.isConst || variable.isLate) {
+    return false;
+  }
+  final statements = (function.body! as Block).statements;
+  final finder = _ReadFinder(variable);
+  for (var i = site.insertionIndex; i < statements.length; i++) {
+    statements[i].accept(finder);
+  }
+  return finder.read && !finder.written;
+}
+
+/// Whether the dead block may `return` an `int` from [function].
+bool canReturnInt(FunctionNode function) =>
+    function.asyncMarker == AsyncMarker.Sync &&
+    _isNonNullableInt(function.returnType);
+
 /// Whether [function] can carry a guarded dead-code block.
 bool isDeadCodeTarget(FunctionNode function) =>
     deadCodeSites(function).isNotEmpty;
@@ -80,3 +102,26 @@ bool _isNonNullableInt(DartType type) =>
     type is InterfaceType &&
     type.classNode.name == 'int' &&
     type.nullability == Nullability.nonNullable;
+
+final class _ReadFinder extends RecursiveVisitor {
+  _ReadFinder(this.variable);
+
+  final VariableDeclaration variable;
+  bool read = false;
+  bool written = false;
+
+  @override
+  void visitVariableGet(VariableGet node) {
+    if (node.variable == variable) {
+      read = true;
+    }
+  }
+
+  @override
+  void visitVariableSet(VariableSet node) {
+    if (node.variable == variable) {
+      written = true;
+    }
+    super.visitVariableSet(node);
+  }
+}
