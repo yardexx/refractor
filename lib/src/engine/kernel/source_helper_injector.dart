@@ -22,6 +22,13 @@ export 'package:refractor/src/engine/kernel/helper_source.dart';
 ///      assign it a loading unit ("Unable to find loading unit"); moving the
 ///      procedures into a library already in the import graph fixes this.
 ///   3. **Drop** the now-empty helper library.
+///
+/// The helper is compiled from a random temp file, so its `file://` path would
+/// otherwise reach the output binary through each procedure's `fileUri` and
+/// the component's `uriToSource`, naming Refractor and the user's temp
+/// directory and making every build differ. Reparented procedures are
+/// therefore re-homed to [Library.fileUri] of the target library with their
+/// source offsets cleared, and the helper's source entries are dropped.
 class SourceHelperInjector {
   SourceHelperInjector({required Compiler compiler}) : _compiler = compiler;
 
@@ -62,14 +69,46 @@ class SourceHelperInjector {
           // whole component instead would also disturb the merged SDK
           // libraries' names and fail to rebind them.
           procedure.reference.canonicalName?.unbind();
+          procedure.accept(_SourceLocationScrubber(targetLibrary.fileUri));
           reparented[procedure.name.text] = procedure;
         }
       }
 
       component.libraries.removeWhere(helperLibraries.contains);
+      for (final library in helperLibraries) {
+        component.uriToSource.remove(library.fileUri);
+      }
       return reparented;
     } finally {
       tempDir.deleteSync(recursive: true);
     }
+  }
+}
+
+/// Points every node of a reparented helper at [fileUri] and clears its source
+/// offsets, which index the discarded helper source rather than [fileUri].
+class _SourceLocationScrubber extends RecursiveVisitor {
+  _SourceLocationScrubber(this.fileUri);
+
+  final Uri fileUri;
+
+  @override
+  void defaultTreeNode(TreeNode node) {
+    node.fileOffset = TreeNode.noOffset;
+    if (node is FileUriNode) node.fileUri = fileUri;
+    switch (node) {
+      case Procedure():
+        node
+          ..fileStartOffset = TreeNode.noOffset
+          ..fileEndOffset = TreeNode.noOffset;
+      case Member():
+        node.fileEndOffset = TreeNode.noOffset;
+      case FunctionNode():
+        node.fileEndOffset = TreeNode.noOffset;
+      case Block():
+        node.fileEndOffset = TreeNode.noOffset;
+      default:
+    }
+    super.defaultTreeNode(node);
   }
 }
