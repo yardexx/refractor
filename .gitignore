@@ -22,4 +22,6 @@ Thumbs.db
 
 # Misc
 .cursorignore/
-.claude/
+# Local Claude Code state stays private; shared subagent definitions are tracked.
+.claude/*
+!.claude/agents/
