@@ -20,12 +20,16 @@ class DartCompiler implements Compiler {
 
   @override
   void compileToTarget(String dillPath, String outputPath, Target target) {
-    // Remove output from a previous build so the existence check below cannot
-    // mistake a stale file for this build's output.
+    // `dart compile` for snapshot targets may ignore `-o` when the input is a
+    // `.dill` file and instead emit next to the kernel path (`jit-snapshot`
+    // does). Clear both locations first so a leftover file from an earlier
+    // build is never mistaken for this build's output.
     final expectedOutput = File(outputPath);
-    if (expectedOutput.existsSync()) {
-      expectedOutput.deleteSync();
-    }
+    final fallbackOutput = target.extension.isEmpty
+        ? null
+        : File('$dillPath${target.extension}');
+    _deleteIfExists(expectedOutput);
+    if (fallbackOutput != null) _deleteIfExists(fallbackOutput);
 
     // Options must precede the input: `dart compile jit-snapshot` treats
     // everything after the entry point as training arguments for the run it
@@ -33,15 +37,29 @@ class DartCompiler implements Compiler {
     // program's `main` as `args`.
     _run(['compile', target.value, '-o', outputPath, dillPath]);
 
-    // `dart compile` for snapshot targets may ignore `-o` when the input is a
-    // `.dill` file and instead emit next to the kernel path.
     if (expectedOutput.existsSync()) {
       return;
     }
 
-    final fallbackOutput = File('$dillPath${target.extension}');
-    if (fallbackOutput.existsSync()) {
+    if (fallbackOutput != null && fallbackOutput.existsSync()) {
       fallbackOutput.renameSync(outputPath);
+      return;
+    }
+
+    throw CompilationException(
+      '`dart compile ${target.value}` reported success but produced no '
+      'output at $outputPath',
+    );
+  }
+
+  void _deleteIfExists(File file) {
+    try {
+      if (file.existsSync()) file.deleteSync();
+    } on FileSystemException catch (e) {
+      throw CompilationException(
+        'Could not remove stale output ${file.path}: ${e.message}',
+        cause: e,
+      );
     }
   }
 
