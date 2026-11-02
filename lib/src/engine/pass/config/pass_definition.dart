@@ -1,4 +1,5 @@
 import 'package:refractor/src/engine/kernel/helper_source.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/policy/keep_source.dart';
@@ -12,8 +13,8 @@ abstract interface class PassDefinition<C extends PassConfig> {
   Set<KeepSource> get keepSources;
 
   /// Runtime helpers this pass needs injected into the program. The engine
-  /// compiles and injects them once, before passes run; the pass then resolves
-  /// the reparented procedures from the component by name. Defaults to none.
+  /// compiles and injects them once, before passes run, and hands the
+  /// reparented procedures to [createPass] as `helpers`. Defaults to none.
   Set<HelperSource> get runtimeHelpers => const {};
 
   C parseConfig(Map<String, dynamic> json);
@@ -21,6 +22,7 @@ abstract interface class PassDefinition<C extends PassConfig> {
   Pass createPass({
     required C config,
     required ObfuscationScope scope,
+    required RuntimeHelpers helpers,
   });
 
   bool supports(PassConfig config);

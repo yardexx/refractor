@@ -1,4 +1,5 @@
 import 'package:refractor/src/engine/kernel/helper_source.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
@@ -35,6 +36,7 @@ final class OpaquePredicateDefinition
   Pass createPass({
     required OpaquePredicatePassConfig config,
     required ObfuscationScope scope,
+    required RuntimeHelpers helpers,
   }) {
     return OpaquePredicatePass(config: config, scope: scope);
   }

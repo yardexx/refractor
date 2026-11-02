@@ -11,9 +11,9 @@
 /// own inverse, so the same expression both encodes and decodes.
 library;
 
-/// The top-level function name the injected helper exposes. The transformer
-/// resolves the reparented procedure through `InjectedHelpers` under this
-/// name, which stays valid after `rename` renames the procedure.
+/// The top-level function name the injected helper is compiled under. The
+/// transformer looks the reparented procedure up in `RuntimeHelpers` by this
+/// name; a pass that runs earlier (rename) may change the name itself.
 const String intDecodeRuntimeHelperName = 'refractorDecodeInt';
 
 /// The Dart source compiled and injected as the int-decode helper.

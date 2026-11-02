@@ -1,4 +1,5 @@
 import 'package:refractor/src/engine/kernel/helper_source.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
@@ -34,6 +35,7 @@ final class RenameDefinition implements PassDefinition<RenamePassConfig> {
   Pass createPass({
     required RenamePassConfig config,
     required ObfuscationScope scope,
+    required RuntimeHelpers helpers,
   }) {
     return RenamePass(config: config, scope: scope);
   }

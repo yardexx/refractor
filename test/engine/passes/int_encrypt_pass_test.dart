@@ -1,5 +1,6 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/int_encrypt/config/int_encrypt_config.dart';
 import 'package:refractor/src/engine/passes/int_encrypt/config/int_encrypt_definition.dart';
@@ -27,7 +28,10 @@ void main() {
     late Component component;
     late ProjectScope projectScope;
 
+    late RuntimeHelpers helpers;
+
     setUp(() {
+      helpers = RuntimeHelpers.none;
       coreLib = makeDartCoreLibrary();
       userLib = makeUserLibrary();
       projectScope = makeProjectScope();
@@ -37,15 +41,15 @@ void main() {
       final component = makeComponent(coreLib: coreLib, userLib: userLib);
       // In a real build the engine injects the decode helper before the pass
       // runs; supply a stand-in so each rewritten literal has a call target.
-      userLib.addProcedure(
-        Procedure(
-          Name(intDecodeRuntimeHelperName, userLib),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: userLib.fileUri,
-          isStatic: true,
-        ),
+      final standIn = Procedure(
+        Name(intDecodeRuntimeHelperName, userLib),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+        isStatic: true,
       );
+      userLib.addProcedure(standIn);
+      helpers = RuntimeHelpers({intDecodeRuntimeHelperName: standIn});
       return component;
     }
 
@@ -60,6 +64,7 @@ void main() {
       );
       return IntEncryptPass(
         config: config,
+        helpers: helpers,
         scope: ObfuscationScope(
           project: projectScope,
           keep: keepResolver.resolve(
@@ -175,15 +180,15 @@ void main() {
         userLib: userLib,
         extraLibraries: [annotationLib],
       );
-      userLib.addProcedure(
-        Procedure(
-          Name(intDecodeRuntimeHelperName, userLib),
-          ProcedureKind.Method,
-          FunctionNode(EmptyStatement()),
-          fileUri: userLib.fileUri,
-          isStatic: true,
-        ),
+      final standIn = Procedure(
+        Name(intDecodeRuntimeHelperName, userLib),
+        ProcedureKind.Method,
+        FunctionNode(EmptyStatement()),
+        fileUri: userLib.fileUri,
+        isStatic: true,
       );
+      userLib.addProcedure(standIn);
+      helpers = RuntimeHelpers({intDecodeRuntimeHelperName: standIn});
       await makePass(comp).run(comp);
 
       final ret =
@@ -270,7 +275,29 @@ void main() {
       expect(coreRet.expression, isA<IntLiteral>());
     });
 
-    test('no decode helper means the pass is a no-op', () async {
+    test('a helper renamed by an earlier pass is still used', () async {
+      final proc = Procedure(
+        Name('renamedHelper'),
+        ProcedureKind.Method,
+        FunctionNode(Block([ReturnStatement(IntLiteral(4242))])),
+        fileUri: userLib.fileUri,
+      );
+      userLib.addProcedure(proc);
+      component = makeRuntimeComponent();
+      // What a rename pass listed first does to the injected helper.
+      final helper = helpers.require(intDecodeRuntimeHelperName)
+        ..name = Name('a', userLib);
+
+      await makePass(component).run(component);
+
+      final ret =
+          (proc.function.body! as Block).statements.first as ReturnStatement;
+      final call = ret.expression! as StaticInvocation;
+      expect(call.target, same(helper));
+      expect(_decodedValue(call), 4242);
+    });
+
+    test('a missing decode helper fails the pass', () async {
       final proc = Procedure(
         Name('noHelper'),
         ProcedureKind.Method,
@@ -286,8 +313,8 @@ void main() {
       final ret =
           (proc.function.body! as Block).statements.first as ReturnStatement;
       expect(ret.expression, isA<IntLiteral>());
-      expect(result, isA<PassSucceeded>());
-      expect(result.report.isEmpty, isTrue);
+      expect(result, isA<PassFailed>());
+      expect(result.report.message, contains(intDecodeRuntimeHelperName));
     });
   });
 }

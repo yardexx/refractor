@@ -1,5 +1,7 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_planner.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_runtime.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transformer.dart';
 import 'package:test/test.dart';
@@ -13,7 +15,10 @@ void main() {
     late Library userLib;
     late Component component;
 
+    late RuntimeHelpers helpers;
+
     setUp(() {
+      helpers = RuntimeHelpers.none;
       coreLib = makeDartCoreLibrary();
       convertLib = makeDartConvertLibrary();
       userLib = makeUserLibrary();
@@ -23,9 +28,14 @@ void main() {
         extraLibraries: [convertLib],
       );
       // The engine injects the decode helper before the transformer runs; the
-      // transformer resolves it by name. Supply a stand-in for these unit
-      // tests so each rewritten literal has a procedure to call.
-      addDecodeHelperStandIn(coreLib: coreLib, userLib: userLib);
+      // transformer gets it as a RuntimeHelpers handle. Supply a stand-in for
+      // these unit tests so each rewritten literal has a procedure to call.
+      helpers = RuntimeHelpers({
+        decodeRuntimeHelperName: addDecodeHelperStandIn(
+          coreLib: coreLib,
+          userLib: userLib,
+        ),
+      });
     });
 
     test('returns explicit transform output with encrypted count', () async {
@@ -56,6 +66,7 @@ void main() {
 
       final output = StringEncryptTransformer(
         scope: makeObfuscationScope(),
+        helpers: helpers,
       ).apply(component, plan);
       final transformOutput = await output;
 
@@ -139,6 +150,7 @@ void main() {
 
       final transformOutput = await StringEncryptTransformer(
         scope: makeObfuscationScope(),
+        helpers: helpers,
       ).apply(component, plan);
 
       expect(transformOutput.encryptedCount, 2);

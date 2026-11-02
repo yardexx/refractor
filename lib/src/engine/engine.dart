@@ -3,6 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/kernel/source_helper_injector.dart';
 import 'package:refractor/src/engine/kernel_toolkit/sdk/helper_injector.dart';
 import 'package:refractor/src/engine/pass.dart';
@@ -65,13 +66,14 @@ class RefractorEngine {
       projectPackageName: request.projectPackageName,
     );
 
-    _injectRuntimeHelpers(component, config, projectScope);
+    final helpers = _injectRuntimeHelpers(component, config, projectScope);
 
     final enabledPasses = _passRegistry.createAll(
       configs: config.passes,
       component: component,
       globalExcludes: config.excludePatterns,
       projectScope: projectScope,
+      helpers: helpers,
     );
 
     final runner = PassRunner(passes: enabledPasses, logger: _logger);
@@ -124,15 +126,16 @@ class RefractorEngine {
   }
 
   /// Compiles and injects the runtime helpers declared by the enabled passes,
-  /// once, before the passes run. Each pass then resolves its reparented
-  /// procedures through `InjectedHelpers`, which survives a `rename`.
-  void _injectRuntimeHelpers(
+  /// once, before the passes run, and returns the reparented procedures. Passes
+  /// get them as handles because a pass that runs earlier (rename) may change
+  /// their names.
+  RuntimeHelpers _injectRuntimeHelpers(
     Component component,
     RefractorConfig config,
     ProjectScope projectScope,
   ) {
     final helpers = _passRegistry.collectRuntimeHelpers(config.passes);
-    if (helpers.isEmpty) return;
+    if (helpers.isEmpty) return RuntimeHelpers.none;
 
     final scope = ObfuscationScope(
       project: projectScope,
@@ -143,13 +146,14 @@ class RefractorEngine {
     ).firstEligibleLibrary(component);
     if (target == null) {
       _logger?.detail('No eligible library for runtime helpers; skipping.');
-      return;
+      return RuntimeHelpers.none;
     }
 
     final injector = SourceHelperInjector(compiler: compiler);
-    for (final helper in helpers) {
-      injector.inject(component, helper, targetLibrary: target);
-    }
+    return RuntimeHelpers({
+      for (final helper in helpers)
+        ...injector.inject(component, helper, targetLibrary: target),
+    });
   }
 }
 

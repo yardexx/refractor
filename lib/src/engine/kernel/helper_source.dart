@@ -2,8 +2,8 @@
 /// the program being obfuscated by `SourceHelperInjector`.
 ///
 /// A pass declares the helpers it needs via `PassDefinition.runtimeHelpers`;
-/// the engine injects them once, before passes run, and each pass resolves the
-/// reparented procedures through `InjectedHelpers`.
+/// the engine injects them once, before passes run, and hands the
+/// reparented procedures to each pass as `RuntimeHelpers`.
 class HelperSource {
   const HelperSource({
     required this.source,

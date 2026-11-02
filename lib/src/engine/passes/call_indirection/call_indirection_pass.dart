@@ -1,4 +1,5 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/call_indirection/config/call_indirection_config.dart';
 import 'package:refractor/src/engine/passes/call_indirection/planning/call_indirection_plan.dart';
@@ -27,10 +28,12 @@ class CallIndirectionPass
   CallIndirectionPass({
     required this.config,
     required this.scope,
+    required this.helpers,
   });
 
   final CallIndirectionPassConfig config;
   final ObfuscationScope scope;
+  final RuntimeHelpers helpers;
 
   @override
   String get name => 'call_indirection';
@@ -49,7 +52,10 @@ class CallIndirectionPass
   Future<CallIndirectionTransformOutput> transform(
     Component component,
     CallIndirectionPlan plan,
-  ) => CallIndirectionTransformer(scope: scope).apply(component, plan);
+  ) => CallIndirectionTransformer(
+    scope: scope,
+    helpers: helpers,
+  ).apply(component, plan);
 
   @override
   PassReport buildReport(
