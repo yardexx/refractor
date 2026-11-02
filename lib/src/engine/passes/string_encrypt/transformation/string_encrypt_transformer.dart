@@ -1,4 +1,5 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/injected_helpers.dart';
 import 'package:refractor/src/engine/kernel_toolkit/location/enclosing.dart';
 import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
 import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
@@ -53,14 +54,8 @@ class StringEncryptTransformer
   /// Finds the decode helper the engine injected into the program. Returns null
   /// when it is absent (e.g. no eligible library), in which case no literal is
   /// rewritten.
-  Procedure? _resolveDecodeProcedure(Component component) {
-    for (final library in component.libraries) {
-      for (final procedure in library.procedures) {
-        if (procedure.name.text == decodeRuntimeHelperName) return procedure;
-      }
-    }
-    return null;
-  }
+  Procedure? _resolveDecodeProcedure(Component component) =>
+      InjectedHelpers.resolve(component, decodeRuntimeHelperName);
 }
 
 final class _StringEncryptVisitor extends ScopedKernelTransformer {

@@ -1,4 +1,5 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/injected_helpers.dart';
 import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/call_indirection/planning/call_indirection_plan.dart';
@@ -43,14 +44,8 @@ class CallIndirectionTransformer
     );
   }
 
-  Procedure? _resolveForwarder(Component component) {
-    for (final library in component.libraries) {
-      for (final procedure in library.procedures) {
-        if (procedure.name.text == callIndirectionHelperName) return procedure;
-      }
-    }
-    return null;
-  }
+  Procedure? _resolveForwarder(Component component) =>
+      InjectedHelpers.resolve(component, callIndirectionHelperName);
 }
 
 final class _CallIndirectionVisitor extends ScopedKernelTransformer {

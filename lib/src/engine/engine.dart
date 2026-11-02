@@ -135,7 +135,7 @@ class RefractorEngine {
 
   /// Compiles and injects the runtime helpers declared by the enabled passes,
   /// once, before the passes run. Each pass then resolves its reparented
-  /// procedures from the component by name.
+  /// procedures through `InjectedHelpers`, which survives a `rename`.
   void _injectRuntimeHelpers(
     Component component,
     RefractorConfig config,

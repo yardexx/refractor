@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/helper_source.dart';
+import 'package:refractor/src/engine/kernel/injected_helpers.dart';
 
 export 'package:refractor/src/engine/kernel/helper_source.dart';
 
@@ -36,7 +37,8 @@ class SourceHelperInjector {
 
   /// Compiles [helper], links it into [component], and reparents the named
   /// procedures into [targetLibrary]. Returns the reparented procedures keyed
-  /// by name.
+  /// by name, and records them in [InjectedHelpers] so passes can find them
+  /// even after a rename.
   Map<String, Procedure> inject(
     Component component,
     HelperSource helper, {
@@ -78,6 +80,7 @@ class SourceHelperInjector {
       for (final library in helperLibraries) {
         component.uriToSource.remove(library.fileUri);
       }
+      InjectedHelpers.record(component, reparented);
       return reparented;
     } finally {
       tempDir.deleteSync(recursive: true);

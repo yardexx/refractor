@@ -1145,8 +1145,8 @@ void main() {
     );
 
     test(
-      'FunctionInvocation through variable tear-off preserves callable '
-      'surface',
+      'FunctionInvocation through variable tear-off renames the callee but keeps '
+      'its named parameters',
       () async {
         final namedParam = VariableDeclaration('debug');
         final callee = Procedure(
@@ -1192,7 +1192,9 @@ void main() {
 
         await runPass();
 
-        expect(callee.name.text, equals('configure'));
+        // The tear-off follows the procedure by reference, so only the named
+        // parameter's label is part of the callable surface.
+        expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, equals('debug'));
       },
@@ -1245,7 +1247,9 @@ void main() {
 
         await runPass();
 
-        expect(callee.name.text, equals('configure'));
+        // The tear-off follows the procedure by reference, so only the named
+        // parameter's label is part of the callable surface.
+        expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, 'debug');
       },
@@ -1297,7 +1301,9 @@ void main() {
 
         await runPass();
 
-        expect(callee.name.text, equals('configure'));
+        // The tear-off follows the procedure by reference, so only the named
+        // parameter's label is part of the callable surface.
+        expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, 'debug');
       },
@@ -1425,8 +1431,8 @@ void main() {
     );
 
     test(
-      'FunctionInvocation through instantiated generic tear-off preserves '
-      'callable surface',
+      'FunctionInvocation through instantiated generic tear-off keeps named '
+      'parameters',
       () async {
         final namedParam = VariableDeclaration('debug');
         final typeParameter = TypeParameter('T');
@@ -1480,7 +1486,7 @@ void main() {
 
         await runPass();
 
-        expect(genericHelper.name.text, equals('helper'));
+        expect(genericHelper.name.text, isNot('helper'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, equals('debug'));
       },
