@@ -17,10 +17,10 @@ final class ArithmeticMangleTransformer
   final ObfuscationScope _scope;
 
   @override
-  Future<ArithmeticMangleTransformOutput> apply(
+  ArithmeticMangleTransformOutput apply(
     Component component,
     ArithmeticManglePlan plan,
-  ) async {
+  ) {
     if (plan.decisionCount == 0) {
       return const ArithmeticMangleTransformOutput(mangledCount: 0);
     }

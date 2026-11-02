@@ -20,10 +20,10 @@ final class BogusControlFlowTransformer
   const BogusControlFlowTransformer();
 
   @override
-  Future<BogusControlFlowTransformOutput> apply(
+  BogusControlFlowTransformOutput apply(
     Component component,
     BogusControlFlowPlan plan,
-  ) async {
+  ) {
     if (plan.decisionCount == 0) {
       return const BogusControlFlowTransformOutput(insertedCount: 0);
     }

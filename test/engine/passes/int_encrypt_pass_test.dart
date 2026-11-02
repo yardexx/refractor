@@ -85,7 +85,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final ret =
           (proc.function.body! as Block).statements.first as ReturnStatement;
@@ -115,7 +115,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       final body = proc.function.body! as Block;
       // 1 stays inline (abs < 2); 42 is encoded.
@@ -141,7 +141,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final ret =
           (proc.function.body! as Block).statements.first as ReturnStatement;
@@ -154,7 +154,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       expect(cls.annotations.first, isA<IntLiteral>());
       expect((cls.annotations.first as IntLiteral).value, 123456);
@@ -189,7 +189,7 @@ void main() {
       );
       userLib.addProcedure(standIn);
       helpers = RuntimeHelpers({intDecodeRuntimeHelperName: standIn});
-      await makePass(comp).run(comp);
+      makePass(comp).run(comp);
 
       final ret =
           (cls.procedures.first.function.body! as Block).statements.first
@@ -213,7 +213,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final body = proc.function.body! as Block;
       final first =
@@ -239,7 +239,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       expect(result.report.passName, 'int_encrypt');
@@ -264,7 +264,7 @@ void main() {
       userLib.addProcedure(userProc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final coreHelper = coreLib.procedures.firstWhere(
         (procedure) => procedure.name.text == 'coreHelper',
@@ -288,7 +288,7 @@ void main() {
       final helper = helpers.require(intDecodeRuntimeHelperName)
         ..name = Name('a', userLib);
 
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final ret =
           (proc.function.body! as Block).statements.first as ReturnStatement;
@@ -308,7 +308,7 @@ void main() {
 
       // No makeRuntimeComponent(): the helper is absent.
       final comp = makeComponent(coreLib: coreLib, userLib: userLib);
-      final result = await makePass(comp).run(comp);
+      final result = makePass(comp).run(comp);
 
       final ret =
           (proc.function.body! as Block).statements.first as ReturnStatement;

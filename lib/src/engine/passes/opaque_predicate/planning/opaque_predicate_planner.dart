@@ -28,10 +28,10 @@ final class OpaquePredicatePlanner
   final int _liveTemplateCount;
 
   @override
-  Future<OpaquePredicatePlan> plan(
+  OpaquePredicatePlan plan(
     Component component,
     OpaquePredicateSelection selection,
-  ) async {
+  ) {
     final decisions = <PlannedOpaquePredicate>[
       for (final site in selection.orderedSites) _planFor(site, selection),
     ];

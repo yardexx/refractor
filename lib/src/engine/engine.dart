@@ -51,10 +51,10 @@ class RefractorEngine {
   final PassRegistry _passRegistry;
   final Logger? _logger;
 
-  Future<BuildResult> run({
+  BuildResult run({
     required RefractorConfig config,
     required BuildRequest request,
-  }) async {
+  }) {
     _logger?.detail('Compiling ${request.input} to kernel...');
     final dillPath = '${request.workDirectory}/app.dill';
     compiler.compileToKernel(request.input, dillPath);
@@ -77,7 +77,7 @@ class RefractorEngine {
     );
 
     final runner = PassRunner(passes: enabledPasses, logger: _logger);
-    final runResult = await runner.run(component);
+    final runResult = runner.run(component);
 
     if (runResult.failures.isNotEmpty) {
       _logger?.detail(

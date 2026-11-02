@@ -18,10 +18,10 @@ class RenameTransformer
   final ObfuscationScope _scope;
 
   @override
-  Future<RenameTransformOutput> apply(
+  RenameTransformOutput apply(
     Component component,
     RenamePlan plan,
-  ) async {
+  ) {
     final visitor = _RenameTransformVisitor(
       scope: _scope,
       mapping: plan.mapping,

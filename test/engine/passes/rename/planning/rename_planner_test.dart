@@ -63,7 +63,7 @@ void main() {
 
       final component = makeComponent(coreLib: coreLib, userLib: userLib);
       final selection = makeSelector(component).select(component);
-      final plan = await makePlanner().plan(component, selection);
+      final plan = makePlanner().plan(component, selection);
 
       expect(
         plan.mapping.members[baseMethod]!.text,
@@ -102,7 +102,7 @@ void main() {
 
         final component = makeComponent(coreLib: coreLib, userLib: userLib);
         final selection = makeSelector(component).select(component);
-        final plan = await makePlanner().plan(component, selection);
+        final plan = makePlanner().plan(component, selection);
 
         expect(
           plan.mapping.members.keys,
@@ -128,8 +128,8 @@ void main() {
       final selection = makeSelector(component).select(component);
       final planner = makePlanner();
 
-      final firstPlan = await planner.plan(component, selection);
-      final secondPlan = await planner.plan(component, selection);
+      final firstPlan = planner.plan(component, selection);
+      final secondPlan = planner.plan(component, selection);
 
       expect(
         secondPlan.mapping.classes.length,
@@ -176,7 +176,7 @@ void main() {
       final component = Component(libraries: [coreLib, libA, libB])
         ..setMainMethodAndMode(null, true);
       final selection = makeSelector(component).select(component);
-      final plan = await makePlanner().plan(component, selection);
+      final plan = makePlanner().plan(component, selection);
 
       expect(plan.mapping.members[baseMethod]!.library, same(libA));
       expect(plan.mapping.members[derivedMethod]!.library, same(libB));
@@ -190,8 +190,8 @@ void main() {
         final component = makeComponent(coreLib: coreLib, userLib: userLib);
         final selection = makeSelector(component).select(component);
 
-        final first = await makePlanner().plan(component, selection);
-        final second = await makePlanner().plan(component, selection);
+        final first = makePlanner().plan(component, selection);
+        final second = makePlanner().plan(component, selection);
 
         expect(first.mapping.classes[cls], equals(second.mapping.classes[cls]));
       },

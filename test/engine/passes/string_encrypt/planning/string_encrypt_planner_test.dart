@@ -41,7 +41,7 @@ void main() {
         scope: makeObfuscationScope(),
         excludedLiteralPatterns: const [],
       ).select(component);
-      final plan = await StringEncryptPlanner(seed: 42).plan(
+      final plan = StringEncryptPlanner(seed: 42).plan(
         component,
         selection,
       );

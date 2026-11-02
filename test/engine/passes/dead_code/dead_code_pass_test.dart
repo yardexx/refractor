@@ -51,7 +51,7 @@ void main() {
           keep: KeepPolicy.empty,
         );
 
-        final result = await DeadCodePass(
+        final result = DeadCodePass(
           config: const DeadCodePassConfig(),
           scope: scope,
         ).run(component);
@@ -110,7 +110,7 @@ void main() {
           keep: KeepPolicy.empty,
         );
 
-        final result = await DeadCodePass(
+        final result = DeadCodePass(
           config: const DeadCodePassConfig(),
           scope: scope,
         ).run(component);
@@ -189,7 +189,7 @@ void main(List<String> args) {
           ),
           keep: KeepPolicy.empty,
         );
-        final result = await DeadCodePass(
+        final result = DeadCodePass(
           config: const DeadCodePassConfig(),
           scope: scope,
         ).run(component);

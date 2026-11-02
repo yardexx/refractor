@@ -15,10 +15,10 @@ final class BogusControlFlowPlanner
   final Random _random;
 
   @override
-  Future<BogusControlFlowPlan> plan(
+  BogusControlFlowPlan plan(
     Component component,
     BogusControlFlowSelection selection,
-  ) async {
+  ) {
     final decisions = <PlannedBogusControlFlow>[];
     for (final function in selection.orderedFunctions) {
       final candidates = selection.guardCandidatesFor(function);

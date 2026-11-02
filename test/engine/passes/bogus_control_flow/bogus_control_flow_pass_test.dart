@@ -56,7 +56,7 @@ void main() {
           keep: KeepPolicy.empty,
         );
 
-        final result = await BogusControlFlowPass(
+        final result = BogusControlFlowPass(
           config: const BogusControlFlowPassConfig(),
           scope: scope,
         ).run(component);

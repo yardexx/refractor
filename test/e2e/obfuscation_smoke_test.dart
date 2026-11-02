@@ -416,7 +416,7 @@ Future<String> _compileObfuscateRun({
     kernelIO: FileKernelIO(),
   );
 
-  final result = await engine.run(
+  final result = engine.run(
     config: config,
     request: BuildRequest(
       input: sourcePath,
@@ -488,7 +488,7 @@ Future<String> _buildAndRunExampleApp({
     kernelIO: FileKernelIO(),
   );
 
-  await engine.run(
+  engine.run(
     config: config,
     request: BuildRequest(
       input: '$exampleRoot/lib/main.dart',

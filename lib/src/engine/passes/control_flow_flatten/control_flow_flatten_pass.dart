@@ -42,7 +42,7 @@ class ControlFlowFlattenPass
       ControlFlowFlattenSelector(scope: scope).select(component);
 
   @override
-  Future<ControlFlowFlattenPlan> plan(
+  ControlFlowFlattenPlan plan(
     Component component,
     ControlFlowFlattenSelection selection,
   ) => ControlFlowFlattenPlanner(
@@ -50,7 +50,7 @@ class ControlFlowFlattenPass
   ).plan(component, selection);
 
   @override
-  Future<ControlFlowFlattenTransformOutput> transform(
+  ControlFlowFlattenTransformOutput transform(
     Component component,
     ControlFlowFlattenPlan plan,
   ) => const ControlFlowFlattenTransformer().apply(component, plan);

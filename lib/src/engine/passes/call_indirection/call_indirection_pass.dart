@@ -43,13 +43,13 @@ class CallIndirectionPass
       CallIndirectionSelector(scope: scope).select(component);
 
   @override
-  Future<CallIndirectionPlan> plan(
+  CallIndirectionPlan plan(
     Component component,
     CallIndirectionSelection selection,
   ) => const CallIndirectionPlanner().plan(component, selection);
 
   @override
-  Future<CallIndirectionTransformOutput> transform(
+  CallIndirectionTransformOutput transform(
     Component component,
     CallIndirectionPlan plan,
   ) => CallIndirectionTransformer(

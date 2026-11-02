@@ -29,10 +29,10 @@ final class ControlFlowFlattenTransformer
   const ControlFlowFlattenTransformer();
 
   @override
-  Future<ControlFlowFlattenTransformOutput> apply(
+  ControlFlowFlattenTransformOutput apply(
     Component component,
     ControlFlowFlattenPlan plan,
-  ) async {
+  ) {
     if (plan.decisionCount == 0) {
       return const ControlFlowFlattenTransformOutput(flattenedCount: 0);
     }

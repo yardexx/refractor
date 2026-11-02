@@ -55,7 +55,7 @@ void main() {
           keep: KeepPolicy.empty,
         );
 
-        final result = await ArithmeticManglePass(
+        final result = ArithmeticManglePass(
           config: const ArithmeticManglePassConfig(),
           scope: scope,
         ).run(component);

@@ -10,10 +10,10 @@ final class CallIndirectionPlanner
   const CallIndirectionPlanner();
 
   @override
-  Future<CallIndirectionPlan> plan(
+  CallIndirectionPlan plan(
     Component component,
     CallIndirectionSelection selection,
-  ) async {
+  ) {
     return CallIndirectionPlan(sites: selection.orderedSites);
   }
 }

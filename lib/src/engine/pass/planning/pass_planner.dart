@@ -6,5 +6,5 @@ abstract interface class PassPlanner<
   S extends PassSelection,
   P extends PassPlan
 > {
-  Future<P> plan(Component component, S selection);
+  P plan(Component component, S selection);
 }

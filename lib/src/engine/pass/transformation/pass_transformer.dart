@@ -6,5 +6,5 @@ abstract interface class PassTransformer<
   P extends PassPlan,
   O extends PassTransformOutput
 > {
-  Future<O> apply(Component component, P plan);
+  O apply(Component component, P plan);
 }

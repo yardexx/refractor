@@ -53,7 +53,7 @@ class BuildCommand extends RefractorCommand {
 
   BuildReporter get reporter => _reporter ?? _detectReporter();
 
-  Future<BuildResult> runBuild({
+  BuildResult runBuild({
     required BuildRequest request,
     required RefractorConfig config,
   }) {
@@ -82,7 +82,7 @@ class BuildCommand extends RefractorCommand {
     );
 
     try {
-      final result = await runBuild(request: request, config: config);
+      final result = runBuild(request: request, config: config);
       reporter.report(result);
 
       if (result.failures.isNotEmpty) {

@@ -23,10 +23,10 @@ class StringEncryptTransformer
   final RuntimeHelpers _helpers;
 
   @override
-  Future<StringEncryptTransformOutput> apply(
+  StringEncryptTransformOutput apply(
     Component component,
     StringEncryptPlan plan,
-  ) async {
+  ) {
     if (plan.rewrites.isEmpty) {
       return const StringEncryptTransformOutput(
         encryptedCount: 0,

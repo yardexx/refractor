@@ -108,7 +108,7 @@ void main() {
   ) async {
     final outputPath = p.join(tempDir.path, 'main${target.extension}');
     final result =
-        await RefractorEngine(
+        RefractorEngine(
           compiler: DartCompiler(),
           kernelIO: FileKernelIO(),
         ).run(

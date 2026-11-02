@@ -40,13 +40,13 @@ class ArithmeticManglePass
       ArithmeticMangleSelector(scope: scope).select(component);
 
   @override
-  Future<ArithmeticManglePlan> plan(
+  ArithmeticManglePlan plan(
     Component component,
     ArithmeticMangleSelection selection,
   ) => ArithmeticManglePlanner(seed: config.seed).plan(component, selection);
 
   @override
-  Future<ArithmeticMangleTransformOutput> transform(
+  ArithmeticMangleTransformOutput transform(
     Component component,
     ArithmeticManglePlan plan,
   ) => ArithmeticMangleTransformer(scope: scope).apply(component, plan);

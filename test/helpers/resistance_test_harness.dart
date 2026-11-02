@@ -160,7 +160,7 @@ Future<ResistanceRunResult> buildResistanceFixture(
     kernelIO: FileKernelIO(),
   );
 
-  final buildResult = await engine.run(
+  final buildResult = engine.run(
     config: fixture.config,
     request: BuildRequest(
       input: fixture.sourcePath,

@@ -23,10 +23,10 @@ class CallIndirectionTransformer
   final RuntimeHelpers _helpers;
 
   @override
-  Future<CallIndirectionTransformOutput> apply(
+  CallIndirectionTransformOutput apply(
     Component component,
     CallIndirectionPlan plan,
-  ) async {
+  ) {
     if (plan.plannedSiteCount == 0) {
       return const CallIndirectionTransformOutput(indirectedCount: 0);
     }

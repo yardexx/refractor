@@ -23,10 +23,10 @@ final class DeadCodeTransformer
   const DeadCodeTransformer();
 
   @override
-  Future<DeadCodeTransformOutput> apply(
+  DeadCodeTransformOutput apply(
     Component component,
     DeadCodePlan plan,
-  ) async {
+  ) {
     if (plan.decisionCount == 0) {
       return const DeadCodeTransformOutput(insertedCount: 0);
     }

@@ -14,11 +14,14 @@ class PassRunner {
   final Logger? logger;
 
   /// Run all passes on [component] and return collected results.
-  Future<PassResults> run(Component component) async {
+  ///
+  /// Synchronous and strictly ordered: each pass mutates the shared [component]
+  /// in place, so passes cannot overlap and there is nothing to await.
+  PassResults run(Component component) {
     final results = PassResults();
     for (final pass in passes) {
       logger?.detail('Running pass: ${pass.name}');
-      final execution = await pass.run(component);
+      final execution = pass.run(component);
       switch (execution) {
         case PassSucceeded(:final artifact, :final report):
           results.addReport(report);

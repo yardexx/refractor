@@ -39,13 +39,13 @@ class DeadCodePass
       DeadCodeSelector(scope: scope).select(component);
 
   @override
-  Future<DeadCodePlan> plan(
+  DeadCodePlan plan(
     Component component,
     DeadCodeSelection selection,
   ) => DeadCodePlanner(seed: config.seed).plan(component, selection);
 
   @override
-  Future<DeadCodeTransformOutput> transform(
+  DeadCodeTransformOutput transform(
     Component component,
     DeadCodePlan plan,
   ) => const DeadCodeTransformer().apply(component, plan);

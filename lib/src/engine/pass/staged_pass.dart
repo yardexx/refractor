@@ -29,10 +29,10 @@ abstract class StagedPass<
   S select(Component component);
 
   /// Stage 2 — decide the exact mutations as an immutable plan.
-  Future<P> plan(Component component, S selection);
+  P plan(Component component, S selection);
 
   /// Stage 3 — apply the plan to the component.
-  Future<O> transform(Component component, P plan);
+  O transform(Component component, P plan);
 
   /// Stage 4 (optional) — check post-mutation invariants. Defaults to a no-op.
   void validate(Component component, {required P plan, required O output}) {}
@@ -44,11 +44,11 @@ abstract class StagedPass<
   PassArtifact? buildArtifact(O output) => null;
 
   @override
-  Future<PassResult> run(Component component) async {
+  PassResult run(Component component) {
     try {
       final selection = select(component);
-      final plan = await this.plan(component, selection);
-      final output = await transform(component, plan);
+      final plan = this.plan(component, selection);
+      final output = transform(component, plan);
       validate(component, plan: plan, output: output);
       return PassSucceeded(
         artifact: buildArtifact(output),

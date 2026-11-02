@@ -47,13 +47,13 @@ class BogusControlFlowPass
       ).select(component);
 
   @override
-  Future<BogusControlFlowPlan> plan(
+  BogusControlFlowPlan plan(
     Component component,
     BogusControlFlowSelection selection,
   ) => BogusControlFlowPlanner(seed: config.seed).plan(component, selection);
 
   @override
-  Future<BogusControlFlowTransformOutput> transform(
+  BogusControlFlowTransformOutput transform(
     Component component,
     BogusControlFlowPlan plan,
   ) => const BogusControlFlowTransformer().apply(component, plan);

@@ -28,10 +28,10 @@ final class DeadCodePlanner
   final Random _random;
 
   @override
-  Future<DeadCodePlan> plan(
+  DeadCodePlan plan(
     Component component,
     DeadCodeSelection selection,
-  ) async {
+  ) {
     final decisions = <PlannedDeadCode>[];
     for (final function in selection.orderedFunctions) {
       final sites = selection.sitesFor(function);

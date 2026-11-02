@@ -45,13 +45,13 @@ class IntEncryptPass
   ).select(component);
 
   @override
-  Future<IntEncryptPlan> plan(
+  IntEncryptPlan plan(
     Component component,
     IntEncryptSelection selection,
   ) => IntEncryptPlanner(seed: config.seed).plan(component, selection);
 
   @override
-  Future<IntEncryptTransformOutput> transform(
+  IntEncryptTransformOutput transform(
     Component component,
     IntEncryptPlan plan,
   ) => IntEncryptTransformer(

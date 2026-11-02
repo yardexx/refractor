@@ -99,7 +99,7 @@ void main() {
       addForwarderStandIn();
       component = makeComponent(coreLib: coreLib, userLib: userLib);
 
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       final ret =
           (caller.function.body! as Block).statements.first as ReturnStatement;
@@ -132,7 +132,7 @@ void main() {
       addForwarderStandIn();
       component = makeComponent(coreLib: coreLib, userLib: userLib);
 
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final stmt =
           (caller.function.body! as Block).statements.first
@@ -163,7 +163,7 @@ void main() {
       addForwarderStandIn();
       component = makeComponent(coreLib: coreLib, userLib: userLib);
 
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       final ret =
           (caller.function.body! as Block).statements.first as ReturnStatement;
@@ -182,7 +182,7 @@ void main() {
       // No forwarder stand-in added.
       component = makeComponent(coreLib: coreLib, userLib: userLib);
 
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       final ret =
           (caller.function.body! as Block).statements.first as ReturnStatement;

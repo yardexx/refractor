@@ -64,7 +64,7 @@ void main() {
         compiler.compileToKernel(appDart, appDill);
         final component = io.load(appDill);
 
-        final result = await ControlFlowFlattenPass(
+        final result = ControlFlowFlattenPass(
           config: const ControlFlowFlattenPassConfig(),
           scope: scopeFor(root),
         ).run(component);
@@ -107,7 +107,7 @@ void main() {
         compiler.compileToKernel(appDart, appDill);
         final component = io.load(appDill);
 
-        final result = await ControlFlowFlattenPass(
+        final result = ControlFlowFlattenPass(
           config: const ControlFlowFlattenPassConfig(),
           scope: scopeFor(root),
         ).run(component);

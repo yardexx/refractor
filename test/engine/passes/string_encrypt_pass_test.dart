@@ -119,7 +119,7 @@ void main() {
         userLib.addProcedure(proc);
 
         component = makeRuntimeComponent();
-        await makePass(component).run(component);
+        makePass(component).run(component);
 
         final body = proc.function.body! as Block;
         final ret = body.statements.first as ReturnStatement;
@@ -146,7 +146,7 @@ void main() {
         userLib: userLib,
         extraLibraries: [convertLib, annotationLib],
       );
-      await makePass(comp).run(comp);
+      makePass(comp).run(comp);
 
       final body = method.function.body! as Block;
       final ret = body.statements.first as ReturnStatement;
@@ -169,7 +169,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final body = proc.function.body! as Block;
       final ret = body.statements.first as ReturnStatement;
@@ -182,7 +182,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = cls.annotations.first as ConstantExpression;
       expect(annotation.constant, isA<StringConstant>());
@@ -197,7 +197,7 @@ void main() {
         userLib.addClass(cls);
 
         component = makeRuntimeComponent();
-        await makePass(component).run(component);
+        makePass(component).run(component);
 
         final annotation = cls.annotations.first;
         expect(annotation, isA<StringLiteral>());
@@ -213,7 +213,7 @@ void main() {
       userLib.addField(field);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = field.annotations.first as ConstantExpression;
       expect(annotation.constant, isA<StringConstant>());
@@ -234,7 +234,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = constructor.annotations.first as ConstantExpression;
       expect(annotation.constant, isA<StringConstant>());
@@ -254,7 +254,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = procedure.annotations.first;
       expect(annotation, isA<StringLiteral>());
@@ -278,7 +278,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(
+      makePass(
         component,
         config: const StringEncryptPassConfig(
           excludePatterns: ['DO_NOT_ENCRYPT'],
@@ -295,7 +295,7 @@ void main() {
       // Component with only core lib — no crash.
       final comp = Component(libraries: [coreLib])
         ..setMainMethodAndMode(null, true);
-      final result = await makePass(comp).run(comp);
+      final result = makePass(comp).run(comp);
 
       expect(comp.libraries.length, equals(1));
       expect(result, isA<PassSucceeded>());
@@ -325,7 +325,7 @@ void main() {
       userLib.addProcedure(userProc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final coreBody = coreProc.function.body! as Block;
       final coreRet = coreBody.statements.first as ReturnStatement;
@@ -347,7 +347,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final body = proc.function.body! as Block;
       final firstExpr = body.statements[0] as ExpressionStatement;
@@ -372,7 +372,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       expect(result.report.passName, 'string_encrypt');
@@ -391,7 +391,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       final success = result as PassSucceeded;
@@ -428,7 +428,7 @@ void main() {
       );
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
       final success = result as PassSucceeded;
       final artifact = success.artifact! as StringEncryptArtifact;
 
@@ -458,7 +458,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
       final artifact =
           (result as PassSucceeded).artifact! as StringEncryptArtifact;
 
@@ -490,7 +490,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      final result = await makePass(
+      final result = makePass(
         component,
         config: const StringEncryptPassConfig(
           excludePatterns: ['keep_me'],
@@ -523,7 +523,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       final returnStatement = procedure.function.body! as ReturnStatement;
@@ -555,7 +555,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       final returnStatement = procedure.function.body! as ReturnStatement;
       final concat = returnStatement.expression! as StringConcatenation;

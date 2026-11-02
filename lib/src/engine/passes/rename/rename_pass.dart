@@ -44,11 +44,11 @@ class RenamePass
       RenameSelector(scope: scope).select(component);
 
   @override
-  Future<RenamePlan> plan(Component component, RenameSelection selection) =>
+  RenamePlan plan(Component component, RenameSelection selection) =>
       RenamePlanner(generator: _generatorFactory()).plan(component, selection);
 
   @override
-  Future<RenameTransformOutput> transform(
+  RenameTransformOutput transform(
     Component component,
     RenamePlan plan,
   ) => RenameTransformer(scope: scope).apply(component, plan);

@@ -21,10 +21,10 @@ final class OpaquePredicateTransformer
   final List<OpaquePredicateLiveTemplate> _liveTemplates;
 
   @override
-  Future<OpaquePredicateTransformOutput> apply(
+  OpaquePredicateTransformOutput apply(
     Component component,
     OpaquePredicatePlan plan,
-  ) async {
+  ) {
     if (plan.decisions.isEmpty) {
       return const OpaquePredicateTransformOutput(strengthenedCount: 0);
     }

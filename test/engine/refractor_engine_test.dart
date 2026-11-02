@@ -26,7 +26,7 @@ void main() {
     });
 
     test('runs compile -> load -> write -> target compile for exe', () async {
-      final result = await engine.run(
+      final result = engine.run(
         config: RefractorConfig(passes: []),
         request: BuildRequest(
           input: 'lib/main.dart',
@@ -66,7 +66,7 @@ void main() {
     test(
       'writes final kernel output and skips compileToTarget for kernel target',
       () async {
-        final result = await engine.run(
+        final result = engine.run(
           config: RefractorConfig(passes: []),
           request: BuildRequest(
             input: 'lib/main.dart',
@@ -92,7 +92,7 @@ void main() {
     );
 
     test('passesRun reflects YAML pass order', () async {
-      final result = await engine.run(
+      final result = engine.run(
         config: RefractorConfig.fromYaml('''
 refractor:
   passes:
@@ -121,7 +121,7 @@ refractor:
           passRegistry: PassRegistry([_FailingDefinition()]),
         );
 
-        final result = await engine.run(
+        final result = engine.run(
           config: RefractorConfig(passes: [const _FailingPassConfig()]),
           request: BuildRequest(
             input: 'lib/main.dart',
@@ -229,7 +229,7 @@ final class _FailingPass extends Pass {
   String get name => 'string_encrypt';
 
   @override
-  Future<PassResult> run(Component component) async {
+  PassResult run(Component component) {
     return PassFailed(
       error: Exception('boom'),
       report: const PassReport(

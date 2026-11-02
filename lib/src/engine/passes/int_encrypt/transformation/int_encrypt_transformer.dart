@@ -19,10 +19,10 @@ class IntEncryptTransformer
   final RuntimeHelpers _helpers;
 
   @override
-  Future<IntEncryptTransformOutput> apply(
+  IntEncryptTransformOutput apply(
     Component component,
     IntEncryptPlan plan,
-  ) async {
+  ) {
     if (plan.plannedLiteralCount == 0) {
       return const IntEncryptTransformOutput(encryptedCount: 0);
     }

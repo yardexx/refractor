@@ -53,13 +53,13 @@ class StringEncryptPass
   ).select(component);
 
   @override
-  Future<StringEncryptPlan> plan(
+  StringEncryptPlan plan(
     Component component,
     StringEncryptSelection selection,
   ) => StringEncryptPlanner(seed: config.seed).plan(component, selection);
 
   @override
-  Future<StringEncryptTransformOutput> transform(
+  StringEncryptTransformOutput transform(
     Component component,
     StringEncryptPlan plan,
   ) => StringEncryptTransformer(

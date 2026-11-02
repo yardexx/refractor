@@ -16,10 +16,10 @@ final class ControlFlowFlattenPlanner
   final Random _random;
 
   @override
-  Future<ControlFlowFlattenPlan> plan(
+  ControlFlowFlattenPlan plan(
     Component component,
     ControlFlowFlattenSelection selection,
-  ) async {
+  ) {
     final decisions = <PlannedControlFlowFlatten>[];
     for (final function in selection.orderedFunctions) {
       final blockCount = (function.body! as Block).statements.length;

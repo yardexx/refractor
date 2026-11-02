@@ -57,7 +57,7 @@ void main() {
         userLib: userLib,
         extraLibraries: [annotationLib],
       );
-      final result = await makePass(component, config: config).run(component);
+      final result = makePass(component, config: config).run(component);
       expect(result, isA<PassSucceeded>());
       return ((result as PassSucceeded).artifact! as RenameArtifact).mapping;
     }
@@ -71,7 +71,7 @@ void main() {
         userLib: userLib,
         extraLibraries: [annotationLib],
       );
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       final success = result as PassSucceeded;
@@ -144,7 +144,7 @@ void main() {
 
       component = Component(libraries: [coreLib, userLib, otherLib])
         ..setMainMethodAndMode(null, true);
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       expect(cls.name, equals('ExternalClass'));
     });
@@ -160,7 +160,7 @@ void main() {
 
       component = Component(libraries: [coreLib, userLib])
         ..setMainMethodAndMode(mainProc.reference, true);
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
 
@@ -269,7 +269,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       expect(result.report.passName, 'rename');
@@ -631,7 +631,7 @@ void main() {
           projectScope: projectScope,
           globalExcludes: const [],
         );
-        await RenamePass(
+        RenamePass(
           config: RenamePassConfig(seed: seed),
           scope: ObfuscationScope(
             project: projectScope,
@@ -666,7 +666,7 @@ void main() {
           coreLib: makeDartCoreLibrary(),
           userLib: lib,
         );
-        await pass.run(comp);
+        pass.run(comp);
         return method.name.text;
       }
 
@@ -800,7 +800,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, extLib])
           ..setMainMethodAndMode(null, true);
-        await makePass(component).run(component);
+        makePass(component).run(component);
 
         expect(
           buildOverride.name.text,
@@ -1100,7 +1100,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, otherLib])
           ..setMainMethodAndMode(null, true);
-        final result = await makePass(component).run(component);
+        final result = makePass(component).run(component);
 
         expect(result, isA<PassSucceeded>());
         expect(externalMethod.name.text, 'foo');
@@ -1137,7 +1137,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, otherLib])
           ..setMainMethodAndMode(null, true);
-        final result = await makePass(component).run(component);
+        final result = makePass(component).run(component);
 
         expect(result, isA<PassSucceeded>());
         expect(localMethod.name.text, isNot('map'));
@@ -1785,7 +1785,7 @@ void main() {
         component = Component(
           libraries: [coreLib, annotationLib, depLib, userLib],
         )..setMainMethodAndMode(null, true);
-        await makePass(component).run(component);
+        makePass(component).run(component);
 
         expect(describe.name.text, equals('describe'));
         expect(other.name.text, isNot('other'));
@@ -1846,7 +1846,7 @@ void main() {
           projectScope: projectScope,
           globalExcludes: const [],
         );
-        await RenamePass(
+        RenamePass(
           config: const RenamePassConfig(),
           scope: ObfuscationScope(
             project: projectScope,

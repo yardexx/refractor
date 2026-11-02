@@ -47,7 +47,7 @@ refractor:
     rename: true
     string_encrypt: false
 ''');
-        final result = await engine.run(
+        final result = engine.run(
           config: config,
           request: BuildRequest(
             input: appDart,

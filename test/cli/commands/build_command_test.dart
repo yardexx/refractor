@@ -67,7 +67,7 @@ refractor:
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
 
-      final exitCode = await runner.run([
+      final exitCode = runner.run([
         'build',
         '--target',
         'kernel',
@@ -103,7 +103,7 @@ void main() {
 }
 ''');
 
-      final exitCode = await runner.run([
+      final exitCode = runner.run([
         'build',
         '--target',
         'kernel',
@@ -140,7 +140,7 @@ refractor:
           'lib/main.dart',
         ).writeAsStringSync('void main() { print("ok"); }\n');
 
-        final exitCode = await runner.run([
+        final exitCode = runner.run([
           'build',
           '--target',
           'kernel',
@@ -165,7 +165,7 @@ refractor:
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
 
-      final exitCode = await runner.run(['build', '--target', 'kernel']);
+      final exitCode = runner.run(['build', '--target', 'kernel']);
 
       expect(exitCode, ExitCode.success.code);
       verify(() => logger.level = Level.verbose).called(1);
@@ -190,7 +190,7 @@ refractor:
           'build/build_artifacts.json',
         ).writeAsStringSync('{"passes":{"rename":{"symbol_map":{"a":"b"}}}}');
 
-        final exitCode = await runner.run([
+        final exitCode = runner.run([
           'build',
           '--target',
           'kernel',
@@ -242,7 +242,7 @@ refractor:
           'lib/main.dart',
         ).writeAsStringSync('void main() { print("ok"); }\n');
 
-        final exitCode = await runner.run([
+        final exitCode = runner.run([
           'build',
           '--target',
           'kernel',
@@ -301,7 +301,7 @@ refractor:
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
 
-      final exitCode = await runner.run([
+      final exitCode = runner.run([
         'build',
         '--target',
         'kernel',
@@ -357,7 +357,7 @@ refractor:
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
 
-      await runner.run([
+      runner.run([
         'build',
         '--target',
         'kernel',
@@ -411,7 +411,7 @@ refractor:
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
 
-      final exitCode = await runner.run([
+      final exitCode = runner.run([
         'build',
         '--target',
         'kernel',
@@ -472,7 +472,7 @@ refractor:
           'lib/main.dart',
         ).writeAsStringSync('void main() { print("ok"); }\n');
 
-        final exitCode = await runner.run([
+        final exitCode = runner.run([
           'build',
           '--target',
           'kernel',
@@ -522,7 +522,7 @@ refractor:
       }
       Directory(summaryFile.path).createSync(recursive: true);
 
-      final exitCode = await runner.run([
+      final exitCode = runner.run([
         'build',
         '--target',
         'kernel',
@@ -572,7 +572,7 @@ refractor:
           'lib/main.dart',
         ).writeAsStringSync('void main() { print("ok"); }\n');
 
-        final exitCode = await runner.run([
+        final exitCode = runner.run([
           'build',
           '--target',
           'kernel',
@@ -628,7 +628,7 @@ refractor:
       Directory('lib').createSync(recursive: true);
       File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
 
-      final exitCode = await runner.run([
+      final exitCode = runner.run([
         'build',
         '--target',
         'kernel',
@@ -668,10 +668,10 @@ class _FakeBuildCommand extends BuildCommand {
   final BuildResult result;
 
   @override
-  Future<BuildResult> runBuild({
+  BuildResult runBuild({
     required BuildRequest request,
     required RefractorConfig config,
-  }) async {
+  }) {
     return result;
   }
 }

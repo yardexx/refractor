@@ -15,10 +15,10 @@ final class IntEncryptPlanner
   final Random _random;
 
   @override
-  Future<IntEncryptPlan> plan(
+  IntEncryptPlan plan(
     Component component,
     IntEncryptSelection selection,
-  ) async {
+  ) {
     final rewrites = Map<IntLiteral, PlannedIntEncryption>.identity();
 
     for (final literal in selection.orderedLiterals) {

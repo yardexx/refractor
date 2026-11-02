@@ -41,7 +41,7 @@ class OpaquePredicatePass
       OpaquePredicateSelector(scope: scope).select(component);
 
   @override
-  Future<OpaquePredicatePlan> plan(
+  OpaquePredicatePlan plan(
     Component component,
     OpaquePredicateSelection selection,
   ) => OpaquePredicatePlanner(
@@ -51,7 +51,7 @@ class OpaquePredicatePass
   ).plan(component, selection);
 
   @override
-  Future<OpaquePredicateTransformOutput> transform(
+  OpaquePredicateTransformOutput transform(
     Component component,
     OpaquePredicatePlan plan,
   ) => OpaquePredicateTransformer(

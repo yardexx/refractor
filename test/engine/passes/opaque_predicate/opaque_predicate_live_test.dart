@@ -85,7 +85,7 @@ void main() {
           keep: KeepPolicy.empty,
         );
 
-        final result = await OpaquePredicatePass(
+        final result = OpaquePredicatePass(
           config: const OpaquePredicatePassConfig(),
           scope: scope,
         ).run(component);
@@ -152,7 +152,7 @@ void main() {
           keep: KeepPolicy.empty,
         );
 
-        final result = await OpaquePredicatePass(
+        final result = OpaquePredicatePass(
           config: const OpaquePredicatePassConfig(),
           scope: scope,
         ).run(component);
@@ -227,7 +227,7 @@ void main() {
           keep: KeepPolicy.empty,
         );
 
-        final result = await OpaquePredicatePass(
+        final result = OpaquePredicatePass(
           config: const OpaquePredicatePassConfig(),
           scope: scope,
         ).run(component);

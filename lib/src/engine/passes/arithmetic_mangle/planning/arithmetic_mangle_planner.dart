@@ -17,10 +17,10 @@ final class ArithmeticManglePlanner
   final Random _random;
 
   @override
-  Future<ArithmeticManglePlan> plan(
+  ArithmeticManglePlan plan(
     Component component,
     ArithmeticMangleSelection selection,
-  ) async {
+  ) {
     final decisions = <InstanceInvocation, PlannedArithmeticMangle>{
       for (final site in selection.orderedSites)
         site: PlannedArithmeticMangle(

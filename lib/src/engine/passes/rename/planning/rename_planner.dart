@@ -22,13 +22,13 @@ final class RenamePlanner implements PassPlanner<RenameSelection, RenamePlan> {
   final RenameSafetyNormalizer _safetyNormalizer;
 
   @override
-  Future<RenamePlan> plan(
+  RenamePlan plan(
     Component component,
     RenameSelection selection,
-  ) async {
+  ) {
     final memberFamilies = _buildMemberFamilies(selection);
     final requests = _buildRequests(selection, memberFamilies);
-    final generatedNames = await generator.generateNames(
+    final generatedNames = generator.generateNames(
       requests,
       reserved: _reservedNames(selection),
     );
