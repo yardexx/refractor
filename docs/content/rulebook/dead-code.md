@@ -8,16 +8,17 @@ layout: docs
 
 ## What it does
 
-This pass adds a block of junk to a function, behind a condition that is
-always false, so anyone reading the code has to work out for themselves that
-it never runs. The condition reads a live `int`, so it can't be settled just by
-looking at it.
+This pass adds a block of plausible-looking work to a function, behind a
+condition that is always false, so anyone reading the code has to work out for
+themselves that it never runs. The condition reads a live `int`, so it can't be
+settled just by looking at it, and the block computes a value and uses it, so
+the compiler can't throw it away either.
 
 <PassAnimation pass="dead" />
 
 ## Example
 
-The guard reads the `int` parameter `p`, and a masked square is never negative, so the block never runs.
+The guard reads the `int` parameter `p`, and a masked square is never negative, so it is never below `-812` and the block never runs. The block returns what it computes, so the compiler has to keep it.
 
 <PassCompare pass="dead">
 
@@ -30,9 +31,10 @@ int scale(int p) {
 
 ```dart
 int scale(int p) {
-  if ((p & 0xFFFF) * (p & 0xFFFF) < 0) {
-    p + 40503;
-    p * 12789;
+  if ((p & 0x3FF) * (p & 0x3FF) < -812) {
+    int t = p * 7;
+    t = t ^ 4093;
+    return t;
   }
   final factor = p * 2;
   return factor + 1;
@@ -64,24 +66,25 @@ refractor:
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `seed` | int | `0x0DEAD` | Seeds where each guard goes and the constants in the junk. |
+| `seed` | int | `0x0DEAD` | Seeds where each block goes, its guard's mask and bound, and the calculation inside it. |
 
 `enabled` and `exclude` work as on every pass; see
 [Configuration](/guide/configuration#pass-options).
 
 ## Cost and strength
 
-**Cost.** None, in a native build: the block never runs, and as below, it
-doesn't survive compilation.
+**Cost.** The block never runs, but its guard is checked on every call: about
+half a nanosecond per call in a native executable on an Apple-silicon Mac,
+measured on a tiny function. Each block adds roughly 60 to 120 bytes of
+machine code.
 
-**Strength.** In a native (AOT) build, none on its own. The junk is two
-calculations whose results are thrown away, so the compiler removes them, and
-then the empty `if` around them: a function with a dead-code block compiles to
-exactly the same machine code as without one. With
-[integer encryption](/rulebook/int-encryption) listed after this pass, the
-guard survives, because the decoder calls inside it can't be removed, though
-the arithmetic is still dropped. A fix that makes the junk itself survive is in
-progress.
+**Strength.** The block survives into a native build: every function in a
+53-function test kept its block in the compiled machine code, guard and body.
+Each block computes a value in one to four steps and then uses it, by
+assigning it back to the variable, returning it or throwing it, so the
+compiler can't prove it unused. The guard's mask and bound change from block
+to block, though every guard is a masked square compared with a negative
+number, so a reader who knows the pattern can still spot it.
 
 ## Guarantees & limitations
 
@@ -93,8 +96,8 @@ progress.
 </Promises>
 <Caveats>
 
-- In a native build, the AOT compiler removes the block unless integer encryption runs after this pass.
-- Every block has the same shape: a masked-square guard around two calculations. A careful reader can tell it isn't real logic. For a decoy that is an actual copy of your code, see [bogus control flow](/rulebook/bogus-control-flow).
+- Every guard follows the same pattern, a masked square compared with a negative number, so once a reader knows it they can spot the blocks.
+- The calculation inside is arithmetic on the guard's variable. It looks like work at a glance, but a careful reader can tell it isn't real logic. For a decoy that is an actual copy of your code, see [bogus control flow](/rulebook/bogus-control-flow).
 
 </Caveats>
 </Guarantees>
@@ -102,14 +105,14 @@ progress.
 ## Works with
 
 - **Integer encryption.** Listed after this pass in `refractor.yaml`, it
-  encrypts the guard's constants and keeps the guard alive in a native build,
-  at about 2 nanoseconds per call of the function in a test. Passes run in the
-  order they're listed.
+  encrypts the guard's and the block's constants too, at the cost of a decoder
+  call for each. Passes run in the order they're listed.
 - **Control-flow flattening.** Flattening skips bodies that contain an `if`,
   so listing dead code first stops those bodies from being flattened. Listed
   after flattening, dead code can't use a local that flattening has moved to
   the top of the function.
 - **Opaque predicates.** List them before this pass; listed after, they
-  strengthen its guard into a visible contradiction like `x < 0 && x >= 0`.
+  strengthen its guard into a visible contradiction, such as a value checked to
+  be both negative and not negative.
 
 <PassPager pass="dead" />

@@ -74,9 +74,10 @@ Keep it out of hot code with `exclude`.
 
 **Strength.** The direct edges are gone from the call graph, but the callee is
 still named at the call site, through the reference passed to the forwarder.
-Worse for now: those references keep function names in the executable that the
-native compiler would otherwise strip, so `strings` finds names it didn't find
-before, and [rename](/rulebook/rename) can't currently hide them (see below).
+On its own, that reference also keeps the function's name in the executable,
+where the native compiler would otherwise strip it. Turn
+[rename](/rulebook/rename) on as well: it renames routed functions like any
+other, and their names no longer reach the binary.
 
 ## Guarantees & limitations
 
@@ -89,8 +90,7 @@ before, and [rename](/rulebook/rename) can't currently hide them (see below).
 </Promises>
 <Caveats>
 
-- **Known issues, fixes in progress:** listed after [string encryption](/rulebook/string-encryption), routed decoder calls crash at runtime with a type error; and it doesn't combine with rename yet (see below).
-- Routed function names stay visible in the binary.
+- Without rename, routed function names stay visible in the binary.
 - Each routed call costs about a hundred times a direct one.
 
 </Caveats>
@@ -98,15 +98,12 @@ before, and [rename](/rulebook/rename) can't currently hide them (see below).
 
 ## Works with
 
-- **Rename.** Not yet, in either order. Listed before this pass, rename
-  renames the forwarder itself, and this pass then silently routes nothing.
-  Listed after, rename leaves every routed function with its original name.
-- **String encryption.** Listed before this pass, the decoder calls get routed
-  too, and they crash at runtime with a type error. List call indirection
-  first until that's fixed.
-- **Integer encryption.** Listed before this pass, its decoder calls are routed
-  as well: that hides them from the call graph, at about 250 nanoseconds per
-  decoded number. Passes run in the order they're listed.
+- **Rename.** Use them together, in either order: routed functions get short
+  names, and their original names don't reach the binary.
+- **String and integer encryption.** Listed before this pass, their decoder
+  calls are routed as well. That hides the decoders from the call graph, but
+  adds the forwarder's cost to every decode: about 250 nanoseconds per number
+  in a test. Passes run in the order they're listed.
 - **Control-flow flattening** works in either order.
 
 <PassPager pass="call" />

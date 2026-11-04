@@ -123,6 +123,9 @@ values, because `.name` and `toString()` have to return them.
   names, `refractorDecode` and `refractorDecodeInt`, in the binary, which
   points straight at every encrypted value. With rename on, in either order,
   they're renamed like the rest of your code.
+- **Call indirection.** Turn rename on with it, in either order. Rename gives
+  the routed functions short names; without it, call indirection keeps their
+  original names in the binary.
 - **Symbolication.** Every renamed build writes a symbol map, which
   [`refractor symbolicate`](/recipes/symbolication) uses to turn obfuscated
   stack traces back into your names.

@@ -115,9 +115,9 @@ in the same binary, and running the decoder gives the text back.
   every encoded string as well: in a test that made each decode about a fifth
   slower, against about a seventh when listed before.
 - **Call indirection.** Listed after string encryption in `refractor.yaml`, it
-  routes the decoder calls through its forwarder too, which currently crashes
-  at runtime with a type error (a fix is in progress). List call indirection
-  first for now. Passes run in the order they're listed.
+  routes the decoder calls through its forwarder too. That hides the decoder
+  from the call graph, at the cost of a slower decode. Passes run in the order
+  they're listed.
 
 ## Output
 

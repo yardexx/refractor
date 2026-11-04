@@ -44,9 +44,11 @@ void refund(Order o, int n) {
 
 - Every `if` statement in your project's code outside a `const` context,
   including those in getters and `async` functions.
-- Where an `int` variable is in scope, the check reads it:
-  `(n & 0xFFFF) * (n & 0xFFFF) >= 0`. Where there's none, the check is built
-  from constants, such as `k * k >= k`.
+- Where a safe `int` variable is in scope, the check reads it:
+  `(n & 0xFFFF) * (n & 0xFFFF) >= 0`. Safe means a non-nullable parameter, or
+  a local that has an initialiser and isn't `late` or `const`, so the variable
+  always has a value at the `if`. Where there's none, the check is built from
+  constants, such as `k * k >= k`.
 
 ## What it leaves alone
 
@@ -93,7 +95,6 @@ reader has seen one they can spot the rest.
 </Promises>
 <Caveats>
 
-- **Known issue:** the variable it picks isn't checked for being nullable, `late` or not yet assigned. Reading such a variable crashes the program at runtime with a null error, a `LateInitializationError` or a failed assertion. A fix is in progress; until then, `exclude` or `@Refractor.keep()` code where the nearest `int` before an `if` can be null or unassigned.
 - It only strengthens conditions that are already there. It doesn't add or reorder control flow; [control-flow flattening](/rulebook/control-flow-flatten) and [bogus control flow](/rulebook/bogus-control-flow) do that.
 
 </Caveats>
