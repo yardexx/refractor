@@ -1,6 +1,4 @@
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
+import 'package:prism/prism.dart' show BinaryScanner;
 import 'package:refractor/refractor.dart';
 import 'package:refractor_test_harness/src/bands/band.dart';
 import 'package:refractor_test_harness/src/fixture_build.dart';
@@ -10,9 +8,11 @@ import 'package:refractor_test_harness/src/spectrum.dart';
 /// forbidden plaintext is gone, deliberately preserved markers remain, and
 /// pass metrics clear their minimums.
 ///
-/// Uses `strings` on the native executable. When `strings` is unavailable the
-/// band reports [BandStatus.skipped]; a CI policy that treats resistance as
-/// mandatory should fail on a skip rather than ignore it.
+/// Scans the native executable's raw bytes with prism's [BinaryScanner], the
+/// same scanner the customer-facing verifier uses. Denylist and allowlist
+/// entries are raw substrings: a forbidden string is flagged wherever it
+/// appears, with no minimum run length and no dependency on an external
+/// `strings` tool, so the band always runs on every platform.
 class ResistanceBand implements Band {
   const ResistanceBand();
 
@@ -21,26 +21,25 @@ class ResistanceBand implements Band {
 
   @override
   Future<BandResult> analyze(FixtureBuild build) async {
-    final strings = _findStrings();
-    if (strings == null) {
-      return BandResult.skip(name, '`strings` not found on PATH');
-    }
-
     final expectations = build.fixture.expectations;
     final failures = <String>[];
     final readings = <Reading>[];
 
     final obfuscated = await build.obfuscated(Target.exe);
-    final lines = _stringsOf(strings, obfuscated.outputPath);
-    readings.add(Reading('strings lines', '${lines.length}'));
+    final scanner = BinaryScanner.ofFile(obfuscated.outputPath);
+    readings.add(Reading('bytes scanned', '${scanner.byteLength}'));
 
     for (final needle in expectations.denylist) {
-      if (lines.any((l) => l.contains(needle))) {
-        failures.add('plaintext leak: "$needle" found in binary');
+      final offset = scanner.indexOfRaw(needle);
+      if (offset != null) {
+        failures.add(
+          'plaintext leak: "$needle" found in binary '
+          'at byte 0x${offset.toRadixString(16)}',
+        );
       }
     }
     for (final needle in expectations.allowlist) {
-      if (!lines.any((l) => l.contains(needle))) {
+      if (scanner.indexOfRaw(needle) == null) {
         failures.add('expected marker missing: "$needle"');
       }
     }
@@ -57,18 +56,6 @@ class ResistanceBand implements Band {
         : BandResult.failed(name, failures: failures, readings: readings);
   }
 
-  List<String> _stringsOf(String strings, String binary) {
-    final result = Process.runSync(strings, [binary]);
-    if (result.exitCode != 0) {
-      throw ProcessException(strings, [binary], '${result.stderr}');
-    }
-    return (result.stdout as String)
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList(growable: false);
-  }
-
   int _metric(BuildResult result, String key) {
     final parts = key.split('.');
     if (parts.length != 2) {
@@ -79,17 +66,5 @@ class ResistanceBand implements Band {
       if (value != null) return int.tryParse(value) ?? 0;
     }
     return 0;
-  }
-
-  String? _findStrings() {
-    final path = Platform.environment['PATH'];
-    if (path == null || path.isEmpty) return null;
-    final sep = Platform.isWindows ? ';' : ':';
-    for (final entry in path.split(sep)) {
-      if (entry.isEmpty) continue;
-      final candidate = File(p.join(entry, 'strings'));
-      if (candidate.existsSync()) return candidate.path;
-    }
-    return null;
   }
 }

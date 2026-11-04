@@ -81,7 +81,9 @@ class CorrectnessBand implements Band {
   String _run(Target target, String path) {
     final result = switch (target) {
       Target.exe => Process.runSync(path, const []),
-      Target.jit => Process.runSync('dart', ['run', path]),
+      // Run the snapshot directly with the current SDK's VM; `dart run`
+      // wants a package context the scratch build directory doesn't have.
+      Target.jit => Process.runSync(Platform.resolvedExecutable, [path]),
       Target.aot => Process.runSync(_aotRuntime(), [path]),
       Target.kernel => throw ArgumentError('kernel is not runnable'),
     };

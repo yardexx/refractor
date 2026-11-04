@@ -6,7 +6,7 @@
 ///   * **correctness** — does the pass survive the compiler? (kernel verifier
 ///     gate + plain-vs-obfuscated behavioral equivalence)
 ///   * **resistance**  — did obfuscation actually happen in the shipped
-///     binary? (`strings` denylist/allowlist + pass metrics)
+///     binary? (raw byte scan for denylist/allowlist + pass metrics)
 ///   * **impact**      — what did it cost? (binary size, ratio, pass metrics)
 ///
 /// This is distinct from `prism`, the source-free, customer-facing verifier

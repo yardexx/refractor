@@ -1,6 +1,6 @@
-# Full prism contract: correctness + resistance + impact in one place.
+# Full harness contract: correctness + resistance + impact in one place.
 behavior:
-  targets: [exe]
+  targets: [exe, aot, jit]
   equivalent_to_plain: true
   verify_kernel: true
 

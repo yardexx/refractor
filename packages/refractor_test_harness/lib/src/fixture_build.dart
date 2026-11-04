@@ -65,13 +65,16 @@ class FixtureBuild {
 
   String _runPlain(Target target) {
     final output = p.join(workDir.path, 'plain-${_fileName(target)}');
+    // `-o` must precede the source: `dart compile jit-snapshot` passes every
+    // argument after the script to the training run, so a trailing `-o` is
+    // silently ignored and the snapshot lands next to the source instead.
     final r = Process.runSync(
-      'dart',
-      ['compile', target.value, fixture.sourcePath, '-o', output],
+      Platform.resolvedExecutable,
+      ['compile', target.value, '-o', output, fixture.sourcePath],
     );
     if (r.exitCode != 0) {
       throw ProcessException(
-        'dart',
+        Platform.resolvedExecutable,
         ['compile', target.value],
         'plain build failed: ${r.stderr}',
         r.exitCode,

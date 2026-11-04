@@ -1,4 +1,5 @@
-/// Internal-facing surface for first-party test harnesses (e.g. `prism`).
+/// Internal-facing surface for first-party test harnesses
+/// (`refractor_test_harness`).
 ///
 /// These symbols are implementation details of Refractor that test tooling
 /// legitimately needs: concrete IO-layer compiler/kernel implementations and

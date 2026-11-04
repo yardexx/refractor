@@ -11,7 +11,7 @@ decomposes the result into three independently measurable **bands**.
 | Band          | Question it answers                          | How |
 |---------------|----------------------------------------------|-----|
 | `correctness` | Does the pass survive the compiler?          | Kernel verifier gate + plain-vs-obfuscated behavioral equivalence across targets |
-| `resistance`  | Did obfuscation actually happen in the binary? | `strings` denylist/allowlist + pass metric minimums |
+| `resistance`  | Did obfuscation actually happen in the binary? | Raw byte scan (prism's scanner) for denylist/allowlist + pass metric minimums |
 | `impact`      | What did it cost?                            | Plain vs obfuscated binary size, size ratio, per-pass metrics |
 
 ## Why a separate package

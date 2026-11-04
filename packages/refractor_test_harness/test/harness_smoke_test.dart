@@ -21,8 +21,9 @@ void main() {
 
     expect(spectrum.ok, isTrue, reason: spectrum.describe());
 
-    // Correctness and impact are not tool-gated and must run.
-    for (final band in ['correctness', 'impact']) {
+    // No band depends on an external tool, so every band must actually run:
+    // a skip would hide a gap, not just a missing tool.
+    for (final band in ['correctness', 'resistance', 'impact']) {
       final result = spectrum.bands.singleWhere((b) => b.band == band);
       expect(
         result.status,
