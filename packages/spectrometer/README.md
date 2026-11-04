@@ -70,10 +70,20 @@ impact:
 The artifact scan is the primary resistance signal. The rename map and pass
 metrics are sanity checks on the engine's own account of what it did.
 
+**Every denylist entry must be present in the plain build.** The resistance
+band scans the plain baseline too, and fails any entry the compiler already
+dropped on its own: its absence after obfuscation would prove nothing. Small
+members are easily inlined away by the AOT compiler, so fixtures keep the
+identifiers under test alive with `@pragma('vm:never-inline')`. Plain field
+names never survive AOT; check a `never-inline` getter instead, and leave the
+field itself to `rename_helpers`.
+
 ### Conventions
 
 - Prefer distinctive identifiers and literals over short generic tokens, so a
   denylist hit means a real leak and not an SDK coincidence.
+- Mark each member under test `@pragma('vm:never-inline')` and avoid printing
+  identifiers (such as `runtimeType`): stdout must match the plain build.
 - Keep config exclusions minimal so the resistance check stays meaningful.
 - Use `allowlist` for deliberately preserved markers, not as an escape hatch.
 - Give each pass its own focused fixture; use `combined/` for interactions.

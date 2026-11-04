@@ -11,7 +11,10 @@ import 'package:spectrometer/src/spectrum.dart';
 /// minimums.
 ///
 /// The artifact scan is the primary signal; the rename map and metrics are
-/// sanity checks on the engine's own account of what it did. Denylist and
+/// sanity checks on the engine's own account of what it did. Every denylist
+/// entry must also appear in the plain baseline build: one the compiler drops
+/// on its own proves nothing, and fails the band as a broken fixture.
+/// Denylist and
 /// allowlist entries are raw substrings of the native executable's bytes
 /// (see [ByteScanner]), so the band needs no external tool and always runs.
 class ResistanceBand implements Band {
@@ -45,8 +48,8 @@ class ResistanceBand implements Band {
 
     // Control check: a denylist entry that a plain build doesn't contain
     // either proves nothing — the compiler dropped it, not the obfuscator.
-    // Reported (not failed) so fixture authors can see which assertions
-    // actually discriminate.
+    // That is a broken fixture, so it fails the band rather than passing
+    // vacuously.
     if (absent.isNotEmpty) {
       final plain = ByteScanner.ofFile(build.plain(Target.exe));
       final vacuous = [
@@ -56,11 +59,16 @@ class ResistanceBand implements Band {
       readings.add(
         Reading(
           'denylist proven',
-          '${absent.length - vacuous.length}/${expectations.denylist.length}'
-              '${vacuous.isEmpty ? '' : ' (absent even from plain build: '
-                        '${vacuous.join(', ')})'}',
+          '${absent.length - vacuous.length}/${expectations.denylist.length}',
         ),
       );
+      for (final needle in vacuous) {
+        failures.add(
+          'vacuous denylist entry: "$needle" is absent even from a plain '
+          'build, so its absence proves nothing; keep it alive in the fixture '
+          "(e.g. @pragma('vm:never-inline')) or drop it",
+        );
+      }
     }
     for (final needle in expectations.allowlist) {
       if (scanner.indexOf(needle) == null) {

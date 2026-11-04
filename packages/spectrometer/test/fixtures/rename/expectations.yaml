@@ -1,4 +1,5 @@
-# rename alone: distinctive identifiers must vanish from the binary.
+# rename alone: distinctive identifiers must vanish from the binary. Each one
+# is present in a plain build (see main.dart), so every entry is proven.
 behavior:
   targets: [exe]
 
@@ -14,4 +15,6 @@ resistance:
     - SecretAlgorithm
     - RevenueReporter
     - processConfidentialData
+    - apiEndpoint
     - computeProfitMargin
+    - renderSummary
