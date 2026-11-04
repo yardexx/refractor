@@ -1,11 +1,13 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
+import 'package:refractor/src/engine/passes/rename/planning/name_generator/sequential_generator.dart';
 import 'package:refractor/src/engine/passes/rename/rename_pass.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
-import 'package:refractor/src/policy/rename_policy_view.dart';
+import 'package:refractor/src/policy/keep_resolver.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
@@ -30,15 +32,20 @@ void main() {
       Component component, {
       RenamePassConfig config = const RenamePassConfig(),
     }) {
-      final policy = PolicyResolver().resolve(
+      final keepResolver = KeepResolver(
         component: component,
-        config: RefractorConfig(passes: [config]),
         projectScope: projectScope,
+        globalExcludes: RefractorConfig(passes: [config]).excludePatterns,
       );
       return RenamePass(
         config: config,
-        policy: policy.rename,
-        projectScope: projectScope,
+        scope: ObfuscationScope(
+          project: projectScope,
+          keep: keepResolver.resolve(
+            const RenameDefinition().keepSources,
+            config.exclude,
+          ),
+        ),
       );
     }
 
@@ -50,7 +57,7 @@ void main() {
         userLib: userLib,
         extraLibraries: [annotationLib],
       );
-      final result = await makePass(component, config: config).run(component);
+      final result = makePass(component, config: config).run(component);
       expect(result, isA<PassSucceeded>());
       return ((result as PassSucceeded).artifact! as RenameArtifact).mapping;
     }
@@ -64,7 +71,7 @@ void main() {
         userLib: userLib,
         extraLibraries: [annotationLib],
       );
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       final success = result as PassSucceeded;
@@ -137,7 +144,7 @@ void main() {
 
       component = Component(libraries: [coreLib, userLib, otherLib])
         ..setMainMethodAndMode(null, true);
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       expect(cls.name, equals('ExternalClass'));
     });
@@ -153,7 +160,7 @@ void main() {
 
       component = Component(libraries: [coreLib, userLib])
         ..setMainMethodAndMode(mainProc.reference, true);
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
 
@@ -262,7 +269,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeComponent(coreLib: coreLib, userLib: userLib);
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       expect(result.report.passName, 'rename');
@@ -619,17 +626,20 @@ void main() {
           userLib: lib,
         );
         final projectScope = makeProjectScope();
-        final policy = PolicyResolver().resolve(
+        final keepResolver = KeepResolver(
           component: comp,
-          config: RefractorConfig(
-            passes: [RenamePassConfig(seed: seed)],
-          ),
           projectScope: projectScope,
+          globalExcludes: const [],
         );
-        await RenamePass(
+        RenamePass(
           config: RenamePassConfig(seed: seed),
-          policy: policy.rename,
-          projectScope: projectScope,
+          scope: ObfuscationScope(
+            project: projectScope,
+            keep: keepResolver.resolve(
+              const RenameDefinition().keepSources,
+              const [],
+            ),
+          ),
         ).run(comp);
         return method.name.text;
       }
@@ -656,15 +666,13 @@ void main() {
           coreLib: makeDartCoreLibrary(),
           userLib: lib,
         );
-        await pass.run(comp);
+        pass.run(comp);
         return method.name.text;
       }
 
-      final scope = makeProjectScope();
       final pass = RenamePass(
         config: const RenamePassConfig(seed: 42),
-        policy: const RenamePolicyView(),
-        projectScope: scope,
+        scope: makeObfuscationScope(),
       );
 
       final firstName = await runWithSharedPass(pass);
@@ -792,7 +800,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, extLib])
           ..setMainMethodAndMode(null, true);
-        await makePass(component).run(component);
+        makePass(component).run(component);
 
         expect(
           buildOverride.name.text,
@@ -1092,7 +1100,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, otherLib])
           ..setMainMethodAndMode(null, true);
-        final result = await makePass(component).run(component);
+        final result = makePass(component).run(component);
 
         expect(result, isA<PassSucceeded>());
         expect(externalMethod.name.text, 'foo');
@@ -1129,7 +1137,7 @@ void main() {
 
         component = Component(libraries: [coreLib, userLib, otherLib])
           ..setMainMethodAndMode(null, true);
-        final result = await makePass(component).run(component);
+        final result = makePass(component).run(component);
 
         expect(result, isA<PassSucceeded>());
         expect(localMethod.name.text, isNot('map'));
@@ -1137,8 +1145,8 @@ void main() {
     );
 
     test(
-      'FunctionInvocation through variable tear-off preserves callable '
-      'surface',
+      'FunctionInvocation through variable tear-off renames the callee but '
+      'keeps its named parameters',
       () async {
         final namedParam = VariableDeclaration('debug');
         final callee = Procedure(
@@ -1184,7 +1192,9 @@ void main() {
 
         await runPass();
 
-        expect(callee.name.text, equals('configure'));
+        // The tear-off follows the procedure by reference, so only the named
+        // parameter's label is part of the callable surface.
+        expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, equals('debug'));
       },
@@ -1237,7 +1247,9 @@ void main() {
 
         await runPass();
 
-        expect(callee.name.text, equals('configure'));
+        // The tear-off follows the procedure by reference, so only the named
+        // parameter's label is part of the callable surface.
+        expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, 'debug');
       },
@@ -1289,7 +1301,9 @@ void main() {
 
         await runPass();
 
-        expect(callee.name.text, equals('configure'));
+        // The tear-off follows the procedure by reference, so only the named
+        // parameter's label is part of the callable surface.
+        expect(callee.name.text, isNot('configure'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, 'debug');
       },
@@ -1417,8 +1431,8 @@ void main() {
     );
 
     test(
-      'FunctionInvocation through instantiated generic tear-off preserves '
-      'callable surface',
+      'FunctionInvocation through instantiated generic tear-off keeps named '
+      'parameters',
       () async {
         final namedParam = VariableDeclaration('debug');
         final typeParameter = TypeParameter('T');
@@ -1472,7 +1486,7 @@ void main() {
 
         await runPass();
 
-        expect(genericHelper.name.text, equals('helper'));
+        expect(genericHelper.name.text, isNot('helper'));
         expect(namedParam.name, equals('debug'));
         expect(call.arguments.named.single.name, equals('debug'));
       },
@@ -1704,6 +1718,167 @@ void main() {
 
       expect(staticMethod.name.text, isNot('helper'));
       expect(instanceMethod.name.text, isNot('helper'));
+    });
+
+    test(
+      'member inherited from an unrelated superclass shares a name with the '
+      'interface member it implements',
+      () async {
+        final named = Class(
+          name: 'Named',
+          fileUri: userLib.fileUri,
+          isAbstract: true,
+        );
+        final interfaceLabel = makeProcedure('label', named);
+        final base = Class(name: 'Base', fileUri: userLib.fileUri);
+        final baseLabel = makeProcedure('label', base);
+        userLib
+          ..addClass(named)
+          ..addClass(base);
+        final derived = Class(
+          name: 'Derived',
+          fileUri: userLib.fileUri,
+          supertype: base.asThisSupertype,
+          implementedTypes: [named.asThisSupertype],
+        );
+        userLib.addClass(derived);
+
+        await runPass();
+
+        expect(baseLabel.name.text, isNot('label'));
+        expect(baseLabel.name.text, equals(interfaceLabel.name.text));
+      },
+    );
+
+    test(
+      'member called dynamically from a dependency keeps its name',
+      () async {
+        final thing = Class(name: 'Thing', fileUri: userLib.fileUri);
+        final describe = makeProcedure('describe', thing);
+        final other = makeProcedure('other', thing);
+        userLib.addClass(thing);
+
+        final depUri = Uri.parse('package:dep/dep.dart');
+        final depLib = Library(depUri, fileUri: depUri);
+        final receiver = VariableDeclaration('x');
+        depLib.addProcedure(
+          Procedure(
+            Name('describeAll'),
+            ProcedureKind.Method,
+            FunctionNode(
+              ExpressionStatement(
+                DynamicInvocation(
+                  DynamicAccessKind.Dynamic,
+                  VariableGet(receiver),
+                  Name('describe'),
+                  Arguments.empty(),
+                ),
+              ),
+              positionalParameters: [receiver],
+              requiredParameterCount: 1,
+            ),
+            fileUri: depUri,
+            isStatic: true,
+          ),
+        );
+
+        component = Component(
+          libraries: [coreLib, annotationLib, depLib, userLib],
+        )..setMainMethodAndMode(null, true);
+        makePass(component).run(component);
+
+        expect(describe.name.text, equals('describe'));
+        expect(other.name.text, isNot('other'));
+      },
+    );
+
+    test('member named by a symbol keeps its name', () async {
+      final speaker = Class(name: 'Speaker', fileUri: userLib.fileUri);
+      final speak = makeProcedure('speak', speaker);
+      final other = makeProcedure('other', speaker);
+      userLib
+        ..addClass(speaker)
+        ..addProcedure(
+          Procedure(
+            Name('matches'),
+            ProcedureKind.Method,
+            FunctionNode(
+              ExpressionStatement(
+                ConstantExpression(SymbolConstant('speak', null)),
+              ),
+            ),
+            fileUri: userLib.fileUri,
+            isStatic: true,
+          ),
+        );
+
+      await runPass();
+
+      expect(speak.name.text, equals('speak'));
+      expect(other.name.text, isNot('other'));
+    });
+
+    test(
+      'no member is renamed to a name inherited from a non-project class',
+      () async {
+        final extUri = Uri.parse('package:geometry/point.dart');
+        final extLib = Library(extUri, fileUri: extUri);
+        final point = Class(name: 'Point', fileUri: extUri);
+        // The first names the sequential generator hands out.
+        for (final name in ['a', 'b', 'c']) {
+          makeProcedure(name, point);
+        }
+        extLib.addClass(point);
+
+        final pixel = Class(
+          name: 'Pixel',
+          fileUri: userLib.fileUri,
+          supertype: point.asThisSupertype,
+        );
+        final area = makeProcedure('area', pixel);
+        userLib.addClass(pixel);
+
+        component = Component(
+          libraries: [coreLib, annotationLib, extLib, userLib],
+        )..setMainMethodAndMode(null, true);
+        final keepResolver = KeepResolver(
+          component: component,
+          projectScope: projectScope,
+          globalExcludes: const [],
+        );
+        RenamePass(
+          config: const RenamePassConfig(),
+          scope: ObfuscationScope(
+            project: projectScope,
+            keep: keepResolver.resolve(
+              const RenameDefinition().keepSources,
+              const [],
+            ),
+          ),
+          generatorFactory: SequentialGenerator.new,
+        ).run(component);
+
+        expect(area.name.text, isNot('area'));
+        expect(['a', 'b', 'c'], isNot(contains(area.name.text)));
+      },
+    );
+
+    test('member overridden in a kept subclass keeps its name', () async {
+      final parent = Class(name: 'Parent', fileUri: userLib.fileUri);
+      final parentRun = makeProcedure('run', parent);
+      userLib.addClass(parent);
+      final kept = Class(
+        name: 'Kept',
+        fileUri: userLib.fileUri,
+        supertype: parent.asThisSupertype,
+      )..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
+      final keptRun = makeProcedure('run', kept);
+      userLib.addClass(kept);
+
+      await runPass();
+
+      expect(keptRun.name.text, equals('run'));
+      expect(parentRun.name.text, equals('run'));
     });
   });
 }

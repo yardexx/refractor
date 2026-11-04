@@ -50,11 +50,18 @@ Compile, obfuscate, and build.
 | Flag           | Description                                  | Default         |
 |----------------|----------------------------------------------|-----------------|
 | `-i, --input`  | Dart entrypoint file                         | `lib/main.dart` |
-| `-o, --output` | Output directory                             | `build`         |
 | `-t, --target` | Output format: `exe`, `aot`, `jit`, `kernel` | `exe`           |
 
+The build output is always written to `build/out.<ext>` in the project root.
+
+The `jit` target runs the program once at build time: `dart compile
+jit-snapshot` executes `main` to warm up the JIT before writing the snapshot.
+That training run gets no arguments, so `main` must exit cleanly when `args` is
+empty, and any side effects it has (files, network, long-running loops) happen
+during the build.
+
 ```bash
-refractor build --target kernel --output build
+refractor build --target kernel
 ```
 
 ### `refractor inspect <path.dill>`
@@ -83,7 +90,8 @@ Obfuscation scope is always the current project: libraries matching the `name` i
 
 ```yaml
 refractor:
-  symbol_map: symbol_map.json
+  # Path for the build artifacts JSON (includes the rename symbol map).
+  artifact_json: build_artifacts.json
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
@@ -92,7 +100,7 @@ refractor:
     rename: true
 
     string_encrypt:
-      xor_key: 0x5A
+      seed: 0x5A
       exclude_patterns:
         - "^https://"
 ```

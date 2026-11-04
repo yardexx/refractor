@@ -11,6 +11,4 @@ export 'src/engine/pass.dart';
 export 'src/engine/pass/pass_registry.dart';
 export 'src/engine/pass_runner.dart';
 export 'src/engine/passes.dart';
-export 'src/engine/symbol_table.dart';
-export 'src/policy/resolved_policy.dart';
 export 'src/project/project_scope.dart';

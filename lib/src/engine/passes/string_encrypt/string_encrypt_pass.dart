@@ -1,75 +1,88 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_config.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_plan.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_planner.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encrypt_artifact.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selection.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selector.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transform_output.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transformer.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
-/// Obfuscation pass that replaces plaintext [StringLiteral] nodes with a
-/// call to an injected decode helper, so strings are not visible in the binary.
+/// Obfuscation pass that replaces plaintext string-literal nodes with a call
+/// to an injected decode helper, so strings are not visible in the binary.
 ///
 /// Encoding: XOR each UTF-8 byte with a fixed key (configurable, default 0x5A).
 /// At runtime, the injected `_obfDecode$` reverses this to recover the
 /// original string.
-class StringEncryptPass extends Pass {
+///
+/// No validate stage: the pass asserts no post-mutation invariant of its own
+/// beyond kernel verification, so it leaves [validate] at its no-op default.
+class StringEncryptPass
+    extends
+        StagedPass<
+          StringEncryptSelection,
+          StringEncryptPlan,
+          StringEncryptTransformOutput
+        > {
   StringEncryptPass({
     required this.config,
-    required this.policy,
-    required this.projectScope,
-  });
+    required this.scope,
+    required this.helpers,
+  }) : _excludedLiteralPatterns = config.excludePatterns
+           .map(RegExp.new)
+           .toList(growable: false);
 
   final StringEncryptPassConfig config;
-  final StringEncryptPolicyView policy;
-  final ProjectScope projectScope;
+  final ObfuscationScope scope;
+  final RuntimeHelpers helpers;
+
+  /// Literals matching any of these stay in plaintext. Built from the pass
+  /// config — a pass parameter, not a keep policy.
+  final List<RegExp> _excludedLiteralPatterns;
 
   @override
   String get name => 'string_encrypt';
 
   @override
-  Future<PassResult> run(Component component) async {
-    try {
-      final selection = StringEncryptSelector(
-        projectScope: projectScope,
-        policy: policy,
-      ).select(component);
-      final plan = await StringEncryptPlanner(
-        seed: config.xorKey,
-      ).plan(component, selection);
+  StringEncryptSelection select(Component component) => StringEncryptSelector(
+    scope: scope,
+    excludedLiteralPatterns: _excludedLiteralPatterns,
+  ).select(component);
 
-      final output = StringEncryptTransformer(
-        projectScope: projectScope,
-        policy: policy,
-      ).apply(component, plan);
-      final transformOutput = await output;
+  @override
+  StringEncryptPlan plan(
+    Component component,
+    StringEncryptSelection selection,
+  ) => StringEncryptPlanner(seed: config.seed).plan(component, selection);
 
-      return PassSucceeded(
-        artifact: transformOutput.records.isEmpty
-            ? null
-            : StringEncryptArtifact(records: transformOutput.records),
-        report: PassReport(
-          passName: name,
-          metadata: transformOutput.encryptedCount == 0
-              ? const {}
-              : {
-                  'strings_encrypted': transformOutput.encryptedCount
-                      .toString(),
-                },
-        ),
-      );
-    } on Object catch (error) {
-      final exception = error is Exception
-          ? error
-          : Exception(error.toString());
-      return PassFailed(
-        error: exception,
-        report: PassReport(
-          passName: name,
-          message: error.toString(),
-        ),
-      );
-    }
+  @override
+  StringEncryptTransformOutput transform(
+    Component component,
+    StringEncryptPlan plan,
+  ) => StringEncryptTransformer(
+    scope: scope,
+    helpers: helpers,
+  ).apply(component, plan);
+
+  @override
+  StringEncryptArtifact? buildArtifact(StringEncryptTransformOutput output) =>
+      output.records.isEmpty
+      ? null
+      : StringEncryptArtifact(records: output.records);
+
+  @override
+  PassReport buildReport(
+    StringEncryptSelection selection,
+    StringEncryptTransformOutput output,
+  ) {
+    return PassReport(
+      passName: name,
+      metadata: output.encryptedCount == 0
+          ? const {}
+          : {'strings_encrypted': output.encryptedCount.toString()},
+    );
   }
 }

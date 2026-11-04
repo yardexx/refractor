@@ -1,47 +1,44 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_visiting.dart';
 import 'package:refractor/src/engine/pass/selection/pass_selector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selection.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 final class StringEncryptSelector
     implements PassSelector<StringEncryptSelection> {
   StringEncryptSelector({
-    required ProjectScope projectScope,
-    required StringEncryptPolicyView policy,
-  }) : _projectScope = projectScope,
-       _policy = policy;
+    required ObfuscationScope scope,
+    required List<RegExp> excludedLiteralPatterns,
+  }) : _scope = scope,
+       _excludedLiteralPatterns = excludedLiteralPatterns;
 
-  final ProjectScope _projectScope;
-  final StringEncryptPolicyView _policy;
+  final ObfuscationScope _scope;
+  final List<RegExp> _excludedLiteralPatterns;
 
   @override
   StringEncryptSelection select(Component component) {
     final collector = _StringEncryptSelectionCollector(
-      projectScope: _projectScope,
-      policy: _policy,
+      scope: _scope,
+      excludedLiteralPatterns: _excludedLiteralPatterns,
     );
     component.accept(collector);
     return collector.build();
   }
 }
 
-final class _StringEncryptSelectionCollector extends RecursiveVisitor {
+final class _StringEncryptSelectionCollector extends RecursiveVisitor
+    with ScopedVisiting {
   _StringEncryptSelectionCollector({
-    required ProjectScope projectScope,
-    required StringEncryptPolicyView policy,
-  }) : _projectScope = projectScope,
-       _policy = policy;
+    required this.scope,
+    required List<RegExp> excludedLiteralPatterns,
+  }) : _excludedLiteralPatterns = excludedLiteralPatterns;
 
-  final ProjectScope _projectScope;
-  final StringEncryptPolicyView _policy;
+  @override
+  final ObfuscationScope scope;
+
+  final List<RegExp> _excludedLiteralPatterns;
   final List<StringLiteral> _selectedStringLiterals = <StringLiteral>[];
   final Set<StringLiteral> _selectedStringLiteralSet = <StringLiteral>{};
-
-  int _constDepth = 0;
-  int _annotationDepth = 0;
-
-  bool get _inConstContext => _constDepth > 0 || _annotationDepth > 0;
 
   StringEncryptSelection build() {
     return StringEncryptSelection(
@@ -51,10 +48,7 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitLibrary(Library node) {
-    if (!_projectScope.containsLibrary(node)) {
-      return;
-    }
-    if (_policy.isLibraryKept(node)) {
+    if (!isScopedLibrary(node)) {
       return;
     }
     super.visitLibrary(node);
@@ -62,8 +56,8 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitClass(Class node) {
-    _visitAnnotations(node.annotations);
-    if (_policy.isClassKept(node)) {
+    visitAnnotations(node.annotations);
+    if (!isScopedClass(node)) {
       return;
     }
     for (final constructor in node.constructors) {
@@ -79,8 +73,8 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitProcedure(Procedure node) {
-    _visitAnnotations(node.annotations);
-    if (_policy.isMemberKept(node)) {
+    visitAnnotations(node.annotations);
+    if (!isScopedMember(node)) {
       return;
     }
     node.function.accept(this);
@@ -88,8 +82,8 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitField(Field node) {
-    _visitAnnotations(node.annotations);
-    if (_policy.isMemberKept(node)) {
+    visitAnnotations(node.annotations);
+    if (!isScopedMember(node)) {
       return;
     }
     node.initializer?.accept(this);
@@ -97,8 +91,8 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitConstructor(Constructor node) {
-    _visitAnnotations(node.annotations);
-    if (_policy.isMemberKept(node)) {
+    visitAnnotations(node.annotations);
+    if (!isScopedMember(node)) {
       return;
     }
     for (final initializer in node.initializers) {
@@ -108,24 +102,14 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
   }
 
   @override
-  void visitConstantExpression(ConstantExpression node) {
-    _constDepth++;
-    try {
-      super.visitConstantExpression(node);
-    } finally {
-      _constDepth--;
-    }
-  }
-
-  @override
   void visitStringLiteral(StringLiteral node) {
-    if (_inConstContext) {
+    if (inConstContext) {
       return;
     }
     if (node.value.isEmpty) {
       return;
     }
-    if (!_policy.shouldEncryptLiteral(node)) {
+    if (_isExcludedLiteral(node.value)) {
       return;
     }
     if (_selectedStringLiteralSet.add(node)) {
@@ -133,14 +117,12 @@ final class _StringEncryptSelectionCollector extends RecursiveVisitor {
     }
   }
 
-  void _visitAnnotations(List<Expression> annotations) {
-    _annotationDepth++;
-    try {
-      for (final annotation in annotations) {
-        annotation.accept(this);
+  bool _isExcludedLiteral(String value) {
+    for (final pattern in _excludedLiteralPatterns) {
+      if (pattern.hasMatch(value)) {
+        return true;
       }
-    } finally {
-      _annotationDepth--;
     }
+    return false;
   }
 }

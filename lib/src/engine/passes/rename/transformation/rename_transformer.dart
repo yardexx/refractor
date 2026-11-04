@@ -1,37 +1,34 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/naming.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_plan.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_artifact.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
 import 'package:refractor/src/engine/passes/rename/transformation/rename_transform_output.dart';
-import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
-/// Applies a [RenameMapping] to the kernel AST.
-///
-/// Pure AST mutation: renames declarations and updates call sites.
 class RenameTransformer
     implements PassTransformer<RenamePlan, RenameTransformOutput> {
   RenameTransformer({
-    required ProjectScope projectScope,
-  }) : _projectScope = projectScope;
+    required ObfuscationScope scope,
+  }) : _scope = scope;
 
-  final ProjectScope _projectScope;
+  final ObfuscationScope _scope;
 
-  /// Applies the mapping to [component]: transforms the AST and
-  /// unbinds canonical names for renamed user libraries.
   @override
-  Future<RenameTransformOutput> apply(
+  RenameTransformOutput apply(
     Component component,
     RenamePlan plan,
-  ) async {
+  ) {
     final visitor = _RenameTransformVisitor(
-      projectScope: _projectScope,
+      scope: _scope,
       mapping: plan.mapping,
     );
     component.transformChildren(visitor);
     for (final lib in component.libraries) {
-      if (_projectScope.containsLibrary(lib)) {
+      if (_scope.isInProject(lib)) {
         lib.reference.canonicalName?.unbindAll();
       }
     }
@@ -47,7 +44,7 @@ class RenameTransformer
 
 final class _RenameTransformVisitor extends ScopedKernelTransformer {
   _RenameTransformVisitor({
-    required super.projectScope,
+    required super.scope,
     required RenameMapping mapping,
   }) : _mapping = mapping,
        _originalVarNames = {
@@ -81,7 +78,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   static Map<Name, Name> _buildDynamicNameMapping(RenameMapping mapping) {
     final candidates = <Name, Name>{};
     for (final entry in mapping.members.entries) {
-      if (!_isDynamicDispatchMember(entry.key)) continue;
+      if (!MemberModel.isInstanceDispatch(entry.key)) continue;
       candidates[entry.key.name] = entry.value;
     }
     return candidates;
@@ -100,7 +97,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitProcedure(Procedure node) {
     final newName = _mapping.members[node];
-    if (newName != null && !_sameName(node.name, newName)) {
+    if (newName != null && !KernelNames.same(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -110,7 +107,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitField(Field node) {
     final newName = _mapping.members[node];
-    if (newName != null && !_sameName(node.name, newName)) {
+    if (newName != null && !KernelNames.same(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -120,7 +117,7 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
   @override
   TreeNode visitConstructor(Constructor node) {
     final newName = _mapping.members[node];
-    if (newName != null && !_sameName(node.name, newName)) {
+    if (newName != null && !KernelNames.same(node.name, newName)) {
       node.name = newName;
       renamedMembers++;
     }
@@ -363,17 +360,5 @@ final class _RenameTransformVisitor extends ScopedKernelTransformer {
       ),
       _ => _functionTargetFromReceiver(receiver),
     };
-  }
-
-  static bool _isDynamicDispatchMember(Member member) {
-    return switch (member) {
-      Procedure(isStatic: false) => true,
-      Field(isStatic: false) => true,
-      _ => false,
-    };
-  }
-
-  bool _sameName(Name a, Name b) {
-    return a.text == b.text && identical(a.library, b.library);
   }
 }

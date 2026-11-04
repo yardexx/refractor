@@ -54,10 +54,6 @@ final class RefractorConfig {
 
   /// Parses a YAML string into a [RefractorConfig].
   factory RefractorConfig.fromYaml(String yamlString) {
-    if (yamlString.trim().isEmpty) {
-      throw const ConfigException('Configuration YAML is empty.');
-    }
-
     try {
       final yaml = loadYaml(yamlString);
       if (yaml == null) {
@@ -91,6 +87,8 @@ final class RefractorConfig {
   bool get verbose => refractor.verbose;
 
   String get artifactJsonPath => refractor.artifactJson;
+
+  String get symbolMapPath => refractor.symbolMap;
 }
 
 /// Recursively converts [YamlMap]/[YamlList] to plain Dart [Map]/[List].

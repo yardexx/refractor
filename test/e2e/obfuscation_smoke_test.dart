@@ -240,7 +240,7 @@ refractor:
   passes:
     rename: true
     string_encrypt:
-      xor_key: 42
+      seed: 42
 ''',
         );
         expect(output, equals(_expectedOutput.trim()));
@@ -259,7 +259,7 @@ refractor:
   passes:
     rename: true
     string_encrypt:
-      xor_key: 42
+      seed: 42
 ''',
         );
         expect(output, equals(_expectedOutput.trim()));
@@ -278,8 +278,73 @@ refractor:
   passes:
     rename: true
     string_encrypt:
-      xor_key: 42
+      seed: 42
 ''',
+        );
+        expect(output, equals(_expectedOutput.trim()));
+      },
+    );
+
+    test(
+      'rename + int_encrypt: obfuscated binary produces correct output',
+      () async {
+        final output = await _compileObfuscateRun(
+          tempDir: tempDir,
+          configYaml: '''
+refractor:
+  verbose: false
+  passes:
+    rename: true
+    int_encrypt:
+      seed: 7
+''',
+        );
+        expect(output, equals(_expectedOutput.trim()));
+      },
+    );
+
+    test(
+      'rename + bogus_control_flow: obfuscated binary produces correct output',
+      () async {
+        final output = await _compileObfuscateRun(
+          tempDir: tempDir,
+          configYaml: '''
+refractor:
+  verbose: false
+  passes:
+    rename: true
+    bogus_control_flow:
+      seed: 11
+''',
+        );
+        expect(output, equals(_expectedOutput.trim()));
+      },
+    );
+
+    test(
+      'rename + call_indirection: obfuscated binary produces correct output',
+      () async {
+        final output = await _compileObfuscateRun(
+          tempDir: tempDir,
+          configYaml: '''
+refractor:
+  verbose: false
+  passes:
+    rename: true
+    call_indirection: true
+''',
+          onBuilt: (result) {
+            final report = result.reports.singleWhere(
+              (r) => r.passName == 'call_indirection',
+            );
+            expect(
+              int.parse(report.metadata['calls_indirected'] ?? '0'),
+              greaterThan(0),
+              reason:
+                  'call_indirection must still find its forwarder after '
+                  'rename has renamed it',
+            );
+          },
         );
         expect(output, equals(_expectedOutput.trim()));
       },
@@ -335,6 +400,7 @@ Future<String> _compileObfuscateRun({
   required String configYaml,
   String source = _testProgram,
   Target target = Target.exe,
+  void Function(BuildResult result)? onBuilt,
 }) async {
   final sourcePath = '${tempDir.path}/main.dart';
   final outputPath = '${tempDir.path}/main${target.extension}';
@@ -350,7 +416,7 @@ Future<String> _compileObfuscateRun({
     kernelIO: FileKernelIO(),
   );
 
-  await engine.run(
+  final result = engine.run(
     config: config,
     request: BuildRequest(
       input: sourcePath,
@@ -361,6 +427,7 @@ Future<String> _compileObfuscateRun({
       projectPackageName: null,
     ),
   );
+  onBuilt?.call(result);
 
   final processResult = _runCompiledOutput(target, outputPath);
   if (processResult.exitCode != 0) {
@@ -416,12 +483,10 @@ Future<String> _buildAndRunExampleApp({
 
   final outputPath = '${tempDir.path}/example.exe';
 
-  final engine = RefractorEngine(
+  RefractorEngine(
     compiler: DartCompiler(),
     kernelIO: FileKernelIO(),
-  );
-
-  await engine.run(
+  ).run(
     config: config,
     request: BuildRequest(
       input: '$exampleRoot/lib/main.dart',

@@ -1,47 +1,49 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel_toolkit/location/enclosing.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_visiting.dart';
 import 'package:refractor/src/engine/pass/selection/pass_selector.dart';
+import 'package:refractor/src/engine/passes/rename/selection/bound_names.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selection.dart';
-import 'package:refractor/src/policy/rename_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 final class RenameSelector implements PassSelector<RenameSelection> {
-  RenameSelector({
-    required RenamePolicyView policy,
-    required ProjectScope projectScope,
-  }) : _policy = policy,
-       _projectScope = projectScope;
+  RenameSelector({required ObfuscationScope scope}) : _scope = scope;
 
-  final RenamePolicyView _policy;
-  final ProjectScope _projectScope;
+  final ObfuscationScope _scope;
 
   @override
   RenameSelection select(Component component) {
-    final collector = _RenameSelectionCollector(
-      policy: _policy,
-      projectScope: _projectScope,
-    );
+    final collector = _RenameSelectionCollector(scope: _scope);
     component.accept(collector);
-    return collector.build();
+    return collector.build(
+      fixedNamesByClass: {
+        for (final library in component.libraries)
+          if (_scope.isInProject(library))
+            for (final cls in library.classes)
+              cls: fixedInstanceNamesOf(cls, _scope),
+      },
+      spelledSelectors: collectSpelledSelectors(component, _scope),
+    );
   }
 }
 
-final class _RenameSelectionCollector extends RecursiveVisitor {
-  _RenameSelectionCollector({
-    required RenamePolicyView policy,
-    required ProjectScope projectScope,
-  }) : _policy = policy,
-       _projectScope = projectScope;
+final class _RenameSelectionCollector extends RecursiveVisitor
+    with ScopedVisiting {
+  _RenameSelectionCollector({required this.scope});
 
-  final RenamePolicyView _policy;
-  final ProjectScope _projectScope;
+  @override
+  final ObfuscationScope scope;
 
   final List<Class> _classes = [];
   final List<Member> _singletonMembers = [];
   final List<VariableDeclaration> _variables = [];
   final Map<Class, List<Member>> _instanceMembersByClass = {};
 
-  RenameSelection build() {
+  RenameSelection build({
+    required Map<Class, Set<String>> fixedNamesByClass,
+    required Set<Name> spelledSelectors,
+  }) {
     return RenameSelection(
       classes: List.unmodifiable(_classes),
       singletonMembers: List.unmodifiable(_singletonMembers),
@@ -50,12 +52,14 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
         for (final entry in _instanceMembersByClass.entries)
           entry.key: List.unmodifiable(entry.value),
       },
+      fixedNamesByClass: fixedNamesByClass,
+      spelledSelectors: spelledSelectors,
     );
   }
 
   @override
   void visitLibrary(Library node) {
-    if (_policy.isLibraryKept(node)) {
+    if (!isScopedLibrary(node)) {
       return;
     }
 
@@ -76,7 +80,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitClass(Class node) {
-    if (_policy.isClassKept(node)) {
+    if (!isScopedClass(node)) {
       return;
     }
 
@@ -85,13 +89,13 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
       _classes.add(node);
     }
     final instanceMembers = <Member>[];
-    final externalNames = _externalMemberNames(node);
+    final externalNames = fixedInstanceNamesOf(node, scope);
 
     for (final procedure in node.procedures) {
       if (!_isRenameableMember(procedure) ||
           procedure.name.text.isEmpty ||
           (!procedure.isStatic &&
-              externalNames.contains(memberNameText(procedure)))) {
+              externalNames.contains(MemberModel.nameText(procedure)))) {
         continue;
       }
 
@@ -105,7 +109,8 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
     for (final field in node.fields) {
       if (!_isRenameableMember(field) ||
           field.name.text.isEmpty ||
-          (!field.isStatic && externalNames.contains(memberNameText(field)))) {
+          (!field.isStatic &&
+              externalNames.contains(MemberModel.nameText(field)))) {
         continue;
       }
 
@@ -130,7 +135,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitProcedure(Procedure node) {
-    if (_policy.isMemberKept(node)) {
+    if (!isScopedMember(node)) {
       return;
     }
     super.visitProcedure(node);
@@ -138,7 +143,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitConstructor(Constructor node) {
-    if (_policy.isMemberKept(node)) {
+    if (!isScopedMember(node)) {
       return;
     }
     super.visitConstructor(node);
@@ -146,7 +151,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
 
   @override
   void visitField(Field node) {
-    if (_policy.isMemberKept(node)) {
+    if (!isScopedMember(node)) {
       return;
     }
     super.visitField(node);
@@ -168,7 +173,7 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
   }
 
   bool _isRenameableMember(Member member) {
-    return !_policy.isMemberKept(member);
+    return isScopedMember(member);
   }
 
   bool _isSyntheticMixinClass(Class cls) {
@@ -178,12 +183,12 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
   }
 
   bool _shouldCollectVariable(VariableDeclaration variable) {
-    final enclosingMember = _findEnclosingMember(variable);
+    final enclosingMember = Enclosing.member(variable);
     if (enclosingMember == null) {
       return true;
     }
 
-    if (_policy.isMemberKept(enclosingMember)) {
+    if (!isScopedMember(enclosingMember)) {
       return false;
     }
 
@@ -192,15 +197,6 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
     }
 
     return true;
-  }
-
-  Member? _findEnclosingMember(TreeNode node) {
-    var current = node.parent;
-    while (current != null) {
-      if (current is Member) return current;
-      current = current.parent;
-    }
-    return null;
   }
 
   bool _isDynamicDispatchNamedParameter(
@@ -212,61 +208,5 @@ final class _RenameSelectionCollector extends RecursiveVisitor {
         enclosingMember.function.namedParameters.contains(variable),
       _ => false,
     };
-  }
-
-  Set<String> _externalMemberNames(Class cls) {
-    final names = <String>{};
-    final visited = <Class>{};
-    final stack = <Class>[];
-
-    void addSupertypes(Class current) {
-      if (current.supertype != null) {
-        stack.add(current.supertype!.classNode);
-      }
-      for (final iface in current.implementedTypes) {
-        stack.add(iface.classNode);
-      }
-      if (current.mixedInType != null) {
-        stack.add(current.mixedInType!.classNode);
-      }
-    }
-
-    addSupertypes(cls);
-
-    while (stack.isNotEmpty) {
-      final current = stack.removeLast();
-      if (!visited.add(current)) continue;
-
-      final isProjectLibrary = _projectScope.containsLibrary(
-        current.enclosingLibrary,
-      );
-      if (!isProjectLibrary) {
-        for (final procedure in current.procedures) {
-          if (!procedure.isStatic) {
-            names.add(procedure.name.text);
-          }
-        }
-        for (final field in current.fields) {
-          if (!field.isStatic) {
-            names.add(field.name.text);
-          }
-        }
-      } else {
-        for (final procedure in current.procedures) {
-          if (!procedure.isStatic && _policy.isMemberKept(procedure)) {
-            names.add(procedure.name.text);
-          }
-        }
-        for (final field in current.fields) {
-          if (!field.isStatic && _policy.isMemberKept(field)) {
-            names.add(field.name.text);
-          }
-        }
-      }
-
-      addSupertypes(current);
-    }
-
-    return names;
   }
 }

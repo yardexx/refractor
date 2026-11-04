@@ -1,9 +1,11 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/passes/rename/config/rename_definition.dart';
 import 'package:refractor/src/engine/passes/rename/planning/name_generator/sequential_generator.dart';
 import 'package:refractor/src/engine/passes/rename/planning/rename_planner.dart';
 import 'package:refractor/src/engine/passes/rename/selection/rename_selector.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/policy/keep_resolver.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:test/test.dart';
 
 import '../../../../helpers/kernel_helpers.dart';
@@ -24,14 +26,21 @@ void main() {
     }) {
       final resolvedConfig = config ?? const RenamePassConfig();
       final projectScope = makeProjectScope();
-      final policy = PolicyResolver().resolve(
+      final keepResolver = KeepResolver(
         component: component,
-        config: RefractorConfig(passes: [resolvedConfig]),
         projectScope: projectScope,
+        globalExcludes: RefractorConfig(
+          passes: [resolvedConfig],
+        ).excludePatterns,
       );
       return RenameSelector(
-        policy: policy.rename,
-        projectScope: projectScope,
+        scope: ObfuscationScope(
+          project: projectScope,
+          keep: keepResolver.resolve(
+            const RenameDefinition().keepSources,
+            resolvedConfig.exclude,
+          ),
+        ),
       );
     }
 
@@ -54,7 +63,7 @@ void main() {
 
       final component = makeComponent(coreLib: coreLib, userLib: userLib);
       final selection = makeSelector(component).select(component);
-      final plan = await makePlanner().plan(component, selection);
+      final plan = makePlanner().plan(component, selection);
 
       expect(
         plan.mapping.members[baseMethod]!.text,
@@ -93,7 +102,7 @@ void main() {
 
         final component = makeComponent(coreLib: coreLib, userLib: userLib);
         final selection = makeSelector(component).select(component);
-        final plan = await makePlanner().plan(component, selection);
+        final plan = makePlanner().plan(component, selection);
 
         expect(
           plan.mapping.members.keys,
@@ -119,8 +128,8 @@ void main() {
       final selection = makeSelector(component).select(component);
       final planner = makePlanner();
 
-      final firstPlan = await planner.plan(component, selection);
-      final secondPlan = await planner.plan(component, selection);
+      final firstPlan = planner.plan(component, selection);
+      final secondPlan = planner.plan(component, selection);
 
       expect(
         secondPlan.mapping.classes.length,
@@ -167,7 +176,7 @@ void main() {
       final component = Component(libraries: [coreLib, libA, libB])
         ..setMainMethodAndMode(null, true);
       final selection = makeSelector(component).select(component);
-      final plan = await makePlanner().plan(component, selection);
+      final plan = makePlanner().plan(component, selection);
 
       expect(plan.mapping.members[baseMethod]!.library, same(libA));
       expect(plan.mapping.members[derivedMethod]!.library, same(libB));
@@ -181,8 +190,8 @@ void main() {
         final component = makeComponent(coreLib: coreLib, userLib: userLib);
         final selection = makeSelector(component).select(component);
 
-        final first = await makePlanner().plan(component, selection);
-        final second = await makePlanner().plan(component, selection);
+        final first = makePlanner().plan(component, selection);
+        final second = makePlanner().plan(component, selection);
 
         expect(first.mapping.classes[cls], equals(second.mapping.classes[cls]));
       },

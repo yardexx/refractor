@@ -2,13 +2,15 @@ import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/engine.dart';
+import 'package:refractor/src/engine/kernel/helper_source.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/config/pass_config.dart';
 import 'package:refractor/src/engine/pass/config/pass_definition.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
-import 'package:refractor/src/policy/resolved_policy.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/keep_source.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -24,7 +26,7 @@ void main() {
     });
 
     test('runs compile -> load -> write -> target compile for exe', () async {
-      final result = await engine.run(
+      final result = engine.run(
         config: RefractorConfig(passes: []),
         request: BuildRequest(
           input: 'lib/main.dart',
@@ -64,7 +66,7 @@ void main() {
     test(
       'writes final kernel output and skips compileToTarget for kernel target',
       () async {
-        final result = await engine.run(
+        final result = engine.run(
           config: RefractorConfig(passes: []),
           request: BuildRequest(
             input: 'lib/main.dart',
@@ -90,7 +92,7 @@ void main() {
     );
 
     test('passesRun reflects YAML pass order', () async {
-      final result = await engine.run(
+      final result = engine.run(
         config: RefractorConfig.fromYaml('''
 refractor:
   passes:
@@ -119,7 +121,7 @@ refractor:
           passRegistry: PassRegistry([_FailingDefinition()]),
         );
 
-        final result = await engine.run(
+        final result = engine.run(
           config: RefractorConfig(passes: [const _FailingPassConfig()]),
           request: BuildRequest(
             input: 'lib/main.dart',
@@ -199,10 +201,16 @@ final class _FailingDefinition implements PassDefinition<_FailingPassConfig> {
   String get name => 'string_encrypt';
 
   @override
+  Set<KeepSource> get keepSources => const {};
+
+  @override
+  Set<HelperSource> get runtimeHelpers => const {};
+
+  @override
   Pass createPass({
     required _FailingPassConfig config,
-    required ResolvedPolicy policy,
-    required ProjectScope projectScope,
+    required ObfuscationScope scope,
+    required RuntimeHelpers helpers,
   }) {
     return _FailingPass();
   }
@@ -221,7 +229,7 @@ final class _FailingPass extends Pass {
   String get name => 'string_encrypt';
 
   @override
-  Future<PassResult> run(Component component) async {
+  PassResult run(Component component) {
     return PassFailed(
       error: Exception('boom'),
       report: const PassReport(

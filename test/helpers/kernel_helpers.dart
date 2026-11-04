@@ -1,4 +1,6 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/policy/keep_policy.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
 /// Creates a user library with a `package:refractor/...` URI so that
@@ -308,6 +310,12 @@ ProjectScope makeProjectScope() {
   );
 }
 
+/// Creates an [ObfuscationScope] over the default test project scope with the
+/// given [keep] policy (defaults to keeping nothing).
+ObfuscationScope makeObfuscationScope({KeepPolicy keep = KeepPolicy.empty}) {
+  return ObfuscationScope(project: makeProjectScope(), keep: keep);
+}
+
 /// Creates a [Procedure] with the given [name] and adds it to [cls].
 Procedure makeProcedure(String name, Class cls) {
   final proc = Procedure(
@@ -321,6 +329,39 @@ Procedure makeProcedure(String name, Class cls) {
 }
 
 /// Bundles the given libraries into a [Component].
+/// Adds a stand-in for the injected `refractorDecode(List<int> bytes, int key)`
+/// helper to [userLib], with the real signature so the string_encrypt
+/// transformer can type its byte lists from the `bytes` parameter.
+Procedure addDecodeHelperStandIn({
+  required Library coreLib,
+  required Library userLib,
+}) {
+  Class coreClass(String name) =>
+      coreLib.classes.firstWhere((c) => c.name == name);
+  final intType = InterfaceType(coreClass('int'), Nullability.nonNullable);
+  final procedure = Procedure(
+    Name('refractorDecode', userLib),
+    ProcedureKind.Method,
+    FunctionNode(
+      EmptyStatement(),
+      positionalParameters: [
+        VariableDeclaration(
+          'bytes',
+          type: InterfaceType(coreClass('List'), Nullability.nonNullable, [
+            intType,
+          ]),
+          isSynthesized: true,
+        ),
+        VariableDeclaration('key', type: intType, isSynthesized: true),
+      ],
+    ),
+    fileUri: userLib.fileUri,
+    isStatic: true,
+  );
+  userLib.addProcedure(procedure);
+  return procedure;
+}
+
 Component makeComponent({
   required Library coreLib,
   required Library userLib,

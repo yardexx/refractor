@@ -25,12 +25,27 @@ abstract class NameGenerator {
   /// Returns the next raw name string.
   String nextName();
 
-  /// Generate names for everything in [requests].
-  Future<Map<RenameNameRequest, String>> generateNames(
-    List<RenameNameRequest> requests,
-  ) async {
+  /// Generate names for everything in [requests], never handing out one of
+  /// the [reserved] names.
+  ///
+  /// Synchronous: the built-in strategies are pure computation. A future
+  /// AI-backed generator that needs network IO should perform that IO behind
+  /// its own async method and resolve it before planning, rather than making
+  /// this method — and the whole pass pipeline above it — async again.
+  Map<RenameNameRequest, String> generateNames(
+    List<RenameNameRequest> requests, {
+    Set<String> reserved = const {},
+  }) {
+    String nextFreeName() {
+      var name = nextName();
+      while (reserved.contains(name)) {
+        name = nextName();
+      }
+      return name;
+    }
+
     return {
-      for (final request in requests) request: nextName(),
+      for (final request in requests) request: nextFreeName(),
     };
   }
 }

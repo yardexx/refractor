@@ -16,10 +16,10 @@ final class StringEncryptPlanner
   final Random _random;
 
   @override
-  Future<StringEncryptPlan> plan(
+  StringEncryptPlan plan(
     Component component,
     StringEncryptSelection selection,
-  ) async {
+  ) {
     final rewrites = <StringLiteral, PlannedStringEncryption>{};
 
     for (final literal in selection.orderedLiterals) {

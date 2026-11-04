@@ -1,7 +1,7 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/exceptions/refractor_exception.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
@@ -25,6 +25,18 @@ void main() {
       expect(
         () => RefractorConfig.fromYaml('- rename\n- string_encrypt'),
         throwsA(isA<Exception>()),
+      );
+    });
+
+    test('rejects an unknown key under refractor', () {
+      expect(
+        () => RefractorConfig.fromYaml('''
+refractor:
+  not_a_real_setting: true
+  passes:
+    rename: true
+'''),
+        throwsA(isA<ConfigException>()),
       );
     });
 
@@ -74,6 +86,24 @@ refractor:
       );
     });
 
+    test('parses a custom symbol_map path, defaulting otherwise', () {
+      expect(
+        RefractorConfig.fromYaml(
+          'refractor:\n  passes:\n    rename: true\n',
+        ).symbolMapPath,
+        'symbol_map.json',
+      );
+      expect(
+        RefractorConfig.fromYaml('''
+refractor:
+  symbol_map: out/map.json
+  passes:
+    rename: true
+''').symbolMapPath,
+        'out/map.json',
+      );
+    });
+
     test('parses global excludes under refractor.exclude', () {
       final config = RefractorConfig.fromYaml('''
 refractor:
@@ -113,21 +143,16 @@ refractor:
   passes:
     rename: false
     string_encrypt:
-      xor_key: 23
+      seed: 23
 ''');
       final projectScope = ProjectScope(
         projectRootUri: Uri.directory('/virtual/project'),
         projectPackageName: 'refractor',
       );
-      final policy = PolicyResolver().resolve(
-        component: _emptyComponent(),
-        config: config,
-        projectScope: projectScope,
-      );
-
       final passes = defaultPassRegistry.createAll(
         configs: config.passes,
-        policy: policy,
+        component: _emptyComponent(),
+        globalExcludes: config.excludePatterns,
         projectScope: projectScope,
       );
 
@@ -146,15 +171,10 @@ refractor:
         projectRootUri: Uri.directory('/virtual/project'),
         projectPackageName: 'refractor',
       );
-      final policy = PolicyResolver().resolve(
-        component: _emptyComponent(),
-        config: config,
-        projectScope: projectScope,
-      );
-
       final passes = defaultPassRegistry.createAll(
         configs: config.passes,
-        policy: policy,
+        component: _emptyComponent(),
+        globalExcludes: config.excludePatterns,
         projectScope: projectScope,
       );
 

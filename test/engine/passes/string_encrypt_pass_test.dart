@@ -1,10 +1,14 @@
 import 'package:kernel/kernel.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/pass.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/config/string_encrypt_definition.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encrypt_artifact.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_runtime.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_codec.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/string_encrypt_pass.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/policy/keep_resolver.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 import 'package:test/test.dart';
 
@@ -19,7 +23,7 @@ void main() {
       expect(decoded, equals(input));
     });
 
-    test('with custom xorKey', () {
+    test('with custom key', () {
       const input = 'abc';
       final encoded = StringEncryptCodec.encodeWithKey(input, 0xFF);
       final decoded = StringEncryptCodec.decodeWithKey(encoded, 0xFF);
@@ -49,7 +53,10 @@ void main() {
     late Component component;
     late ProjectScope projectScope;
 
+    late RuntimeHelpers helpers;
+
     setUp(() {
+      helpers = RuntimeHelpers.none;
       coreLib = makeDartCoreLibrary();
       convertLib = makeDartConvertLibrary();
       userLib = makeUserLibrary();
@@ -57,26 +64,42 @@ void main() {
     });
 
     Component makeRuntimeComponent() {
-      return makeComponent(
+      final component = makeComponent(
         coreLib: coreLib,
         userLib: userLib,
         extraLibraries: [convertLib],
       );
+      // In a real build the engine injects the decode helper before the pass
+      // runs and hands it over as RuntimeHelpers. Supply a stand-in for these
+      // unit tests so each rewritten literal has a procedure to call.
+      helpers = RuntimeHelpers({
+        decodeRuntimeHelperName: addDecodeHelperStandIn(
+          coreLib: coreLib,
+          userLib: userLib,
+        ),
+      });
+      return component;
     }
 
     StringEncryptPass makePass(
       Component component, {
       StringEncryptPassConfig config = const StringEncryptPassConfig(),
     }) {
-      final policy = PolicyResolver().resolve(
+      final keepResolver = KeepResolver(
         component: component,
-        config: RefractorConfig(passes: [config]),
         projectScope: projectScope,
+        globalExcludes: RefractorConfig(passes: [config]).excludePatterns,
       );
       return StringEncryptPass(
         config: config,
-        policy: policy.stringEncrypt,
-        projectScope: projectScope,
+        helpers: helpers,
+        scope: ObfuscationScope(
+          project: projectScope,
+          keep: keepResolver.resolve(
+            const StringEncryptDefinition().keepSources,
+            config.exclude,
+          ),
+        ),
       );
     }
 
@@ -96,13 +119,40 @@ void main() {
         userLib.addProcedure(proc);
 
         component = makeRuntimeComponent();
-        await makePass(component).run(component);
+        makePass(component).run(component);
 
         final body = proc.function.body! as Block;
         final ret = body.statements.first as ReturnStatement;
         expect(ret.expression, isA<StaticInvocation>());
       },
     );
+
+    test('@Refractor.keep() class is exempt from string encryption', () async {
+      final annotationLib = makeRefractorAnnotationLibrary();
+      final keptString = StringLiteral('secret_in_kept_class');
+      final cls = Class(name: 'Keeper', fileUri: userLib.fileUri)
+        ..addAnnotation(makeRefractorKeepAnnotation(annotationLib));
+      final method = Procedure(
+        Name('run'),
+        ProcedureKind.Method,
+        FunctionNode(Block([ReturnStatement(keptString)])),
+        fileUri: userLib.fileUri,
+      );
+      cls.addProcedure(method);
+      userLib.addClass(cls);
+
+      final comp = makeComponent(
+        coreLib: coreLib,
+        userLib: userLib,
+        extraLibraries: [convertLib, annotationLib],
+      );
+      makePass(comp).run(comp);
+
+      final body = method.function.body! as Block;
+      final ret = body.statements.first as ReturnStatement;
+      expect(ret.expression, isA<StringLiteral>());
+      expect((ret.expression! as StringLiteral).value, 'secret_in_kept_class');
+    });
 
     test('string literal inside ConstantExpression is NOT replaced', () async {
       final constExpr = ConstantExpression(StringConstant('keep'));
@@ -119,7 +169,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final body = proc.function.body! as Block;
       final ret = body.statements.first as ReturnStatement;
@@ -132,7 +182,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = cls.annotations.first as ConstantExpression;
       expect(annotation.constant, isA<StringConstant>());
@@ -147,7 +197,7 @@ void main() {
         userLib.addClass(cls);
 
         component = makeRuntimeComponent();
-        await makePass(component).run(component);
+        makePass(component).run(component);
 
         final annotation = cls.annotations.first;
         expect(annotation, isA<StringLiteral>());
@@ -163,7 +213,7 @@ void main() {
       userLib.addField(field);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = field.annotations.first as ConstantExpression;
       expect(annotation.constant, isA<StringConstant>());
@@ -184,7 +234,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = constructor.annotations.first as ConstantExpression;
       expect(annotation.constant, isA<StringConstant>());
@@ -204,7 +254,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final annotation = procedure.annotations.first;
       expect(annotation, isA<StringLiteral>());
@@ -228,7 +278,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(
+      makePass(
         component,
         config: const StringEncryptPassConfig(
           excludePatterns: ['DO_NOT_ENCRYPT'],
@@ -245,62 +295,13 @@ void main() {
       // Component with only core lib — no crash.
       final comp = Component(libraries: [coreLib])
         ..setMainMethodAndMode(null, true);
-      final result = await makePass(comp).run(comp);
+      final result = makePass(comp).run(comp);
 
       expect(comp.libraries.length, equals(1));
       expect(result, isA<PassSucceeded>());
       expect(result.report.isEmpty, isTrue);
       expect((result as PassSucceeded).artifact, isNull);
     });
-
-    test(r'helper _obfDecode$ is injected into first user library', () async {
-      final proc = Procedure(
-        Name('fn'),
-        ProcedureKind.Method,
-        FunctionNode(
-          Block([ReturnStatement(StringLiteral('test'))]),
-        ),
-        fileUri: userLib.fileUri,
-      );
-      userLib.addProcedure(proc);
-
-      component = makeRuntimeComponent();
-      await makePass(component).run(component);
-
-      final helperNames = userLib.procedures.map((p) => p.name.text).toList();
-      expect(helperNames, contains(r'_obfDecode$'));
-    });
-
-    test(
-      r'helper injection avoids collisions with existing _obfDecode$',
-      () async {
-        userLib.addProcedure(
-          Procedure(
-            Name(r'_obfDecode$', userLib),
-            ProcedureKind.Method,
-            FunctionNode(EmptyStatement()),
-            fileUri: userLib.fileUri,
-            isStatic: true,
-          ),
-        );
-        final proc = Procedure(
-          Name('fn'),
-          ProcedureKind.Method,
-          FunctionNode(
-            Block([ReturnStatement(StringLiteral('test'))]),
-          ),
-          fileUri: userLib.fileUri,
-        );
-        userLib.addProcedure(proc);
-
-        component = makeRuntimeComponent();
-        await makePass(component).run(component);
-
-        final helperNames = userLib.procedures.map((p) => p.name.text).toList();
-        expect(helperNames, contains(r'_obfDecode$'));
-        expect(helperNames, contains(r'_obfDecode$1'));
-      },
-    );
 
     test('dart: library strings are not encrypted', () async {
       final coreProc = Procedure(
@@ -324,7 +325,7 @@ void main() {
       userLib.addProcedure(userProc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final coreBody = coreProc.function.body! as Block;
       final coreRet = coreBody.statements.first as ReturnStatement;
@@ -346,7 +347,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      await makePass(component).run(component);
+      makePass(component).run(component);
 
       final body = proc.function.body! as Block;
       final firstExpr = body.statements[0] as ExpressionStatement;
@@ -371,7 +372,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       expect(result.report.passName, 'string_encrypt');
@@ -390,7 +391,7 @@ void main() {
       userLib.addProcedure(proc);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       final success = result as PassSucceeded;
@@ -427,7 +428,7 @@ void main() {
       );
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
       final success = result as PassSucceeded;
       final artifact = success.artifact! as StringEncryptArtifact;
 
@@ -457,7 +458,7 @@ void main() {
       userLib.addClass(cls);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
       final artifact =
           (result as PassSucceeded).artifact! as StringEncryptArtifact;
 
@@ -489,7 +490,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      final result = await makePass(
+      final result = makePass(
         component,
         config: const StringEncryptPassConfig(
           excludePatterns: ['keep_me'],
@@ -522,7 +523,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       expect(result, isA<PassSucceeded>());
       final returnStatement = procedure.function.body! as ReturnStatement;
@@ -554,7 +555,7 @@ void main() {
       userLib.addProcedure(procedure);
 
       component = makeRuntimeComponent();
-      final result = await makePass(component).run(component);
+      final result = makePass(component).run(component);
 
       final returnStatement = procedure.function.body! as ReturnStatement;
       final concat = returnStatement.expression! as StringConcatenation;

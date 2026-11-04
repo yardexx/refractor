@@ -1,8 +1,9 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_planner.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_runtime.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/selection/string_encrypt_selector.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transformer.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
 import 'package:test/test.dart';
 
 import '../../../../helpers/kernel_helpers.dart';
@@ -14,7 +15,10 @@ void main() {
     late Library userLib;
     late Component component;
 
+    late RuntimeHelpers helpers;
+
     setUp(() {
+      helpers = RuntimeHelpers.none;
       coreLib = makeDartCoreLibrary();
       convertLib = makeDartConvertLibrary();
       userLib = makeUserLibrary();
@@ -23,6 +27,15 @@ void main() {
         userLib: userLib,
         extraLibraries: [convertLib],
       );
+      // The engine injects the decode helper before the transformer runs; the
+      // transformer gets it as a RuntimeHelpers handle. Supply a stand-in for
+      // these unit tests so each rewritten literal has a procedure to call.
+      helpers = RuntimeHelpers({
+        decodeRuntimeHelperName: addDecodeHelperStandIn(
+          coreLib: coreLib,
+          userLib: userLib,
+        ),
+      });
     });
 
     test('returns explicit transform output with encrypted count', () async {
@@ -43,19 +56,18 @@ void main() {
       );
 
       final selection = StringEncryptSelector(
-        projectScope: makeProjectScope(),
-        policy: const StringEncryptPolicyView(),
+        scope: makeObfuscationScope(),
+        excludedLiteralPatterns: const [],
       ).select(component);
-      final plan = await StringEncryptPlanner(seed: 42).plan(
+      final plan = StringEncryptPlanner(seed: 42).plan(
         component,
         selection,
       );
 
-      final output = StringEncryptTransformer(
-        projectScope: makeProjectScope(),
-        policy: const StringEncryptPolicyView(),
+      final transformOutput = StringEncryptTransformer(
+        scope: makeObfuscationScope(),
+        helpers: helpers,
       ).apply(component, plan);
-      final transformOutput = await output;
 
       expect(transformOutput.encryptedCount, 2);
       expect(transformOutput.records, hasLength(2));
@@ -91,6 +103,16 @@ void main() {
             .toList(),
         firstRewrite.encodedBytes,
       );
+      // A `List<int>`, not `List<dynamic>`: Function.apply (call_indirection)
+      // type-checks the argument against `refractorDecode(List<int>, int)`.
+      expect(
+        (firstCall.arguments.positional[0] as ListLiteral).typeArgument,
+        isA<InterfaceType>().having(
+          (type) => type.classNode.name,
+          'class',
+          'int',
+        ),
+      );
     });
 
     test('rewrites literal segments inside StringConcatenation only', () async {
@@ -117,17 +139,17 @@ void main() {
       );
 
       final selection = StringEncryptSelector(
-        projectScope: makeProjectScope(),
-        policy: const StringEncryptPolicyView(),
+        scope: makeObfuscationScope(),
+        excludedLiteralPatterns: const [],
       ).select(component);
-      final plan = await StringEncryptPlanner(seed: 42).plan(
+      final plan = StringEncryptPlanner(seed: 42).plan(
         component,
         selection,
       );
 
-      final transformOutput = await StringEncryptTransformer(
-        projectScope: makeProjectScope(),
-        policy: const StringEncryptPolicyView(),
+      final transformOutput = StringEncryptTransformer(
+        scope: makeObfuscationScope(),
+        helpers: helpers,
       ).apply(component, plan);
 
       expect(transformOutput.encryptedCount, 2);

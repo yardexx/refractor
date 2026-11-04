@@ -84,6 +84,93 @@ refractor:
       ).called(1);
     });
 
+    test('emits a versioned symbol map when rename renames symbols', () async {
+      File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+      File('refractor.yaml').writeAsStringSync('''
+refractor:
+  passes:
+    rename: true
+    string_encrypt: false
+''');
+      Directory('lib').createSync(recursive: true);
+      File('lib/main.dart').writeAsStringSync('''
+class Secret {
+  int value() => 42;
+}
+
+void main() {
+  print(Secret().value());
+}
+''');
+
+      final exitCode = await runner.run([
+        'build',
+        '--target',
+        'kernel',
+        '--input',
+        'lib/main.dart',
+      ]);
+
+      expect(exitCode, ExitCode.success.code);
+      final file = File('build/symbol_map.json');
+      expect(file.existsSync(), isTrue);
+      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      expect(json['version'], 1);
+      expect(json['kind'], 'refractor-symbol-map');
+      final symbols = (json['symbols'] as Map).cast<String, Object?>();
+      expect(symbols, isNotEmpty);
+      // The originals (the map's values) must include the renamed declarations.
+      expect(symbols.values, containsAll(<Object?>['Secret', 'value']));
+    });
+
+    test(
+      'removes a stale symbol map when a build renames nothing',
+      () async {
+        File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+        File('refractor.yaml').writeAsStringSync('''
+refractor:
+  passes:
+    rename: false
+    string_encrypt: false
+''');
+        Directory('build').createSync(recursive: true);
+        File('build/symbol_map.json').writeAsStringSync('{"stale": true}');
+        Directory('lib').createSync(recursive: true);
+        File(
+          'lib/main.dart',
+        ).writeAsStringSync('void main() { print("ok"); }\n');
+
+        final exitCode = await runner.run([
+          'build',
+          '--target',
+          'kernel',
+          '--input',
+          'lib/main.dart',
+        ]);
+
+        expect(exitCode, ExitCode.success.code);
+        expect(File('build/symbol_map.json').existsSync(), isFalse);
+      },
+    );
+
+    test('raises logger level to verbose when config enables it', () async {
+      File('pubspec.yaml').writeAsStringSync('name: sample_app\n');
+      File('refractor.yaml').writeAsStringSync('''
+refractor:
+  verbose: true
+  passes:
+    rename: false
+    string_encrypt: false
+''');
+      Directory('lib').createSync(recursive: true);
+      File('lib/main.dart').writeAsStringSync('void main() { print("ok"); }\n');
+
+      final exitCode = await runner.run(['build', '--target', 'kernel']);
+
+      expect(exitCode, ExitCode.success.code);
+      verify(() => logger.level = Level.verbose).called(1);
+    });
+
     test(
       'removes stale artifact json when a successful build has no artifacts',
       () async {
@@ -581,10 +668,10 @@ class _FakeBuildCommand extends BuildCommand {
   final BuildResult result;
 
   @override
-  Future<BuildResult> runBuild({
+  BuildResult runBuild({
     required BuildRequest request,
     required RefractorConfig config,
-  }) async {
+  }) {
     return result;
   }
 }

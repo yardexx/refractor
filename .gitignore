@@ -6,6 +6,11 @@ pubspec.lock
 # Refractor shadow workspace
 .refractor/
 
+# Generated local verification outputs
+example/lib/*_out.txt
+test/fixtures/resistance/**/*.jit
+test/fixtures/resistance/**/*.aot
+
 # IDE
 .idea/
 *.iml
@@ -17,4 +22,6 @@ Thumbs.db
 
 # Misc
 .cursorignore/
-.claude/
+# Local Claude Code state stays private; shared subagent definitions are tracked.
+.claude/*
+!.claude/agents/

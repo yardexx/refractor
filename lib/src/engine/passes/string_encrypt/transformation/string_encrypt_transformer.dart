@@ -1,30 +1,32 @@
 import 'package:kernel/ast.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
+import 'package:refractor/src/engine/kernel_toolkit/location/enclosing.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
+import 'package:refractor/src/engine/kernel_toolkit/traversal/scoped_transformer.dart';
 import 'package:refractor/src/engine/pass/transformation/pass_transformer.dart';
-import 'package:refractor/src/engine/passes/scoped_kernel_transformer.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/planning/string_encrypt_plan.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/reporting/string_encryption_record.dart';
-import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_helper_injector.dart';
+import 'package:refractor/src/engine/passes/string_encrypt/runtime/decode_runtime.dart';
 import 'package:refractor/src/engine/passes/string_encrypt/transformation/string_encrypt_transform_output.dart';
-import 'package:refractor/src/policy/string_encrypt_policy_view.dart';
-import 'package:refractor/src/project/project_scope.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 
 class StringEncryptTransformer
     implements
         PassTransformer<StringEncryptPlan, StringEncryptTransformOutput> {
   StringEncryptTransformer({
-    required ProjectScope projectScope,
-    required StringEncryptPolicyView policy,
-  }) : _projectScope = projectScope,
-       _policy = policy;
+    required ObfuscationScope scope,
+    required RuntimeHelpers helpers,
+  }) : _scope = scope,
+       _helpers = helpers;
 
-  final ProjectScope _projectScope;
-  final StringEncryptPolicyView _policy;
+  final ObfuscationScope _scope;
+  final RuntimeHelpers _helpers;
 
   @override
-  Future<StringEncryptTransformOutput> apply(
+  StringEncryptTransformOutput apply(
     Component component,
     StringEncryptPlan plan,
-  ) async {
+  ) {
     if (plan.rewrites.isEmpty) {
       return const StringEncryptTransformOutput(
         encryptedCount: 0,
@@ -32,20 +34,11 @@ class StringEncryptTransformer
       );
     }
 
-    final setupResult = DecodeHelperInjector(
-      projectScope: _projectScope,
-      policy: _policy,
-    ).injectIntoFirstEligibleLibrary(component);
-    if (setupResult == null) {
-      return const StringEncryptTransformOutput(
-        encryptedCount: 0,
-        records: [],
-      );
-    }
+    final decodeProcedure = _helpers.require(decodeRuntimeHelperName);
 
     final visitor = _StringEncryptVisitor(
-      decodeProcedure: setupResult.decodeProcedure,
-      projectScope: _projectScope,
+      decodeProcedure: decodeProcedure,
+      scope: _scope,
       plan: plan,
     );
     component.transformChildren(visitor);
@@ -60,11 +53,18 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
   _StringEncryptVisitor({
     required this.decodeProcedure,
     required this.plan,
-    required super.projectScope,
+    required super.scope,
   });
 
   final Procedure decodeProcedure;
   final StringEncryptPlan plan;
+
+  /// The element type of the decoder's `bytes` parameter (`int`).
+  late final DartType _bytesElementType =
+      (decodeProcedure.function.positionalParameters.first.type
+              as InterfaceType)
+          .typeArguments
+          .single;
 
   int encryptedCount = 0;
   final List<StringEncryptionRecord> records = [];
@@ -80,10 +80,10 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
     records.add(
       StringEncryptionRecord.fromPlanned(
         planned: rewrite,
-        libraryUri: _findEnclosingLibrary(node)?.importUri.toString() ?? '',
-        enclosingMemberName: _findEnclosingMember(node)?.name.text,
-        enclosingMemberKind: _memberKind(_findEnclosingMember(node)),
-        fileUri: _findFileUri(node)?.toString(),
+        libraryUri: Enclosing.library(node)?.importUri.toString() ?? '',
+        enclosingMemberName: Enclosing.member(node)?.name.text,
+        enclosingMemberKind: MemberModel.kindLabel(Enclosing.member(node)),
+        fileUri: Enclosing.fileUri(node)?.toString(),
       ),
     );
 
@@ -94,48 +94,14 @@ final class _StringEncryptVisitor extends ScopedKernelTransformer {
           rewrite.encodedBytes
               .map((byte) => IntLiteral(byte) as Expression)
               .toList(),
+          // Typed to match `refractorDecode(List<int> bytes, ...)`. An untyped
+          // literal is a `List<dynamic>`: a direct call never checks it, but a
+          // call routed through `Function.apply` (call_indirection) does and
+          // throws a TypeError.
+          typeArgument: _bytesElementType,
         ),
         IntLiteral(rewrite.key),
       ]),
     );
-  }
-
-  Library? _findEnclosingLibrary(TreeNode node) {
-    var current = node.parent;
-    while (current != null) {
-      if (current is Library) return current;
-      current = current.parent;
-    }
-    return null;
-  }
-
-  Member? _findEnclosingMember(TreeNode node) {
-    var current = node.parent;
-    while (current != null) {
-      if (current is Member) return current;
-      current = current.parent;
-    }
-    return null;
-  }
-
-  Uri? _findFileUri(TreeNode node) {
-    final member = _findEnclosingMember(node);
-    if (member?.fileUri != null) {
-      return member!.fileUri;
-    }
-    final library = _findEnclosingLibrary(node);
-    if (library?.fileUri != null) {
-      return library!.fileUri;
-    }
-    return null;
-  }
-
-  String? _memberKind(Member? member) {
-    return switch (member) {
-      Procedure() => 'procedure',
-      Field() => 'field',
-      Constructor() => 'constructor',
-      _ => null,
-    };
   }
 }

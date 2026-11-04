@@ -7,5 +7,11 @@ abstract class Pass {
   String get name;
 
   /// Run this pass over [component], mutating it in place.
-  Future<PassResult> run(Component component);
+  ///
+  /// Synchronous: passes mutate the shared [Component] in place and must run
+  /// in a fixed order, so there is nothing to parallelize and no IO to await.
+  /// A pass that one day needs real async work (e.g. an AI-backed name
+  /// generator) should do that IO at its own boundary rather than make the
+  /// whole pipeline async again.
+  PassResult run(Component component);
 }

@@ -1,6 +1,8 @@
 import 'package:kernel/kernel.dart';
+import 'package:refractor/src/engine/kernel_toolkit/naming.dart';
+import 'package:refractor/src/engine/kernel_toolkit/relations/member_model.dart';
 import 'package:refractor/src/engine/passes/rename/reporting/rename_mapping.dart';
-import 'package:refractor/src/utils/rename_helpers.dart';
+import 'package:refractor/src/engine/passes/rename/reporting/symbol_map_key.dart';
 
 /// Applies rename-specific safety normalization after name allocation.
 ///
@@ -10,11 +12,21 @@ import 'package:refractor/src/utils/rename_helpers.dart';
 final class RenameSafetyNormalizer {
   const RenameSafetyNormalizer();
 
+  /// [spelledSelectors] are names some code refers to by spelling where
+  /// rename cannot rewrite it; every instance member with one of those names
+  /// keeps it.
   RenameMapping normalize(
     Component component,
-    RenameMapping mapping,
-  ) {
+    RenameMapping mapping, {
+    Set<Name> spelledSelectors = const {},
+  }) {
     final normalizedMembers = Map<Member, Name>.from(mapping.members);
+    for (final member in mapping.members.keys) {
+      if (MemberModel.isInstanceDispatch(member) &&
+          spelledSelectors.contains(member.name)) {
+        normalizedMembers[member] = member.name;
+      }
+    }
     final normalizedVariables = Map<VariableDeclaration, String>.from(
       mapping.variables,
     );
@@ -29,7 +41,7 @@ final class RenameSafetyNormalizer {
     for (final library in component.libraries) {
       for (final cls in library.classes) {
         for (final member in [...cls.procedures, ...cls.fields]) {
-          if (!_isDynamicDispatchMember(member)) continue;
+          if (!MemberModel.isInstanceDispatch(member)) continue;
           (dynamicGroups[member.name] ??= <Member>[]).add(member);
         }
       }
@@ -68,8 +80,8 @@ final class RenameSafetyNormalizer {
     final symbolMap = <String, String>{};
     for (final entry in normalizedMembers.entries) {
       if (entry.key.name.text.isNotEmpty &&
-          !_sameName(entry.key.name, entry.value)) {
-        symbolMap[symbolKeyForName(entry.value)] = entry.key.name.text;
+          !KernelNames.same(entry.key.name, entry.value)) {
+        symbolMap[SymbolMapKey.forName(entry.value)] = entry.key.name.text;
         if (entry.value.library != null) {
           (privateLegacyKeys[entry.value.text] ??= <String>{}).add(
             entry.key.name.text,
@@ -115,30 +127,52 @@ final class RenameSafetyNormalizer {
     for (final member in collector.members) {
       final originalName = member.name;
       final renamedName = normalizedMembers[member];
-      if (renamedName == null || _sameName(originalName, renamedName)) {
+      if (renamedName == null || KernelNames.same(originalName, renamedName)) {
         continue;
       }
 
       normalizedMembers[member] = originalName;
+      _preserveParameterNames(
+        member,
+        normalizedVariables,
+        includePositional: true,
+      );
+    }
 
-      final function = switch (member) {
-        Procedure() => member.function,
-        Constructor() => member.function,
-        _ => null,
-      };
-      if (function == null) continue;
+    // A torn-off static procedure keeps its new name: the tear-off references
+    // it, not its name. Only the named parameters stay, because a call through
+    // the closure (or `Function.apply`) passes named arguments by label.
+    for (final procedure in collector.staticProcedures) {
+      _preserveParameterNames(
+        procedure,
+        normalizedVariables,
+        includePositional: false,
+      );
+    }
+  }
 
-      for (final parameter in [
-        ...function.positionalParameters,
-        ...function.namedParameters,
-      ]) {
-        final originalParameterName = parameter.name;
-        if (originalParameterName == null || originalParameterName.isEmpty) {
-          continue;
-        }
-        if (normalizedVariables.containsKey(parameter)) {
-          normalizedVariables[parameter] = originalParameterName;
-        }
+  void _preserveParameterNames(
+    Member member,
+    Map<VariableDeclaration, String> normalizedVariables, {
+    required bool includePositional,
+  }) {
+    final function = switch (member) {
+      Procedure() => member.function,
+      Constructor() => member.function,
+      _ => null,
+    };
+    if (function == null) return;
+
+    for (final parameter in [
+      if (includePositional) ...function.positionalParameters,
+      ...function.namedParameters,
+    ]) {
+      final originalParameterName = parameter.name;
+      if (originalParameterName == null || originalParameterName.isEmpty) {
+        continue;
+      }
+      if (normalizedVariables.containsKey(parameter)) {
+        normalizedVariables[parameter] = originalParameterName;
       }
     }
   }
@@ -147,18 +181,6 @@ final class RenameSafetyNormalizer {
     final collector = _DynamicSelectorCollector();
     component.accept(collector);
     return collector.names;
-  }
-
-  bool _isDynamicDispatchMember(Member member) {
-    return switch (member) {
-      Procedure(isStatic: false) => true,
-      Field(isStatic: false) => true,
-      _ => false,
-    };
-  }
-
-  bool _sameName(Name a, Name b) {
-    return a.text == b.text && identical(a.library, b.library);
   }
 
   int _compareMembers(Member a, Member b) {
@@ -203,12 +225,26 @@ class _DynamicSelectorCollector extends RecursiveVisitor {
   }
 }
 
+/// Collects the members whose callable surface a tear-off exposes.
+///
+/// Torn-off static procedures go to [staticProcedures]: their name can change
+/// safely, only their named parameters cannot. Every other torn-off member
+/// goes to [members] and keeps its name and parameter names.
 class _CallableSurfaceCollector extends RecursiveVisitor {
   final Set<Member> members = <Member>{};
+  final Set<Procedure> staticProcedures = <Procedure>{};
+
+  void _addStaticTarget(Member target) {
+    if (target is Procedure && target.isStatic) {
+      staticProcedures.add(target);
+    } else {
+      members.add(target);
+    }
+  }
 
   @override
   void visitStaticTearOff(StaticTearOff node) {
-    members.add(node.target);
+    _addStaticTarget(node.target);
     super.visitStaticTearOff(node);
   }
 
@@ -239,7 +275,7 @@ class _CallableSurfaceCollector extends RecursiveVisitor {
   void _visitConstant(Constant constant) {
     switch (constant) {
       case StaticTearOffConstant():
-        members.add(constant.target);
+        _addStaticTarget(constant.target);
       case ConstructorTearOffConstant():
         members.add(constant.target);
       case RedirectingFactoryTearOffConstant():

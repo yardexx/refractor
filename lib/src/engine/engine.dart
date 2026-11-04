@@ -1,12 +1,16 @@
+import 'package:kernel/ast.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:refractor/src/cli/project_workspace.dart';
 import 'package:refractor/src/config/model/refractor_config.dart';
 import 'package:refractor/src/engine/compiler/compiler.dart';
 import 'package:refractor/src/engine/kernel/kernel_io.dart';
+import 'package:refractor/src/engine/kernel/runtime_helpers.dart';
+import 'package:refractor/src/engine/kernel/source_helper_injector.dart';
+import 'package:refractor/src/engine/kernel_toolkit/sdk/helper_injector.dart';
 import 'package:refractor/src/engine/pass.dart';
 import 'package:refractor/src/engine/pass/pass_registry.dart';
 import 'package:refractor/src/engine/pass_runner.dart';
-import 'package:refractor/src/policy/policy_resolver.dart';
+import 'package:refractor/src/policy/keep_policy.dart';
+import 'package:refractor/src/policy/obfuscation_scope.dart';
 import 'package:refractor/src/project/project_scope.dart';
 
 export 'package:refractor/src/engine/compiler/compiler.dart' show Target;
@@ -21,15 +25,6 @@ class BuildRequest {
     required this.projectRootUri,
     required this.projectPackageName,
   });
-
-  BuildRequest.withWorkspace({
-    required this.input,
-    required this.target,
-    required ProjectWorkspace workspace,
-  }) : output = workspace.primaryOutputPath(target.extension),
-       workDirectory = workspace.buildDirectory.path,
-       projectRootUri = workspace.root.uri,
-       projectPackageName = workspace.packageName;
 
   final String input;
   final String output;
@@ -56,10 +51,10 @@ class RefractorEngine {
   final PassRegistry _passRegistry;
   final Logger? _logger;
 
-  Future<BuildResult> run({
+  BuildResult run({
     required RefractorConfig config,
     required BuildRequest request,
-  }) async {
+  }) {
     _logger?.detail('Compiling ${request.input} to kernel...');
     final dillPath = '${request.workDirectory}/app.dill';
     compiler.compileToKernel(request.input, dillPath);
@@ -71,20 +66,18 @@ class RefractorEngine {
       projectPackageName: request.projectPackageName,
     );
 
-    final policy = PolicyResolver().resolve(
-      component: component,
-      config: config,
-      projectScope: projectScope,
-    );
+    final helpers = _injectRuntimeHelpers(component, config, projectScope);
 
     final enabledPasses = _passRegistry.createAll(
       configs: config.passes,
-      policy: policy,
+      component: component,
+      globalExcludes: config.excludePatterns,
       projectScope: projectScope,
+      helpers: helpers,
     );
 
     final runner = PassRunner(passes: enabledPasses, logger: _logger);
-    final runResult = await runner.run(component);
+    final runResult = runner.run(component);
 
     if (runResult.failures.isNotEmpty) {
       _logger?.detail(
@@ -130,6 +123,37 @@ class RefractorEngine {
       reports: runResult.reports,
       failures: runResult.failures,
     );
+  }
+
+  /// Compiles and injects the runtime helpers declared by the enabled passes,
+  /// once, before the passes run, and returns the reparented procedures. Passes
+  /// get them as handles because a pass that runs earlier (rename) may change
+  /// their names.
+  RuntimeHelpers _injectRuntimeHelpers(
+    Component component,
+    RefractorConfig config,
+    ProjectScope projectScope,
+  ) {
+    final helpers = _passRegistry.collectRuntimeHelpers(config.passes);
+    if (helpers.isEmpty) return RuntimeHelpers.none;
+
+    final scope = ObfuscationScope(
+      project: projectScope,
+      keep: KeepPolicy.empty,
+    );
+    final target = KernelHelperInjector(
+      scope: scope,
+    ).firstEligibleLibrary(component);
+    if (target == null) {
+      _logger?.detail('No eligible library for runtime helpers; skipping.');
+      return RuntimeHelpers.none;
+    }
+
+    final injector = SourceHelperInjector(compiler: compiler);
+    return RuntimeHelpers({
+      for (final helper in helpers)
+        ...injector.inject(component, helper, targetLibrary: target),
+    });
   }
 }
 

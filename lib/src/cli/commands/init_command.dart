@@ -61,7 +61,7 @@ refractor:
 
     string_encrypt:
       enabled: true
-      # xor_key: 0x5A
+      # seed: 0x5A
       # exclude:
       #   - "lib/src/logging/**"
       # exclude_patterns:

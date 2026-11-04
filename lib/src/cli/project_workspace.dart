@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:refractor/src/engine/engine.dart';
 import 'package:yaml/yaml.dart' show YamlMap, loadYaml;
 
 /// Represents the current Dart/Flutter project context.
@@ -41,6 +42,25 @@ class ProjectWorkspace {
     }
 
     return '$outputDirectoryPath${Platform.pathSeparator}$configuredPath';
+  }
+
+  /// Builds the engine's [BuildRequest] from this workspace.
+  ///
+  /// The adapter lives here, on the CLI side, so the dependency runs
+  /// cli -> engine (the correct direction). The engine's [BuildRequest] stays
+  /// a plain DTO with no knowledge of the workspace or filesystem.
+  BuildRequest toBuildRequest({
+    required String input,
+    required Target target,
+  }) {
+    return BuildRequest(
+      input: input,
+      output: primaryOutputPath(target.extension),
+      target: target,
+      workDirectory: buildDirectory.path,
+      projectRootUri: root.uri,
+      projectPackageName: packageName,
+    );
   }
 
   static String? _detectPackageName(Directory root) {
