@@ -45,6 +45,18 @@ class BinaryScanner {
     }
   }
 
+  /// Byte offset of the first raw (non-boundary) occurrence of [needle], or
+  /// `null`. Used for customer secrets/literals, which — unlike identifiers —
+  /// should be flagged wherever they appear, even embedded in a larger run.
+  int? indexOfRaw(String needle) {
+    if (needle.isEmpty) return null;
+    final index = _haystack.indexOf(needle);
+    return index < 0 ? null : index;
+  }
+
+  /// Byte offset of the first match of [pattern], or `null`.
+  int? firstMatch(RegExp pattern) => pattern.firstMatch(_haystack)?.start;
+
   int? _codeUnitOrNull(int i) =>
       (i < 0 || i >= _haystack.length) ? null : _haystack.codeUnitAt(i);
 

@@ -11,6 +11,8 @@
 library;
 
 export 'src/binary_scanner.dart';
+export 'src/policy.dart';
+export 'src/policy_checker.dart';
 export 'src/symbol_map.dart';
 export 'src/verification.dart';
 export 'src/verifier.dart';

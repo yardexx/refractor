@@ -6,9 +6,12 @@ import 'package:prism/prism.dart';
 
 /// CLI entry point.
 ///
-/// Usage: `prism verify <artifact> --map <symbol_map.json> [options]`
+/// Usage: `prism verify <artifact> [--map <map.json>] [--policy <policy.yaml>]`
 ///
-/// Exit codes: 0 = pass, 1 = leaks found (per `--fail-on`), 64 = usage error.
+/// At least one of `--map` / `--policy` is required; they are independent
+/// bands and either can run alone.
+///
+/// Exit codes: 0 = pass, 1 = a band failed, 64 = usage error.
 Future<void> main(List<String> args) async {
   final parser = ArgParser()
     ..addCommand('verify', _verifyParser())
@@ -38,6 +41,7 @@ Future<void> main(List<String> args) async {
 
 ArgParser _verifyParser() => ArgParser()
   ..addOption('map', abbr: 'm', help: 'Path to the Refractor symbol map JSON.')
+  ..addOption('policy', abbr: 'p', help: 'Path to a prism policy YAML.')
   ..addOption(
     'format',
     abbr: 'f',
@@ -48,13 +52,13 @@ ArgParser _verifyParser() => ArgParser()
   ..addOption(
     'min-length',
     defaultsTo: '5',
-    help: 'Minimum significant length for a leak to be high-confidence.',
+    help: 'Minimum significant length for a map leak to be high-confidence.',
   )
   ..addOption(
     'fail-on',
     allowed: ['high', 'any', 'none'],
     defaultsTo: 'high',
-    help: 'Severity that produces a non-zero exit code.',
+    help: 'Map-band leak severity that produces a non-zero exit code.',
   );
 
 int _runVerify(ArgResults args) {
@@ -64,15 +68,19 @@ int _runVerify(ArgResults args) {
   }
   final artifactPath = rest.first;
   final mapPath = args['map'] as String?;
-  if (mapPath == null) {
-    _fail('verify requires --map <symbol_map.json>.');
-  }
+  final policyPath = args['policy'] as String?;
 
+  if (mapPath == null && policyPath == null) {
+    _fail('verify requires at least one of --map or --policy.');
+  }
   if (!File(artifactPath).existsSync()) {
     _fail('artifact not found: $artifactPath');
   }
-  if (!File(mapPath).existsSync()) {
+  if (mapPath != null && !File(mapPath).existsSync()) {
     _fail('symbol map not found: $mapPath');
+  }
+  if (policyPath != null && !File(policyPath).existsSync()) {
+    _fail('policy not found: $policyPath');
   }
 
   final minLength = int.tryParse(args['min-length'] as String);
@@ -87,26 +95,50 @@ int _runVerify(ArgResults args) {
     _ => Confidence.high,
   };
 
-  final report = Verifier(
-    minConfidentLength: minLength,
-    failOn: failOn,
-  ).verify(
-    artifactPath: artifactPath,
-    symbolMap: SymbolMap.load(mapPath),
-  );
+  // One read of the artifact, shared by both bands.
+  final scanner = BinaryScanner.ofFile(artifactPath);
+
+  VerificationReport? mapReport;
+  if (mapPath != null) {
+    mapReport = Verifier(minConfidentLength: minLength, failOn: failOn).verify(
+      artifactPath: artifactPath,
+      symbolMap: SymbolMap.load(mapPath),
+      scanner: scanner,
+    );
+  }
+
+  PolicyReport? policyReport;
+  if (policyPath != null) {
+    policyReport = const PolicyChecker().check(
+      scanner: scanner,
+      policy: Policy.load(policyPath),
+    );
+  }
+
+  final passed = (mapReport?.passed ?? true) && (policyReport?.passed ?? true);
 
   if (args['format'] == 'json') {
-    stdout.writeln(const JsonEncoder.withIndent('  ').convert(report.toJson()));
+    stdout.writeln(
+      const JsonEncoder.withIndent('  ').convert({
+        'artifact': artifactPath,
+        'passed': passed,
+        if (mapReport != null) 'map': mapReport.toJson(),
+        if (policyReport != null) 'policy': policyReport.toJson(),
+      }),
+    );
   } else {
-    stdout.write(report.describe());
+    if (mapReport != null) stdout.write(mapReport.describe());
+    if (policyReport != null) stdout.write(policyReport.describe());
+    stdout.writeln(passed ? 'VERDICT: pass' : 'VERDICT: FAIL');
   }
-  return report.exitCode;
+
+  return passed ? 0 : 1;
 }
 
 String _usage(ArgParser parser) =>
-    'prism — verify a built artifact against a Refractor symbol map.\n\n'
-    'Usage: prism verify <artifact> --map <symbol_map.json> [options]\n\n'
-    'Options:\n${parser.commands['verify']!.usage}';
+    'prism — verify a built artifact against a symbol map and/or a policy.\n\n'
+    'Usage: prism verify <artifact> [--map <map.json>] [--policy <policy.yaml>]'
+    '\n\nOptions:\n${parser.commands['verify']!.usage}';
 
 Never _fail(String message) {
   stderr.writeln(message);

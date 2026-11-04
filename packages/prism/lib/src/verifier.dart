@@ -63,13 +63,14 @@ class Verifier {
   VerificationReport verify({
     required String artifactPath,
     required SymbolMap symbolMap,
+    BinaryScanner? scanner,
   }) {
-    final scanner = BinaryScanner.ofFile(artifactPath);
+    final activeScanner = scanner ?? BinaryScanner.ofFile(artifactPath);
     final originals = symbolMap.originals;
     final leaks = <Leak>[];
 
     for (final original in originals) {
-      final match = scanner.find(original);
+      final match = activeScanner.find(original);
       if (match == null) continue;
       leaks.add(
         Leak(
