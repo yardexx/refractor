@@ -48,7 +48,7 @@ void main() {
       File('build/symbol_map.json').writeAsStringSync(mapJson);
       File('trace.txt').writeAsStringSync(trace);
 
-      final exitCode = runner.run(['symbolicate', 'trace.txt']);
+      final exitCode = await runner.run(['symbolicate', 'trace.txt']);
 
       expect(exitCode, ExitCode.success.code);
       verify(
@@ -68,7 +68,7 @@ void main() {
       File('map.json').writeAsStringSync(mapJson);
       File('trace.txt').writeAsStringSync(trace);
 
-      final exitCode = runner.run([
+      final exitCode = await runner.run([
         'symbolicate',
         'trace.txt',
         '--symbol-map',

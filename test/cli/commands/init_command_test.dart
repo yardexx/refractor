@@ -34,7 +34,7 @@ void main() {
     });
 
     test('creates default refractor.yaml when file does not exist', () async {
-      final exitCode = runner.run(['init']);
+      final exitCode = await runner.run(['init']);
       final file = File('refractor.yaml');
       final yaml = file.readAsStringSync();
 
@@ -56,7 +56,7 @@ void main() {
           ..writeAsStringSync('custom: keep\n');
         when(() => logger.confirm(any())).thenReturn(false);
 
-        final exitCode = runner.run(['init']);
+        final exitCode = await runner.run(['init']);
 
         expect(exitCode, ExitCode.success.code);
         expect(file.readAsStringSync(), 'custom: keep\n');
@@ -68,7 +68,7 @@ void main() {
         ..writeAsStringSync('custom: replace\n');
       when(() => logger.confirm(any())).thenReturn(true);
 
-      final exitCode = runner.run(['init']);
+      final exitCode = await runner.run(['init']);
 
       expect(exitCode, ExitCode.success.code);
       expect(file.readAsStringSync(), contains('Refractor configuration'));

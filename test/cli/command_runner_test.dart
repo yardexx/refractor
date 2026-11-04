@@ -28,7 +28,7 @@ void main() {
     test('returns usage exit code for unknown command', () async {
       final runner = RefractorCommandRunner(logger: logger);
 
-      final exitCode = runner.run(['unknown']);
+      final exitCode = await runner.run(['unknown']);
 
       expect(exitCode, ExitCode.usage.code);
     });
@@ -36,7 +36,7 @@ void main() {
     test('raises logger level to verbose when --verbose is passed', () async {
       final runner = RefractorCommandRunner(logger: logger);
 
-      runner.run(['--verbose']);
+      await runner.run(['--verbose']);
 
       verify(() => logger.level = Level.verbose).called(1);
     });
@@ -50,7 +50,7 @@ void main() {
         Directory.current = tempDir.path;
         final runner = RefractorCommandRunner(logger: logger);
 
-        final exitCode = runner.run(['build']);
+        final exitCode = await runner.run(['build']);
 
         expect(exitCode, ExitCode.config.code);
       } finally {
