@@ -1,0 +1,27 @@
+name: prism
+description: >-
+  Source-free verifier that back-checks whether a built Dart artifact was
+  actually obfuscated, by scanning it for the original identifiers a Refractor
+  symbol map says should be gone.
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+# Intentionally NOT pinned to the engine's SDK line: prism only reads a binary
+# and a JSON map, so it should run under any modern Dart. The lower bound is
+# just the language features used here.
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+executables:
+  prism: prism
+
+dependencies:
+  args: ^2.4.0
+  path: ^1.8.0
+  yaml: ^3.1.0
+
+dev_dependencies:
+  test: ^1.24.0
+  very_good_analysis: ^10.1.0
