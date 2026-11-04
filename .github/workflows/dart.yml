@@ -39,7 +39,7 @@ jobs:
       # packages carry their own suites and must be run from their directories.
       - name: 🧪 Run Workspace Package Tests
         run: |
-          for pkg in packages/kernel_model packages/spectrometer; do
+          for pkg in packages/kernel_model packages/prism packages/spectrometer; do
             echo "::group::$pkg"
             (cd "$pkg" && dart test) || exit 1
             echo "::endgroup::"
