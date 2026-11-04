@@ -162,21 +162,32 @@ final class DecodeHelperInjector {
     //   var shift = 0;
     //   return Utf8Codec().decode(List<int>.of(bytes.reversed.map(...)));
     // }
+    // Synthetic members still need a valid fileOffset: the kernel verifier
+    // rejects a named member whose offset is `noOffset`, even though the VM's
+    // own compile tolerates it. Offsets are debug metadata only, so anchoring
+    // the helper (and its function node) at the start of the host library's
+    // file keeps the component verifiable without affecting runtime behavior.
+    final functionNode = FunctionNode(
+      Block([
+        shiftVar,
+        ReturnStatement(decodeCall),
+      ]),
+      positionalParameters: [bytesParam, keyParam],
+      requiredParameterCount: 2,
+      returnType: context.stringType,
+    )..fileOffset = 0;
+
     return Procedure(
-      Name(_freshHelperName(library), library),
-      ProcedureKind.Method,
-      FunctionNode(
-        Block([
-          shiftVar,
-          ReturnStatement(decodeCall),
-        ]),
-        positionalParameters: [bytesParam, keyParam],
-        requiredParameterCount: 2,
-        returnType: context.stringType,
-      ),
-      fileUri: library.fileUri,
-      isStatic: true,
-    )..addAnnotation(_buildNeverInlineAnnotation(context));
+        Name(_freshHelperName(library), library),
+        ProcedureKind.Method,
+        functionNode,
+        fileUri: library.fileUri,
+        isStatic: true,
+      )
+      ..fileOffset = 0
+      ..fileStartOffset = 0
+      ..fileEndOffset = 0
+      ..addAnnotation(_buildNeverInlineAnnotation(context));
   }
 
   // Utf8Codec().decode(List<int>.of(bytes.reversed.map((byte) { ... })))

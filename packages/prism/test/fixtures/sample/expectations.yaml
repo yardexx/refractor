@@ -1,0 +1,19 @@
+# Full prism contract: correctness + resistance + impact in one place.
+behavior:
+  targets: [exe]
+  equivalent_to_plain: true
+  verify_kernel: true
+
+resistance:
+  denylist:
+    - SecretAlgorithm
+    - computeProfitMargin
+    - SecretLaunchCode
+  allowlist:
+    - VISIBLE_MARKER
+  required_metrics:
+    string_encrypt.strings_encrypted: 1
+
+impact:
+  # Generous bound: this band is report-first; the number is what matters.
+  max_size_ratio: 2.0
