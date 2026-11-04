@@ -3,6 +3,11 @@
 build/
 pubspec.lock
 
+# Compiled Dart snapshots and binaries (e.g. stray build output in fixtures)
+*.jit
+*.aot
+*.dill
+
 # Refractor shadow workspace
 .refractor/
 

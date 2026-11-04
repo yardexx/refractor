@@ -1,0 +1,12 @@
+# string_encrypt alone: secret literals vanish, the excluded marker survives.
+behavior:
+  targets: [exe]
+
+resistance:
+  denylist:
+    - SecretLaunchCode
+    - AuditBanner
+  allowlist:
+    - VISIBLE_MARKER
+  required_metrics:
+    string_encrypt.strings_encrypted: 1

@@ -35,6 +35,16 @@ jobs:
       - name: 🧪 Run Tests
         run: dart test --coverage=coverage
 
+      # `dart test` at the root only runs the root package's tests; workspace
+      # packages carry their own suites and must be run from their directories.
+      - name: 🧪 Run Workspace Package Tests
+        run: |
+          for pkg in packages/kernel_model packages/spectrometer; do
+            echo "::group::$pkg"
+            (cd "$pkg" && dart test) || exit 1
+            echo "::endgroup::"
+          done
+
       - name: 📈 Generate Coverage Report
         run: |
           dart pub global activate coverage
