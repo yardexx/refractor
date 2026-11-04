@@ -1,0 +1,50 @@
+/*
+ * Cards (components/cards.dart): a grid of titled cards with a prism marker,
+ * a short body and an optional link. A card is a step in tone from the page,
+ * with no outline. Page colors follow ContentTheme (light/dark); --pc comes
+ * from a pass's .pc-<slug> class (site.css) or the card's own color.
+ */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--content-headings) 5%, var(--background));
+  text-decoration: none !important;
+  transition: background-color 0.15s;
+}
+
+a.card:hover {
+  background: color-mix(in srgb, var(--content-headings) 9%, var(--background));
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--content-headings);
+  font-weight: 650;
+}
+
+.card-body {
+  color: var(--text);
+  font-size: var(--step-small);
+  line-height: 1.55;
+}
+
+.card-body > :first-child {
+  margin-top: 0;
+}
+
+.card-body > :last-child {
+  margin-bottom: 0;
+}

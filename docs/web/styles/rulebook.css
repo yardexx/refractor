@@ -1,0 +1,223 @@
+/*
+ * Rulebook page components: the facts line (group, config key, status),
+ * guarantees cards, the previous/next pager and the overview grid's group
+ * headings (the cards themselves are in cards.css). Page colors follow
+ * ContentTheme (light/dark); a pass's color (--pc via .pc-<slug>) comes from
+ * site.css and only ever marks that pass, so the rest stays in ink.
+ */
+
+:root {
+  --rb-card: color-mix(in srgb, var(--content-headings) 5%, var(--background));
+  --rb-card-hover: color-mix(in srgb, var(--content-headings) 9%, var(--background));
+  --rb-muted: color-mix(in srgb, var(--text) 80%, transparent);
+}
+
+/* Facts line under the title: one line of text, separated by dots. */
+
+.pass-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0;
+  margin: -0.75rem 0 2rem;
+  color: var(--text);
+  font-size: var(--step-small);
+}
+
+.pass-facts > * + *::before {
+  content: "·";
+  margin: 0 0.6rem;
+  color: var(--rb-muted);
+}
+
+.pf-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--content-headings);
+  font-weight: 600;
+}
+
+.pf-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--content-headings);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pass-facts .pf-copy code {
+  padding: 0.15rem 0.4rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--rb-card);
+  color: var(--content-headings);
+  font: 600 var(--step-small) / 1 var(--content-code-font);
+  transition: background-color 0.15s;
+}
+
+.pf-copy:hover code {
+  background: var(--rb-card-hover);
+}
+
+.pf-copy-icon {
+  display: inline-flex;
+  color: var(--rb-muted);
+  transition: color 0.15s;
+}
+
+.pf-copy:hover .pf-copy-icon,
+.pf-copy.copied .pf-copy-icon {
+  color: var(--content-headings);
+}
+
+/* Guarantees: promises next to caveats, told apart by their headings and
+   markers rather than by color. */
+
+.pass-cards {
+  --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  --icon-bang: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6v7'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E");
+
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0 1.75rem;
+}
+
+.pass-card {
+  border-radius: var(--radius);
+  background: var(--rb-card);
+}
+
+.pass-card-ok {
+  --item-icon: var(--icon-check);
+}
+
+.pass-card-warn {
+  --item-icon: var(--icon-bang);
+}
+
+.pass-card-head {
+  padding: 1rem 1.2rem 0.25rem;
+  color: var(--content-headings);
+  font-size: var(--step-body);
+  font-weight: 700;
+}
+
+.pass-card-body ul {
+  margin: 0;
+  padding: 0.25rem 0 0.75rem;
+  list-style: none;
+}
+
+.pass-card-body li {
+  position: relative;
+  margin: 0;
+  padding: 0.5rem 1.2rem 0.5rem 2.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+/* The item marker: the icon on a disc one tone up, centred on the first line. */
+.pass-card-body li::before {
+  content: "";
+  position: absolute;
+  top: calc(0.5rem + 0.775em - 0.6rem);
+  left: 1.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: var(--rb-card-hover);
+}
+
+.pass-card-body li::after {
+  content: "";
+  position: absolute;
+  top: calc(0.5rem + 0.775em - 0.35rem);
+  left: calc(1.2rem + 0.25rem);
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--content-headings);
+  -webkit-mask: var(--item-icon) center / contain no-repeat;
+  mask: var(--item-icon) center / contain no-repeat;
+}
+
+.pass-card-body li > :first-child {
+  margin-top: 0;
+}
+
+.pass-card-body li > :last-child {
+  margin-bottom: 0;
+}
+
+/* Previous / next pass */
+
+.pass-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 3.5rem;
+}
+
+.pp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius);
+  background: var(--rb-card);
+  text-decoration: none !important;
+  transition: background-color 0.15s;
+}
+
+.pp-card:hover {
+  background: var(--rb-card-hover);
+}
+
+.pp-next {
+  grid-column: 2;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.pp-dir {
+  color: var(--rb-muted);
+  font-size: var(--step-small);
+}
+
+.pp-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--content-headings);
+  font-size: var(--step-body);
+  font-weight: 600;
+}
+
+/* Overview grid: a plain heading per group. */
+
+.pass-grid .rg-group {
+  margin: 2.25rem 0 0.75rem;
+  color: var(--content-headings);
+  font-size: var(--step-body);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .pass-pager {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pp-next {
+    grid-column: 1;
+  }
+}
+
+.pass-facts > span > code {
+  font-size: 0.9em;
+}

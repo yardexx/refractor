@@ -4,6 +4,9 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "test/fixtures/**"
+    # The docs site is a separate jaspr package with its own deps and CI
+    # (.github/workflows/docs.yml); don't analyze it as part of this package.
+    - "docs/**"
   errors:
     # Too strict
     todo: false

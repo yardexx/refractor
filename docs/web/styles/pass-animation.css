@@ -1,0 +1,499 @@
+/*
+ * Pass animations (rulebook/pass_animation.dart): what a pass does, shown in
+ * a few steps without words. The card is the Architecture diagrams' frame
+ * (diagrams.css). Each step is a class on the stage, `pa-step-<n>`; the parts
+ * move between steps with transitions on transform and opacity only,
+ * staggered by `--i`. The pass's color (--pc) comes from site.css.
+ */
+
+.pa {
+  --pa-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --pa-move: cubic-bezier(0.77, 0, 0.175, 1);
+  --pa-tone: color-mix(in srgb, var(--content-headings) 7%, var(--background));
+  --pa-muted: color-mix(in srgb, var(--text) 75%, transparent);
+}
+
+.pa-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 13rem;
+  padding: 1.5rem 0;
+}
+
+/* The only control: a small pause button in the card's corner. */
+.pa-pause {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--pa-muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.pa-pause:hover {
+  background: var(--pa-tone);
+  color: var(--content-headings);
+}
+
+.pa-pause:focus-visible {
+  outline: 2px solid var(--content-headings);
+  outline-offset: 2px;
+}
+
+/* Encryption tiles (strings, ints). Each tile grows one row per step:
+   the plain value, the key, the result. Then the rows fold away and the
+   result takes the text's place at the top, which is what ships. Rows open
+   and close by animating grid-template-rows between 0fr and 1fr, so the
+   tile's own background grows and shrinks with them. */
+
+.pas {
+  display: flex;
+  justify-content: center;
+}
+
+.pas-tiles {
+  display: grid;
+  grid-template-rows: repeat(4, auto);
+  grid-auto-flow: column;
+  column-gap: 0.4rem;
+}
+
+/* The labels and every tile share the four rows, so each label lines up
+   with its row and every tile is as tall as the rows that are open. */
+.pas-labels,
+.pas-tile {
+  display: grid;
+  grid-row: 1 / span 4;
+  grid-template-rows: subgrid;
+  padding: 0.6rem 0.4rem;
+}
+
+.pas-tile {
+  justify-items: center;
+  min-width: 3rem;
+  border-radius: var(--radius);
+  background: var(--pa-tone);
+}
+
+.pas-labels {
+  justify-items: end;
+  padding-left: 0;
+}
+
+.pas-label {
+  color: var(--pa-muted);
+  font-size: var(--step-small);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* The top row holds two faces that swap: the text, then the result. */
+.pas-top {
+  display: grid;
+  align-items: center;
+  justify-items: inherit;
+  min-height: 1.6rem;
+}
+
+.pas-top > * {
+  grid-area: 1 / 1;
+  transition: opacity 0.45s var(--pa-ease), transform 0.45s var(--pa-ease);
+  transition-delay: calc(var(--i, 0) * 50ms);
+}
+
+.pas-char {
+  color: var(--content-headings);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pas-top-result {
+  opacity: 0;
+  transform: translateY(0.6rem);
+}
+
+/* The stored result reads in place of the text, at the text's size. */
+.pas-tile .pas-top-result {
+  color: var(--pc);
+  font: 700 1.6rem / 1 var(--content-code-font);
+}
+
+.pa-step-4 .pas-char,
+.pa-step-4 .pas-top-text {
+  opacity: 0;
+  transform: translateY(-0.4rem);
+}
+
+.pa-step-4 .pas-top-result {
+  opacity: 1;
+  transform: none;
+}
+
+.pas-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.55s var(--pa-move);
+}
+
+.pas-fold-in {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.4s var(--pa-ease);
+  transition-delay: calc(var(--i, 0) * 50ms);
+}
+
+.pas-fold-in > * {
+  display: block;
+  padding-top: 0.4rem;
+}
+
+.pas-labels .pas-fold-in > * {
+  text-align: right;
+}
+
+.pas-byte,
+.pas-key,
+.pas-enc {
+  font: 600 var(--step-small) / 1.2 var(--content-code-font);
+  white-space: nowrap;
+}
+
+.pas-byte {
+  color: var(--content-headings);
+}
+
+.pas-key {
+  color: var(--pa-muted);
+  font-weight: 500;
+}
+
+.pas-enc {
+  color: var(--pc);
+}
+
+/* Which rows are open at each step. */
+.pa-step-1 .pas-fold-plain,
+.pa-step-2 .pas-fold-plain,
+.pa-step-2 .pas-fold-key,
+.pa-step-3 .pas-fold-plain,
+.pa-step-3 .pas-fold-key,
+.pa-step-3 .pas-fold-result {
+  grid-template-rows: 1fr;
+}
+
+.pa-step-1 .pas-fold-plain .pas-fold-in,
+.pa-step-2 .pas-fold-plain .pas-fold-in,
+.pa-step-2 .pas-fold-key .pas-fold-in,
+.pa-step-3 .pas-fold-plain .pas-fold-in,
+.pa-step-3 .pas-fold-key .pas-fold-in,
+.pa-step-3 .pas-fold-result .pas-fold-in {
+  opacity: 1;
+}
+
+/* Control-flow flattening: four rows that become cases, shuffle, and are
+   then walked in their original order. */
+
+.paf {
+  --row: 2.6rem;
+  width: min(100%, 30rem);
+  font: var(--step-small) / 1.3 var(--content-code-font);
+}
+
+.paf-hoist,
+.paf-switch {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--pa-muted);
+  font: inherit;
+  opacity: 0;
+  transition: opacity 0.4s var(--pa-ease);
+}
+
+.paf-rows {
+  position: relative;
+  height: calc(4 * var(--row));
+}
+
+.paf-row {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: calc(var(--row) - 0.35rem);
+  padding: 0 0.85rem;
+  border-radius: var(--radius);
+  background: var(--pa-tone);
+  transform: translateY(calc(var(--pos) * var(--row)));
+  transition: transform 0.8s var(--pa-move);
+  transition-delay: calc(var(--i) * 70ms);
+}
+
+.paf-case {
+  flex: none;
+  width: 4.2em;
+  color: var(--pc);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.4s var(--pa-ease);
+  transition-delay: calc(var(--i) * 70ms);
+}
+
+.paf-code {
+  flex: 1;
+  min-width: 0;
+  color: var(--content-headings);
+  font: inherit;
+  white-space: nowrap;
+  transition: transform 0.5s var(--pa-ease);
+  transition-delay: calc(var(--i) * 70ms);
+}
+
+/* Before the cases exist, the statements sit where the labels will go. */
+.pa-step-0 .paf-code {
+  transform: translateX(calc(-4.2em - 0.75rem));
+}
+
+.paf-next {
+  flex: none;
+  color: var(--pa-muted);
+  opacity: 0;
+  transition: opacity 0.4s var(--pa-ease);
+}
+
+.pa-stage:not(.pa-step-0) .paf-hoist,
+.pa-stage:not(.pa-step-0) .paf-switch,
+.pa-stage:not(.pa-step-0) .paf-case {
+  opacity: 1;
+}
+
+.pa-step-3 .paf-next {
+  opacity: 1;
+  transition-delay: calc(400ms + var(--i) * 420ms);
+}
+
+/* The walk: one bright highlight steps through the cases in case order,
+   whatever order they are written in. */
+.pa-step-3 .paf-row {
+  animation: paf-run 0.45s linear both;
+  animation-delay: calc(350ms + var(--i) * 420ms);
+}
+
+@keyframes paf-run {
+  0%, 100% {
+    background: var(--pa-tone);
+  }
+
+  12%, 80% {
+    background: color-mix(in srgb, var(--pc) 50%, var(--pa-tone));
+  }
+}
+
+/* Code rows (most passes): lines that move (--pos), indent (--indent), appear
+   and change. In a walk step, one highlight visits the rows with a --w in
+   that order, and the rows the program skips fade back. */
+
+.par {
+  --row: 1.8rem;
+  width: min(100%, 32rem);
+  font: var(--step-small) / 1.3 var(--content-code-font);
+}
+
+.par-rows {
+  position: relative;
+  height: calc(var(--n) * var(--row));
+}
+
+.par-row {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: var(--row);
+  padding: 0 0.6rem;
+  border-radius: var(--radius);
+  color: var(--content-headings);
+  white-space: pre;
+  transform: translate(calc(var(--indent) * 2ch), calc(var(--pos) * var(--row)));
+  transition: transform 0.7s var(--pa-move), opacity 0.4s var(--pa-ease);
+}
+
+.par-row.is-new {
+  color: var(--pc);
+}
+
+.par-row.is-hidden {
+  opacity: 0;
+}
+
+.pa-walking .par-row.is-skipped {
+  opacity: 0.3;
+}
+
+.pa-walking .par-row.is-walked {
+  animation: paf-run 0.45s linear both;
+  animation-delay: calc(350ms + var(--w) * 420ms);
+}
+
+.pa-x,
+.pa-m,
+.pa-k {
+  display: inline-block;
+  transition: color 0.3s var(--pa-ease);
+}
+
+.pa-x {
+  color: var(--pc);
+  font-weight: 600;
+  animation: pa-pop 0.45s var(--pa-ease);
+}
+
+.pa-m {
+  color: var(--pa-muted);
+}
+
+.pa-k {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+@keyframes pa-pop {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+/* Call indirection: a small call graph. Step 0 calls directly; step 1
+   routes both calls through the forwarder; step 2 fades the edges a call
+   graph can no longer see. */
+
+.pac {
+  width: min(100%, 26rem);
+  height: auto;
+  overflow: visible;
+}
+
+.pac-node rect {
+  fill: color-mix(in srgb, var(--content-headings) 14%, var(--background));
+}
+
+.pac-node text {
+  fill: var(--content-headings);
+  font-family: var(--content-code-font);
+  font-size: 11px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.pac-fwd rect {
+  fill: color-mix(in srgb, var(--pc) 22%, var(--pa-tone));
+}
+
+.pac-fwd text {
+  fill: var(--pc);
+  font-weight: 600;
+}
+
+.pac-edge {
+  stroke: var(--content-headings);
+  stroke-width: 1.5;
+  transition: opacity 0.5s var(--pa-ease);
+}
+
+#pac-arrow path {
+  fill: var(--content-headings);
+}
+
+.pac-out {
+  stroke-dasharray: 3 3;
+}
+
+.pac-fwd,
+.pac-in,
+.pac-out {
+  opacity: 0;
+  transition: opacity 0.5s var(--pa-ease);
+}
+
+.pa-stage:not(.pa-step-0) .pac-direct {
+  opacity: 0;
+}
+
+.pa-stage:not(.pa-step-0) .pac-fwd,
+.pa-stage:not(.pa-step-0) .pac-in,
+.pa-stage:not(.pa-step-0) .pac-out {
+  opacity: 1;
+}
+
+.pa-stage.pa-step-2 .pac-out {
+  opacity: 0.15;
+}
+
+/* Narrow cards: smaller tiles so the word fits. */
+@container (max-width: 520px) {
+  .pas-tiles {
+    column-gap: 0.25rem;
+  }
+
+  .pas-labels,
+  .pas-tile {
+    padding-block: 0.5rem;
+  }
+
+  .pas-tile {
+    min-width: 2.1rem;
+    padding-inline: 0.15rem;
+  }
+
+  .pas-label {
+    font-size: 0.6875rem;
+  }
+
+  /* The Key label says what the row is; the operator doesn't fit. */
+  .pas-op {
+    display: none;
+  }
+
+  .pas-char {
+    font-size: 1.25rem;
+  }
+
+  .pas-tile .pas-top-result {
+    font-size: 1.25rem;
+  }
+
+  .pas-byte,
+  .pas-enc,
+  .pas-key {
+    font-size: 0.6875rem;
+  }
+
+  .par {
+    --row: 1.6rem;
+    font-size: 0.6875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-pause {
+    display: none;
+  }
+
+  .pa *,
+  .pa *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}

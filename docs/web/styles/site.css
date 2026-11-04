@@ -1,0 +1,115 @@
+/*
+ * What every page shares: the type scale, the nine pass colors, the prism
+ * marker, and the type and color tweaks for the header, sidebar and docs
+ * content. BrandHeader loads it on every page, landing page included.
+ */
+
+:root {
+  /* Five sizes do the work; code panels add their own 13px mono. */
+  --step-small: 0.8125rem;
+  --step-body: 1.0625rem;
+  --step-lead: clamp(1.1875rem, 1.05rem + 0.45vw, 1.375rem);
+  --step-head: clamp(2rem, 1.4rem + 2.2vw, 3.25rem);
+  --step-display: clamp(2.75rem, 1rem + 5.6vw, 6rem);
+  --code-size: 0.8125rem;
+
+  /* One corner radius for buttons, chips, cards and code panels. */
+  --radius: 4px;
+
+  /* One color per pass, down the logo's spectrum in Rulebook order, so each
+     category is one stretch of it: naming warm, expressions green, control
+     flow cool. A pass has its color everywhere (playground chip, prism band,
+     changed code, Rulebook page, sidebar), and color means a pass: the rest
+     of the site is ink on ground. */
+  --pass-rename: #ef4444;
+  --pass-strings: #f97316;
+  --pass-ints: #facc15;
+  --pass-arith: #22c55e;
+  --pass-opaque: #06b6d4;
+  --pass-flatten: #3b82f6;
+  --pass-dead: #6366f1;
+  --pass-bogus: #a855f7;
+  --pass-call: #d946ef;
+
+  /* The logo's prism outline, as a mask any element can paint. */
+  --prism-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 89'%3E%3Cpath fill-rule='evenodd' d='M55 0L0 88h110zM55 33L80 74H30z'/%3E%3C/svg%3E");
+}
+
+/* The two lightest passes, deepened enough to read as marks on a light page. */
+:root:not([data-theme="dark"]) {
+  --pass-ints: #eab308;
+  --pass-opaque: #0891b2;
+}
+
+.pc-rename { --pc: var(--pass-rename); }
+.pc-strings { --pc: var(--pass-strings); }
+.pc-ints { --pc: var(--pass-ints); }
+.pc-arith { --pc: var(--pass-arith); }
+.pc-opaque { --pc: var(--pass-opaque); }
+.pc-flatten { --pc: var(--pass-flatten); }
+.pc-dead { --pc: var(--pass-dead); }
+.pc-bogus { --pc: var(--pass-bogus); }
+.pc-call { --pc: var(--pass-call); }
+
+/* Spectrum bands in the prism drawings. */
+.ray-rename { fill: var(--pass-rename); }
+.ray-strings { fill: var(--pass-strings); }
+.ray-ints { fill: var(--pass-ints); }
+.ray-arith { fill: var(--pass-arith); }
+.ray-opaque { fill: var(--pass-opaque); }
+.ray-flatten { fill: var(--pass-flatten); }
+.ray-dead { fill: var(--pass-dead); }
+.ray-bogus { fill: var(--pass-bogus); }
+.ray-call { fill: var(--pass-call); }
+
+/* The prism as a marker beside a name: in the pass's color, or in ink. */
+.prism-mark {
+  flex: none;
+  display: inline-block;
+  width: 0.8em;
+  height: 0.65em;
+  background: var(--pc, currentColor);
+  -webkit-mask: var(--prism-mask) center / contain no-repeat;
+  mask: var(--prism-mask) center / contain no-repeat;
+}
+
+/* The GitHub button's repo name in the text face, not monospace. */
+.header .github-button .github-info > span:first-child {
+  font-family: inherit;
+}
+
+/* Sidebar: every Rulebook pass carries its prism marker. Matched on the end
+   of the href so the GitHub Pages subpath rewrite doesn't break it. */
+.sidebar a[href*="/rulebook/"] {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.sidebar a[href*="/rulebook/"]::before {
+  content: "";
+  flex: none;
+  width: 0.75rem;
+  height: 0.6rem;
+  background: var(--pc);
+  -webkit-mask: var(--prism-mask) center / contain no-repeat;
+  mask: var(--prism-mask) center / contain no-repeat;
+}
+
+.sidebar a[href$="/rulebook/rename"] { --pc: var(--pass-rename); }
+.sidebar a[href$="/rulebook/string-encryption"] { --pc: var(--pass-strings); }
+.sidebar a[href$="/rulebook/int-encryption"] { --pc: var(--pass-ints); }
+.sidebar a[href$="/rulebook/arithmetic-mangling"] { --pc: var(--pass-arith); }
+.sidebar a[href$="/rulebook/opaque-predicates"] { --pc: var(--pass-opaque); }
+.sidebar a[href$="/rulebook/control-flow-flatten"] { --pc: var(--pass-flatten); }
+.sidebar a[href$="/rulebook/dead-code"] { --pc: var(--pass-dead); }
+.sidebar a[href$="/rulebook/bogus-control-flow"] { --pc: var(--pass-bogus); }
+.sidebar a[href$="/rulebook/call-indirection"] { --pc: var(--pass-call); }
+
+/* Docs content: paragraphs and lists keep a readable measure; code panels,
+   tables and diagrams still take the full column. */
+.content > p,
+.content > ul,
+.content > ol {
+  max-width: 68ch;
+}

@@ -1,0 +1,673 @@
+/*
+ * Landing page (layout: home). Ink on ground, with color only where a pass
+ * is: the hero's spectrum, the playground and the split beam. Page colors
+ * come from ContentTheme's CSS variables, so light and dark follow the
+ * header's theme toggle; sizes and pass colors come from site.css, and the
+ * playground's code card from code-card.css.
+ */
+
+.home {
+  --home-gutter: clamp(1rem, 0.4rem + 2.4vw, 2rem);
+  --home-muted: color-mix(in srgb, var(--text) 80%, transparent);
+  --home-tone: color-mix(in srgb, var(--content-headings) 5%, var(--background));
+  --home-tone-2: color-mix(in srgb, var(--content-headings) 9%, var(--background));
+  --home-tone-3: color-mix(in srgb, var(--content-headings) 14%, var(--background));
+
+  min-height: 100svh;
+  overflow-x: clip;
+  color: var(--text);
+  font-size: var(--step-body);
+}
+
+/* One frame for every section: equal margins, one measure. */
+.home-frame {
+  width: min(100% - 2 * var(--home-gutter), 80rem);
+  margin-inline: auto;
+}
+
+.home h2 {
+  margin: 0;
+  color: var(--content-headings);
+  font-size: var(--step-head);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+/* Header: a plain bar on the page's ground, its edges on the frame's. */
+
+.home-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--background);
+}
+
+.home-header .header {
+  max-width: calc(80rem + 2 * var(--home-gutter));
+  padding-inline: var(--home-gutter);
+}
+
+.header-link {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  color: inherit;
+  font-size: var(--step-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.header-link:hover {
+  background: var(--home-tone-2);
+}
+
+/* On phones the repo name gives way, so the wordmark keeps its size and Docs
+   stays in the header. */
+@media (max-width: 560px) {
+  .home-header .github-button .github-info {
+    display: none;
+  }
+
+  .home-header .header-title {
+    flex: 0 1 auto;
+  }
+}
+
+/* Buttons: one shape, flat. The primary one is the ink itself. */
+
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 3rem;
+  padding: 0 1.4rem;
+  border-radius: var(--radius);
+  background: var(--home-tone-2);
+  color: var(--content-headings);
+  font-size: var(--step-body);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: pre;
+  transition: background-color 0.15s, transform 0.15s;
+}
+
+.home-btn:hover {
+  background: var(--home-tone-3);
+}
+
+.home-btn:active {
+  transform: translateY(1px);
+}
+
+.home-btn-primary {
+  background: var(--content-headings);
+  color: var(--background);
+}
+
+.home-btn-primary:hover {
+  background: color-mix(in srgb, var(--content-headings) 82%, var(--background));
+}
+
+.home a:focus-visible,
+.home button:focus-visible {
+  outline: 2px solid var(--content-headings);
+  outline-offset: 3px;
+}
+
+/* Hero: the words on the left, the prism and its nine passes on the right. */
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 3rem;
+  padding: 3.5rem 0 4rem;
+}
+
+.home-hero h1 {
+  margin: 0;
+  color: var(--content-headings);
+  font-size: var(--step-display);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.home-lead {
+  max-width: 34rem;
+  margin: 1.75rem 0 0;
+  color: var(--text);
+  font-size: var(--step-lead);
+  line-height: 1.45;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.home-install {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.55rem 0.55rem 1rem;
+  border-radius: var(--radius);
+  background: var(--home-tone);
+}
+
+.home-install code {
+  flex: 1;
+  min-width: 0;
+  color: var(--content-headings);
+  font: var(--step-small) / 1.6 var(--code-mono);
+  overflow-wrap: break-word;
+}
+
+.home-install code::before {
+  content: "$ ";
+  opacity: 0.5;
+  user-select: none;
+}
+
+.home-install .cb-copy {
+  align-self: flex-start;
+  background: var(--home-tone-2);
+  color: var(--content-headings);
+}
+
+.home-install .cb-copy:hover,
+.home-install .cb-copy.copied {
+  background: var(--home-tone-3);
+  color: var(--content-headings);
+}
+
+/* On phones the command gets the box's full width, and Copy drops below. */
+@media (max-width: 560px) {
+  .home-install {
+    flex-wrap: wrap;
+  }
+
+  .home-install code {
+    flex-basis: 100%;
+  }
+
+  .home-install .cb-copy {
+    margin-left: auto;
+  }
+}
+
+/* The prerequisite for the install line below it. */
+.home-note {
+  margin: 1.75rem 0 0;
+  color: var(--home-muted);
+  font-size: var(--step-small);
+}
+
+/* The prism slider: source on the left of the prism, the build on its right. */
+
+@property --split {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 40%;
+}
+
+.hero-slider {
+  --split: 40%;
+  animation: hsl-sweep 1.6s cubic-bezier(0.77, 0, 0.175, 1) 0.3s both;
+}
+
+/* Once someone drags, their value wins over the opening sweep. */
+.hero-slider[data-touched] {
+  animation: none;
+}
+
+@keyframes hsl-sweep {
+  from {
+    --split: 100%;
+  }
+}
+
+.hsl-head .pg-tag code {
+  margin-right: 0.15em;
+}
+
+.hsl-stage {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  background: var(--pg-pane);
+}
+
+.hero-slider .hsl-code {
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 1.4rem 1.25rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--pg-pane);
+  color: #c9d1d9;
+  font: clamp(0.625rem, 0.3rem + 1.1vw, 1.0625rem) / 1.85 var(--code-mono);
+}
+
+.hsl-code .pg-line {
+  padding: 0;
+}
+
+.hsl-code .pg-line::before {
+  display: none;
+}
+
+.hsl-build {
+  clip-path: inset(0 0 0 var(--split));
+}
+
+/* The divider: a line of white light with the prism on its handle. */
+.hsl-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--split);
+  width: 2px;
+  margin-left: -1px;
+  background: #fff;
+  pointer-events: none;
+}
+
+.hsl-handle .prism-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0.55rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background-color: #0a0f1c;
+  transform: translate(-50%, -50%);
+  --pc: #fff;
+  -webkit-mask: none;
+  mask: none;
+}
+
+.hsl-handle .prism-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0.7rem 0.6rem 0.75rem;
+  background: #fff;
+  -webkit-mask: var(--prism-mask) center / contain no-repeat;
+  mask: var(--prism-mask) center / contain no-repeat;
+}
+
+.hsl-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+  touch-action: pan-y;
+}
+
+.hero-slider:has(.hsl-range:focus-visible) .hsl-handle .prism-mark {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Too narrow for the whole header: the paths alone say enough. */
+@media (max-width: 560px) {
+  .hsl-tag-note {
+    display: none;
+  }
+}
+
+/* Playground */
+
+.home-demo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.home-demo-head p {
+  max-width: 38rem;
+  margin: 0;
+  color: var(--text);
+}
+
+.home-demo-head a,
+.home-point a {
+  color: var(--content-headings);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  white-space: pre;
+}
+
+/* Playground-only parts of the code card (the card itself, panes, tokens and
+   prism are in code-card.css). */
+
+.pg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--pg-head);
+}
+
+.pg-label {
+  color: var(--pg-muted);
+  font-size: var(--step-small);
+  font-weight: 500;
+}
+
+.pg-chips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pg-chip,
+.pg-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--pg-muted);
+  font-family: inherit;
+  font-size: var(--step-small);
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.pg-chip:hover,
+.pg-replay:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e6edf3;
+}
+
+.pg-chip .prism-mark {
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.pg-chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--pc) 22%, transparent);
+  color: #fff;
+}
+
+.pg-chip[aria-pressed="true"] .prism-mark {
+  opacity: 1;
+}
+
+.pg-chip:focus-visible,
+.pg-replay:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.pg-replay {
+  margin-left: auto;
+}
+
+/* The output runs much wider than the source, so it gets the larger share. */
+.home-demo .pg-stage {
+  grid-template-columns: minmax(0, 0.9fr) 9rem minmax(0, 1.3fr);
+}
+
+/* Tall enough for the longest output (17 lines), so toggling never jumps. */
+.home-demo .pg .pg-code {
+  min-height: calc(17 * 1.75em + 1.8rem);
+}
+
+@media (max-width: 1200px) {
+  .home-demo .pg-stage {
+    grid-template-columns: minmax(0, 0.9fr) 7rem minmax(0, 1.3fr);
+  }
+
+  .home-demo .pg .pg-code {
+    font-size: 0.75rem;
+  }
+}
+
+.pg.on-rename .ray-rename,
+.pg.on-strings .ray-strings,
+.pg.on-ints .ray-ints,
+.pg.on-arith .ray-arith,
+.pg.on-flatten .ray-flatten,
+.pg.on-dead .ray-dead {
+  opacity: 1;
+}
+
+.pg-status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.65rem 1rem;
+  background: var(--pg-head);
+  color: var(--pg-muted);
+  font-size: var(--step-small);
+}
+
+.pg-lookup {
+  color: #c9d1d9;
+  white-space: pre;
+}
+
+@media (max-width: 900px) {
+  /* Label and Replay share the first row; the chips get a full row. */
+  .pg-chips {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .home-demo .pg-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-demo .pg-pane:first-child .pg-code {
+    min-height: 0;
+  }
+}
+
+/* The split beam: white light across the page, a small prism, nine passes. */
+
+.home-split {
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  margin-top: 8rem;
+  color: var(--content-headings);
+}
+
+.home-split-beam {
+  flex: 1;
+  height: 2px;
+  background: currentColor;
+}
+
+.home-split .home-split-prism {
+  width: 2.4rem;
+  height: 2rem;
+  margin: 0 -0.15rem;
+}
+
+.home-split-rays {
+  flex: 1;
+  height: 1.6rem;
+}
+
+/* What you get: the claim on the left, its three proofs on the right. */
+
+.home-why {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 3rem;
+  padding-top: 6rem;
+}
+
+.home-points {
+  display: grid;
+  gap: 2.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-point h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0;
+  color: var(--content-headings);
+  font-size: var(--step-lead);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.home-point p {
+  max-width: 60ch;
+  margin: 0.6rem 0 0.8rem;
+  line-height: 1.6;
+}
+
+/* Closing: the first commands, already open. */
+
+.home-cta {
+  margin-top: 8rem;
+  padding: 5.5rem 0;
+  background: var(--home-tone);
+}
+
+.home-cta-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 2.5rem 3rem;
+}
+
+.home-cta h2 {
+  grid-column: 1 / -1;
+}
+
+.home-cta p {
+  max-width: 34rem;
+  margin: 0 0 2rem;
+}
+
+.home-cta .cb {
+  margin: 0;
+}
+
+/* Footer: the wordmark, built as large as the frame, then the links. */
+
+.home-footer {
+  padding: 6rem 0 3rem;
+}
+
+.home-footer-mark {
+  display: block;
+}
+
+.home-footer-mark img {
+  width: 100%;
+  height: auto;
+}
+
+.home-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-top: 3rem;
+  color: var(--home-muted);
+  font-size: var(--step-small);
+}
+
+.home-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  font-size: var(--step-body);
+}
+
+.home-footer-links a {
+  color: var(--content-headings);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home-footer-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.home-footer p {
+  margin: 0;
+}
+
+.home-footer p a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 960px) {
+  .home-hero,
+  .home-why,
+  .home-cta-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-hero {
+    gap: 2.5rem;
+    padding-top: 2.5rem;
+  }
+
+  .home-split {
+    margin-top: 5rem;
+  }
+
+  .home-why {
+    gap: 2rem;
+    padding-top: 4rem;
+  }
+
+  .home-cta {
+    margin-top: 5rem;
+    padding: 4rem 0;
+  }
+
+  .home-footer {
+    padding-top: 4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home *,
+  .home *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}
