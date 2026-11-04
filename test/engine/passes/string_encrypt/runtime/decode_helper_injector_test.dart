@@ -98,6 +98,23 @@ void main() {
       );
     });
 
+    test('gives the injected helper real file offsets', () {
+      // The kernel verifier rejects a named member whose offset is
+      // `noOffset`, even though the VM's own compile tolerates it.
+      final component = Component(
+        libraries: [coreLib, convertLib, firstUserLib],
+      )..setMainMethodAndMode(null, true);
+
+      final result = makeInjector().injectIntoFirstEligibleLibrary(component);
+
+      expect(result, isNotNull);
+      final helper = result!.decodeProcedure;
+      expect(helper.fileOffset, isNot(TreeNode.noOffset));
+      expect(helper.fileStartOffset, isNot(TreeNode.noOffset));
+      expect(helper.fileEndOffset, isNot(TreeNode.noOffset));
+      expect(helper.function.fileOffset, isNot(TreeNode.noOffset));
+    });
+
     test('keeps the injected helper static with the expected signature', () {
       final component = Component(
         libraries: [coreLib, convertLib, firstUserLib],
