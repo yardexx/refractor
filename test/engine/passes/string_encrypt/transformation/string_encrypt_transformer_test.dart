@@ -64,11 +64,10 @@ void main() {
         selection,
       );
 
-      final output = StringEncryptTransformer(
+      final transformOutput = StringEncryptTransformer(
         scope: makeObfuscationScope(),
         helpers: helpers,
       ).apply(component, plan);
-      final transformOutput = await output;
 
       expect(transformOutput.encryptedCount, 2);
       expect(transformOutput.records, hasLength(2));

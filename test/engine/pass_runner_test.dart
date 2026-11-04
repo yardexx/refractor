@@ -111,8 +111,7 @@ void main() {
       final mutating = _MutatingPass();
       final tracker = _TrackingPass('after');
 
-      final runner = PassRunner(passes: [mutating, tracker]);
-      runner.run(component);
+      PassRunner(passes: [mutating, tracker]).run(component);
 
       // Mutating pass should have added a class.
       final userLib = component.libraries.firstWhere(

@@ -668,10 +668,10 @@ class _FakeBuildCommand extends BuildCommand {
   final BuildResult result;
 
   @override
-  Future<BuildResult> runBuild({
+  BuildResult runBuild({
     required BuildRequest request,
     required RefractorConfig config,
-  }) async {
+  }) {
     return result;
   }
 }

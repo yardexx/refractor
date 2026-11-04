@@ -483,12 +483,10 @@ Future<String> _buildAndRunExampleApp({
 
   final outputPath = '${tempDir.path}/example.exe';
 
-  final engine = RefractorEngine(
+  RefractorEngine(
     compiler: DartCompiler(),
     kernelIO: FileKernelIO(),
-  );
-
-  engine.run(
+  ).run(
     config: config,
     request: BuildRequest(
       input: '$exampleRoot/lib/main.dart',
