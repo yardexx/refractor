@@ -41,16 +41,30 @@ class MustContain extends Assertion {
 
 /// A regular expression that must not match anywhere in the artifact.
 class MustNotMatch extends Assertion {
-  const MustNotMatch(
+  /// Compiles [pattern] eagerly, so an invalid regex is rejected while the
+  /// policy is parsed rather than halfway through a check.
+  ///
+  /// Throws a [FormatException] if [pattern] is not a valid regex.
+  MustNotMatch(
     this.pattern, {
     required PolicySeverity severity,
     this.caseInsensitive = false,
-  }) : super(severity);
+  })  : regExp = _compile(pattern, caseInsensitive: caseInsensitive),
+        super(severity);
 
   final String pattern;
   final bool caseInsensitive;
+  final RegExp regExp;
 
-  RegExp get regExp => RegExp(pattern, caseSensitive: !caseInsensitive);
+  static RegExp _compile(String pattern, {required bool caseInsensitive}) {
+    try {
+      return RegExp(pattern, caseSensitive: !caseInsensitive);
+    } on FormatException catch (e) {
+      throw FormatException(
+        'must_not_match is not a valid regex "$pattern": ${e.message}',
+      );
+    }
+  }
 
   @override
   String get label => 'must_not_match';

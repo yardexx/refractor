@@ -95,23 +95,29 @@ int _runVerify(ArgResults args) {
     _ => Confidence.high,
   };
 
+  // Load every input up front so a malformed or unreadable file is a usage
+  // error (exit 64) with a clear message, never an unhandled exception.
+  final symbolMap =
+      mapPath == null ? null : _load('symbol map', mapPath, SymbolMap.load);
+  final policy =
+      policyPath == null ? null : _load('policy', policyPath, Policy.load);
   // One read of the artifact, shared by both bands.
-  final scanner = BinaryScanner.ofFile(artifactPath);
+  final scanner = _load('artifact', artifactPath, BinaryScanner.ofFile);
 
   VerificationReport? mapReport;
-  if (mapPath != null) {
+  if (symbolMap != null) {
     mapReport = Verifier(minConfidentLength: minLength, failOn: failOn).verify(
       artifactPath: artifactPath,
-      symbolMap: SymbolMap.load(mapPath),
+      symbolMap: symbolMap,
       scanner: scanner,
     );
   }
 
   PolicyReport? policyReport;
-  if (policyPath != null) {
+  if (policy != null) {
     policyReport = const PolicyChecker().check(
       scanner: scanner,
-      policy: Policy.load(policyPath),
+      policy: policy,
     );
   }
 
@@ -139,6 +145,16 @@ String _usage(ArgParser parser) =>
     'prism — verify a built artifact against a symbol map and/or a policy.\n\n'
     'Usage: prism verify <artifact> [--map <map.json>] [--policy <policy.yaml>]'
     '\n\nOptions:\n${parser.commands['verify']!.usage}';
+
+T _load<T>(String what, String path, T Function(String path) load) {
+  try {
+    return load(path);
+  } on FormatException catch (e) {
+    _fail('invalid $what $path: ${e.message}');
+  } on IOException catch (e) {
+    _fail('cannot read $what $path: $e');
+  }
+}
 
 Never _fail(String message) {
   stderr.writeln(message);

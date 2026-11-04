@@ -44,7 +44,6 @@ void main() {
       containsAll(['SecretAlgorithm', 'computeProfitMargin']),
     );
     expect(report.passed, isFalse);
-    expect(report.exitCode, 1);
   });
 
   test('does not flag a name that was actually renamed away', () {

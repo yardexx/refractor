@@ -2,8 +2,13 @@
 
 A source-free verifier that back-checks whether a built Dart artifact was
 actually obfuscated. Point it at a finished binary — no source, no rebuild, no
-dependency on the Refractor engine, no SDK pin — and it reports what leaked.
-It is meant to drop into CI as a post-build gate.
+dependency on the Refractor engine — and it reports what leaked. It is meant to
+drop into CI as a post-build gate.
+
+> **Status:** prism is not published yet (`publish_to: none`). Its own SDK
+> floor is `>=3.5.0`, but inside this repository it resolves as part of the
+> pub workspace, so it builds against the repo's pinned SDK. The "any modern
+> Dart" promise only takes effect once it is released as a standalone package.
 
 ```bash
 prism verify build/app.exe --map build/symbol_map.json

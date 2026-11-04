@@ -57,8 +57,6 @@ class VerificationReport {
         Confidence.low => leaks.isEmpty,
       };
 
-  int get exitCode => passed ? 0 : 1;
-
   Map<String, Object?> toJson() => {
         'artifact': artifactPath,
         'originals_checked': originalsChecked,

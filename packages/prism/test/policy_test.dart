@@ -93,6 +93,22 @@ assertions:
     expect(report.violations, hasLength(1));
   });
 
+  test('rejects an invalid must_not_match regex at parse time', () {
+    expect(
+      () => Policy.parse('''
+assertions:
+  - must_not_match: "sk_(["
+'''),
+      throwsA(
+        isA<FormatException>().having(
+          (e) => e.message,
+          'message',
+          contains('not a valid regex'),
+        ),
+      ),
+    );
+  });
+
   test('rejects an unknown assertion kind', () {
     expect(
       () => Policy.parse('''
