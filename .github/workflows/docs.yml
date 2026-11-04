@@ -1,0 +1,76 @@
+name: Deploy Docs
+
+# Builds the jaspr_content docs site in docs/ and publishes it to GitHub Pages.
+#
+# One-time setup: in the repo, go to Settings -> Pages -> Build and deployment
+# and set "Source" to "GitHub Actions".
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; cancel older in-progress runs.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          # Match the SDK the docs deps are pinned to (vendored kernel line).
+          sdk: 3.11.3
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Activate jaspr CLI
+        # Pinned so a CLI auto-update can't drift past the project's jaspr deps.
+        run: dart pub global activate jaspr_cli 0.23.5
+
+      - name: Build static site
+        run: jaspr build
+
+      - name: Rewrite base path for the Pages project subpath
+        # GitHub project pages are served from https://<owner>.github.io/<repo>/,
+        # but jaspr builds absolute links rooted at "/". Prefix internal href/src
+        # (including the <base> tag) with the repo subpath so links and assets
+        # resolve. If you deploy at a domain root (custom domain or a
+        # <owner>.github.io repo), delete this step.
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: |
+          find build/jaspr -name '*.html' -print0 \
+            | xargs -0 sed -i -E "s#(href|src)=\"/#\1=\"${BASE_PATH}#g"
+          touch build/jaspr/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build/jaspr
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
