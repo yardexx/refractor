@@ -1,0 +1,17 @@
+# rename alone: distinctive identifiers must vanish from the binary.
+behavior:
+  targets: [exe]
+
+resistance:
+  denylist:
+    - SecretAlgorithm
+    - RevenueReporter
+    - processConfidentialData
+    - apiEndpoint
+    - computeProfitMargin
+    - renderSummary
+  rename_helpers:
+    - SecretAlgorithm
+    - RevenueReporter
+    - processConfidentialData
+    - computeProfitMargin

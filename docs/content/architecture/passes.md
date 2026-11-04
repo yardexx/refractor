@@ -82,7 +82,8 @@ sealed class PassResult
 
 <Info>
 The `PassReport` metadata keys and the artifact shapes are a **contract**: the
-e2e/resistance harness and the CLI reporters depend on them. Keep them stable.
+spectrometer test harness (`packages/spectrometer`) and the CLI reporters
+depend on them. Keep them stable.
 </Info>
 
 ## The shape of a concrete `run()`

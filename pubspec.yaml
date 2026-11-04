@@ -10,6 +10,7 @@ environment:
 workspace:
   - packages/refractor_annotation
   - packages/kernel_model
+  - packages/spectrometer
   - packages/third_party/kernel
 
 dependencies:
