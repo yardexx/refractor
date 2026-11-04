@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:prism/src/bands/band.dart';
-import 'package:prism/src/fixture_build.dart';
-import 'package:prism/src/spectrum.dart';
 import 'package:refractor/refractor.dart';
+import 'package:refractor_test_harness/src/bands/band.dart';
+import 'package:refractor_test_harness/src/fixture_build.dart';
+import 'package:refractor_test_harness/src/spectrum.dart';
 
 /// Checks that obfuscation *actually happened* in the shipped artifact:
 /// forbidden plaintext is gone, deliberately preserved markers remain, and

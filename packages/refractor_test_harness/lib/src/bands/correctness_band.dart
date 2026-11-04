@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:kernel/target/targets.dart' as kt;
 import 'package:kernel/verifier.dart' as kv;
 import 'package:path/path.dart' as p;
-import 'package:prism/src/bands/band.dart';
-import 'package:prism/src/fixture_build.dart';
-import 'package:prism/src/spectrum.dart';
 import 'package:refractor/refractor.dart';
+import 'package:refractor_test_harness/src/bands/band.dart';
+import 'package:refractor_test_harness/src/fixture_build.dart';
+import 'package:refractor_test_harness/src/spectrum.dart';
 
 /// Checks that a pass *survives the compiler*: the obfuscated kernel is
 /// structurally valid, and the obfuscated binary behaves identically to a

@@ -65,7 +65,7 @@ class BandResult {
 
 /// The full set of band readings for a single fixture build.
 ///
-/// Named for the optics metaphor: a prism splits one build into a spectrum of
+/// Splits one build into a spectrum of
 /// independently measurable bands.
 class Spectrum {
   Spectrum({required this.fixture, required this.bands});

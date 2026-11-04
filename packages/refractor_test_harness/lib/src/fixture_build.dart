@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:kernel/kernel.dart' as k;
 import 'package:path/path.dart' as p;
-import 'package:prism/src/fixture.dart';
 import 'package:refractor/refractor.dart';
 import 'package:refractor/testing.dart';
+import 'package:refractor_test_harness/src/fixture.dart';
 
 /// The product of one obfuscated build: the output path and its metrics.
 class ObfuscatedBuild {

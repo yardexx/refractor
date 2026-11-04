@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:prism/src/expectations.dart';
 import 'package:refractor/testing.dart';
+import 'package:refractor_test_harness/src/expectations.dart';
 
-/// A single prism scenario: a `main.dart`, its `refractor.yaml`, and the
+/// A single harness scenario: a `main.dart`, its `refractor.yaml`, and the
 /// `expectations.yaml` contract, all living in one directory.
 class Fixture {
   Fixture({

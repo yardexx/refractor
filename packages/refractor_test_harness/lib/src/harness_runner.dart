@@ -1,16 +1,16 @@
 import 'dart:io';
 
-import 'package:prism/src/bands/band.dart';
-import 'package:prism/src/bands/correctness_band.dart';
-import 'package:prism/src/bands/impact_band.dart';
-import 'package:prism/src/bands/resistance_band.dart';
-import 'package:prism/src/fixture.dart';
-import 'package:prism/src/fixture_build.dart';
-import 'package:prism/src/spectrum.dart';
+import 'package:refractor_test_harness/src/bands/band.dart';
+import 'package:refractor_test_harness/src/bands/correctness_band.dart';
+import 'package:refractor_test_harness/src/bands/impact_band.dart';
+import 'package:refractor_test_harness/src/bands/resistance_band.dart';
+import 'package:refractor_test_harness/src/fixture.dart';
+import 'package:refractor_test_harness/src/fixture_build.dart';
+import 'package:refractor_test_harness/src/spectrum.dart';
 
-/// Entry point for prism: splits a fixture build into a [Spectrum] of bands.
-class Prism {
-  const Prism({this.bands = defaultBands});
+/// Entry point for the harness: splits a build into a [Spectrum] of bands.
+class Harness {
+  const Harness({this.bands = defaultBands});
 
   /// The default band set: correctness, resistance, impact.
   static const List<Band> defaultBands = [
@@ -29,7 +29,7 @@ class Prism {
 
   Future<Spectrum> analyze(Fixture fixture) async {
     final workDir = Directory.systemTemp.createTempSync(
-      'prism_${fixture.name}_',
+      'harness_${fixture.name}_',
     );
     try {
       final build = FixtureBuild(fixture, workDir);

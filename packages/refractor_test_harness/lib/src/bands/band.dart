@@ -1,5 +1,5 @@
-import 'package:prism/src/fixture_build.dart';
-import 'package:prism/src/spectrum.dart';
+import 'package:refractor_test_harness/src/fixture_build.dart';
+import 'package:refractor_test_harness/src/spectrum.dart';
 
 /// One axis of analysis applied to a fixture build.
 ///

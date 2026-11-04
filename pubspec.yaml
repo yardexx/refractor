@@ -11,6 +11,7 @@ workspace:
   - packages/refractor_annotation
   - packages/kernel_model
   - packages/prism
+  - packages/refractor_test_harness
   - packages/third_party/kernel
 
 dependencies:

@@ -1,11 +1,12 @@
-# prism
+# refractor_test_harness
 
-A fixture-driven test harness for Refractor's obfuscation passes.
+The internal, fixture-driven harness for **developing** Refractor's
+obfuscation passes. It owns the build (compile → obfuscate → compile) and
+decomposes the result into three independently measurable **bands**.
 
-A prism takes one beam of light and splits it into a spectrum you can inspect
-band by band. This package does the same to a Refractor build: it takes one
-fixture, builds it once, and decomposes the result into three independently
-measurable **bands**.
+> This is the engine-coupled, SDK-pinned *developer* tool. It is distinct from
+> [`prism`](../prism), the source-free, customer-facing verifier that inspects
+> an already-built artifact without rebuilding it.
 
 | Band          | Question it answers                          | How |
 |---------------|----------------------------------------------|-----|
@@ -15,14 +16,14 @@ measurable **bands**.
 
 ## Why a separate package
 
-Prism depends on Refractor's internals (the concrete compiler, kernel IO, and
-config model, via `package:refractor/testing.dart`) because a harness that
-validates the engine has to reach into it. Isolating it in its own
+The harness depends on Refractor's internals (the concrete compiler, kernel
+IO, and config model, via `package:refractor/testing.dart`) because a tool
+that validates the engine has to reach into it. Isolating it in its own
 `publish_to: none` package keeps that coupling explicit and out of
-Refractor's own dependency surface. The coupling is deliberate: prism is a
-canary that should break when internals shift.
+Refractor's own dependency surface. The coupling is deliberate: the harness is
+a canary that should break when internals shift.
 
-Prism is also intentionally independent of `package:test`. Bands return
+The harness is also intentionally independent of `package:test`. Bands return
 structured `Spectrum` data; the calling test decides how to assert. The same
 data can drive a CI summary or a standalone script.
 
@@ -59,12 +60,12 @@ impact:
 ## Usage
 
 ```dart
-import 'package:prism/prism.dart';
+import 'package:refractor_test_harness/refractor_test_harness.dart';
 import 'package:test/test.dart';
 
 void main() {
   test('rename fixture', () async {
-    final spectrum = await const Prism().analyzeDir('path/to/fixture');
+    final spectrum = await const Harness().analyzeDir('path/to/fixture');
     printOnFailure(spectrum.describe());
     expect(spectrum.ok, isTrue, reason: spectrum.describe());
   });

@@ -31,7 +31,7 @@ class Expectations {
     final impact = _mapAt(map, 'impact');
 
     // Resistance keys are also accepted at the root for backward
-    // compatibility with the pre-prism fixtures.
+    // compatibility with the pre-harness fixtures.
     List<String> resist(String key) => _stringList(resistance[key] ?? map[key]);
 
     return Expectations(
